@@ -568,3 +568,31 @@ def render_automata(
         fmt=fmt,
     )
     return paths
+
+
+def render_lr0_automaton(
+    automaton,
+    output_path: str = "output/lr0",
+    fmt: str = "png",
+    view: bool = False,
+) -> str:
+    """Render LR(0) automaton states and transitions as a PNG."""
+    dot = graphviz.Digraph(name="LR(0)", format=fmt)
+    dot.attr(rankdir="LR", dpi="150", fontsize="10")
+    dot.attr("node", shape="rectangle", fontsize="8", margin="0.12")
+
+    dot.node("__start__", shape="none", label="")
+    dot.edge("__start__", str(automaton.start.state_id))
+
+    for state in automaton.states:
+        items_str = "\\n".join(repr(item) for item in sorted(state.items, key=repr))
+        label = f"I{state.state_id}\\n{'--' * 10}\\n{items_str}"
+        dot.node(str(state.state_id), label=label)
+
+    for state in automaton.states:
+        for sym, ns in state.transitions.items():
+            dot.edge(str(state.state_id), str(ns.state_id), label=str(sym))
+
+    os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
+    dot.render(output_path, cleanup=True, view=view)
+    return f"{output_path}.{fmt}"
