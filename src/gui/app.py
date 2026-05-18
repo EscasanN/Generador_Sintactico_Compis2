@@ -326,6 +326,7 @@ class MainWindow(QMainWindow):
         self._add_first_follow_table(analyzer)
         self._add_parse_table("SLR(1)", analyzer.slr1_table)
         self._add_parse_table("LALR", analyzer.lalr_table)
+        self._add_productions_table(analyzer.slr1_table.grammar)
         if analyzer.ll1_table:
             self._add_ll1_table(analyzer.ll1_table, bundle['grammar'])
         else:
@@ -484,6 +485,33 @@ class MainWindow(QMainWindow):
 
         self._editor.setExtraSelections(selections)
 
+    def _add_productions_table(self, grammar) -> None:
+        prods = grammar.productions
+        tw = QTableWidget(len(prods), 3)
+        tw.setHorizontalHeaderLabels(["#", "Head", "Body"])
+        tw.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        tw.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        tw.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        tw.verticalHeader().setVisible(False)
+        tw.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        tw.setFont(QFont("Courier New", 9))
+
+        for row, prod in enumerate(prods):
+            body_str = " ".join(str(s) for s in prod.body) if prod.body else "ε"
+            num_item = QTableWidgetItem(str(prod.index))
+            num_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            num_item.setBackground(QColor("#FFF9C4"))
+            head_item = QTableWidgetItem(prod.head.name)
+            head_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            head_item.setBackground(QColor("#E8F5E9"))
+            body_item = QTableWidgetItem(body_str)
+            body_item.setBackground(QColor("#FAFAFA"))
+            tw.setItem(row, 0, num_item)
+            tw.setItem(row, 1, head_item)
+            tw.setItem(row, 2, body_item)
+
+        self._table_tabs.addTab(tw, "Productions")
+
     def _add_first_follow_table(self, analyzer) -> None:
         from src.parser.grammar import EPSILON_SYM
         non_terms = sorted(analyzer.grammar.non_terminals, key=lambda s: s.name)
@@ -542,6 +570,13 @@ class MainWindow(QMainWindow):
             bg = {"shift": "#d4edda", "reduce": "#fff3cd", "accept": "#cce5ff"}.get(action_type, "#fff")
             item.setBackground(QColor(bg))
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if action_type == "reduce":
+                prod = table.grammar.productions[value]
+                item.setToolTip(f"R{value}: {prod}")
+            elif action_type == "shift":
+                item.setToolTip(f"Shift → state {value}")
+            elif action_type == "accept":
+                item.setToolTip("Accept ✓")
             tw.setItem(row, col, item)
 
         for (s, nt), ns in table.goto_table.items():
@@ -551,6 +586,7 @@ class MainWindow(QMainWindow):
                 continue
             item = QTableWidgetItem(str(ns))
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item.setToolTip(f"GOTO({s}, {nt}) = {ns}")
             tw.setItem(row, col, item)
 
         if table.conflicts:
