@@ -19,6 +19,16 @@ def tokenize_input(
     skip_tokens: set[str] | None = None,
 ) -> list[str]:
     """Return list of token type names from input_text using the .yal lexer."""
+    tokens, _ = tokenize_with_spans(yalex_path, input_text, skip_tokens)
+    return tokens
+
+
+def tokenize_with_spans(
+    yalex_path: str,
+    input_text: str,
+    skip_tokens: set[str] | None = None,
+) -> tuple[list[str], list[tuple[int, int]]]:
+    """Return (token_names, spans) where spans[i] = (start_char, end_char) for token i."""
     if skip_tokens is None:
         skip_tokens = {'WHITESPACE'}
 
@@ -30,6 +40,7 @@ def tokenize_input(
     min_dfa = minimize_dfa(dfa)
 
     tokens: list[str] = []
+    spans: list[tuple[int, int]] = []
     pos = 0
     while pos < len(input_text):
         state = min_dfa.start
@@ -48,14 +59,15 @@ def tokenize_input(
 
         if last_accept is None:
             raise ValueError(
-                f"Lexer error at position {pos}: unexpected '{input_text[pos]}'"
+                f"Lexer error at column {pos + 1}: unexpected character '{input_text[pos]}'"
             )
         name, end_pos = last_accept
         if name not in skip_tokens:
             tokens.append(name)
+            spans.append((pos, end_pos))
         pos = end_pos
 
-    return tokens
+    return tokens, spans
 
 
 def _extract_token_name(action: str) -> str:

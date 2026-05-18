@@ -35,8 +35,9 @@ class AnalysisWorker(QThread):
             results = []
             for line in lines:
                 try:
-                    toks = tokenize_input(self.yalex_path, line)
-                    results.append(analyzer.analyze(toks))
+                    from src.parser.tokenizer_bridge import tokenize_with_spans
+                    toks, spans = tokenize_with_spans(self.yalex_path, line)
+                    results.append(analyzer.analyze(toks, spans=spans, input_text=line))
                 except Exception as lex_err:
                     from src.parser.string_analyzer import AnalysisResult
                     from src.parser.slr1 import ParseResult
@@ -281,23 +282,52 @@ class MainWindow(QMainWindow):
 
         lines.append("")
         for i, r in enumerate(bundle['results'], 1):
-            slr = "ACCEPT ✓" if r.slr1_result and r.slr1_result.accepted else "REJECT ✗"
-            lalr = "ACCEPT ✓" if r.lalr_result and r.lalr_result.accepted else "REJECT ✗"
-            ll1 = "N/A" if r.ll1_result is None else ("ACCEPT ✓" if r.ll1_result.accepted else "REJECT ✗")
+            slr_ok = r.slr1_result and r.slr1_result.accepted
+            lalr_ok = r.lalr_result and r.lalr_result.accepted
+            ll1_ok = r.ll1_result is not None and r.ll1_result.accepted
+            slr  = "ACCEPT ✓" if slr_ok  else "REJECT ✗"
+            lalr = "ACCEPT ✓" if lalr_ok else "REJECT ✗"
+            ll1  = "N/A" if r.ll1_result is None else ("ACCEPT ✓" if ll1_ok else "REJECT ✗")
             lines.append(f"[{i:02d}] {r.input_string}")
             lines.append(f"      Tokens : {r.tokens}")
             lines.append(f"      SLR(1) : {slr}  |  LALR: {lalr}  |  LL(1): {ll1}")
-            if r.slr1_result and not r.slr1_result.accepted and r.slr1_result.error:
-                lines.append(f"      Error  : {r.slr1_result.error}")
+            if not slr_ok:
+                err = (r.slr1_result.error if r.slr1_result else None) or \
+                      (r.lalr_result.error if r.lalr_result else None)
+                if err:
+                    lines.append(f"      ⚠ Error : {err}")
             lines.append("")
 
-        self._results.setPlainText("\n".join(lines))
+        html = self._build_results_html(lines, bundle['results'])
+        self._results.setHtml(html)
         self._tabs.setCurrentIndex(4)
 
+    def _build_results_html(self, lines: list[str], results: list) -> str:
+        import html as html_mod
+        parts = ['<pre style="font-family:Courier New,monospace;font-size:10pt;">']
+        for line in lines:
+            esc = html_mod.escape(line)
+            if '⚠' in line or 'REJECT' in line:
+                parts.append(f'<span style="color:#cc0000;">{esc}</span>')
+            elif 'ACCEPT' in line:
+                parts.append(f'<span style="color:#1a7a1a;">{esc}</span>')
+            elif line.startswith('[') and line[3:4] == ']':
+                parts.append(f'<b>{esc}</b>')
+            else:
+                parts.append(esc)
+            parts.append('\n')
+        parts.append('</pre>')
+        return ''.join(parts)
+
     def _on_error(self, tb: str) -> None:
+        import html as html_mod
         self._run_btn.setEnabled(True)
         self.statusBar().showMessage("Error during analysis.")
-        self._results.setPlainText("ERROR:\n" + tb)
+        esc = html_mod.escape(tb)
+        self._results.setHtml(
+            f'<pre style="font-family:Courier New,monospace;font-size:10pt;color:#cc0000;">'
+            f'ERROR:\n{esc}</pre>'
+        )
         self._tabs.setCurrentIndex(4)
 
     def _add_parse_table(self, name: str, table) -> None:

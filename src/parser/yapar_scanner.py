@@ -37,10 +37,14 @@ class YAParScanner:
         ignore_tokens: list[str] = []
         start_symbol: str | None = None
 
-        for line in header.splitlines():
-            line = line.strip()
+        header_line_offset = content[: content.find('%%')].count('\n') if '%%' in content else 0
+        for lineno, raw_line in enumerate(header.splitlines(), 1):
+            line = raw_line.strip()
             if line.startswith('%token'):
-                tokens.extend(line[6:].split())
+                names = line[6:].split()
+                if not names:
+                    raise YAParScannerError(f"Empty %token declaration", line=lineno)
+                tokens.extend(names)
             elif line.startswith('%start'):
                 parts = line[6:].split()
                 if parts:
@@ -49,9 +53,8 @@ class YAParScanner:
                 ignore_tokens.extend(line.split()[1:])
 
         if not tokens:
-            raise YAParScannerError("No %token declarations found")
+            raise YAParScannerError("No %token declarations found in header section")
         if not start_symbol:
-            # infer from first production head
             for block in rules_section.split(';'):
                 block = block.strip()
                 if not block:
@@ -61,9 +64,10 @@ class YAParScanner:
                     start_symbol = block[:colon_idx].strip()
                     break
         if not start_symbol:
-            raise YAParScannerError("No %start declaration found and no productions")
+            raise YAParScannerError("No productions found after %% separator")
 
         raw_productions: list[tuple[str, list[list[str]]]] = []
+        rules_line_offset = header_line_offset + 1
         for block in rules_section.split(';'):
             block = block.strip()
             if not block:
@@ -72,6 +76,9 @@ class YAParScanner:
             if colon_idx == -1:
                 continue
             head = block[:colon_idx].strip()
+            if not head:
+                line_approx = rules_line_offset + rules_section[:rules_section.find(block)].count('\n')
+                raise YAParScannerError(f"Production missing head symbol", line=line_approx)
             alts_str = block[colon_idx + 1:]
             alternatives: list[list[str]] = []
             for alt in alts_str.split('|'):
@@ -81,7 +88,7 @@ class YAParScanner:
                 raw_productions.append((head, alternatives))
 
         if not raw_productions:
-            raise YAParScannerError("No grammar rules found")
+            raise YAParScannerError("No grammar rules found after %% separator")
 
         return YAParSpec(
             tokens=tokens,
@@ -95,19 +102,21 @@ def build_grammar(spec: YAParSpec) -> Grammar:
     terminal_names = set(spec.tokens) | {'$'}
     nt_names = {head for head, _ in spec.raw_productions}
 
-    def make_sym(name: str) -> Symbol:
+    def make_sym(name: str, head_ctx: str = '') -> Symbol:
         if name in terminal_names:
             return Symbol(name, True)
         if name in nt_names:
             return Symbol(name, False)
-        raise GrammarError(f"Undefined symbol: '{name}'")
+        hint = " (not declared with %token and not a production head)"
+        ctx = f" in rule '{head_ctx}'" if head_ctx else ''
+        raise GrammarError(f"Undefined symbol: '{name}'{ctx}{hint}")
 
     productions: list[Production] = []
     idx = 0
     for head_name, alternatives in spec.raw_productions:
         head = Symbol(head_name, False)
         for alt in alternatives:
-            body = tuple(make_sym(s) for s in alt)
+            body = tuple(make_sym(s, head_name) for s in alt)
             productions.append(Production(head, body, idx))
             idx += 1
 
