@@ -1,11 +1,12 @@
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
-from src.parser.grammar import Grammar, Production
+from src.parser.grammar import Grammar, Symbol, Production
 from src.parser.lr0 import LR0Automaton, build_lr0_automaton
 from src.parser.slr1 import ParseTable, ParseResult, build_slr1_table, slr1_parse
 from src.parser.lalr import build_lalr_table, lalr_parse
 from src.parser.ll1 import build_ll1_table, ll1_parse, LL1ParseResult, LL1Error
+from src.parser.first_follow import compute_first, compute_follow
 
 
 @dataclass
@@ -70,6 +71,8 @@ class StringAnalyzer:
         self.automaton: LR0Automaton = build_lr0_automaton(grammar)
         self.slr1_table: ParseTable = build_slr1_table(self.automaton)
         self.lalr_table: ParseTable = build_lalr_table(grammar)
+        self.first: dict[Symbol, set[Symbol]] = compute_first(grammar)
+        self.follow: dict[Symbol, set[Symbol]] = compute_follow(grammar, self.first)
 
         self.ll1_table: dict[tuple[str, str], Production] | None = None
         self.ll1_error: str | None = None

@@ -224,6 +224,7 @@ class MainWindow(QMainWindow):
 
         analyzer = bundle['analyzer']
         self._table_tabs.clear()
+        self._add_first_follow_table(analyzer)
         self._add_parse_table("SLR(1)", analyzer.slr1_table)
         self._add_parse_table("LALR", analyzer.lalr_table)
         if analyzer.ll1_table:
@@ -329,6 +330,38 @@ class MainWindow(QMainWindow):
             f'ERROR:\n{esc}</pre>'
         )
         self._tabs.setCurrentIndex(4)
+
+    def _add_first_follow_table(self, analyzer) -> None:
+        from src.parser.grammar import EPSILON_SYM
+        non_terms = sorted(analyzer.grammar.non_terminals, key=lambda s: s.name)
+        tw = QTableWidget(len(non_terms), 2)
+        tw.setHorizontalHeaderLabels(["FIRST", "FOLLOW"])
+        tw.setVerticalHeaderLabels([nt.name for nt in non_terms])
+        tw.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        tw.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
+        for row, nt in enumerate(non_terms):
+            first_syms = analyzer.first.get(nt, set())
+            follow_syms = analyzer.follow.get(nt, set())
+
+            first_str = "{ " + ", ".join(
+                sorted(s.name for s in first_syms)
+            ) + " }"
+            follow_str = "{ " + ", ".join(
+                sorted(s.name for s in follow_syms)
+            ) + " }"
+
+            fi = QTableWidgetItem(first_str)
+            fi.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            fi.setBackground(QColor("#EAF4FB"))
+            tw.setItem(row, 0, fi)
+
+            fo = QTableWidgetItem(follow_str)
+            fo.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            fo.setBackground(QColor("#EAFAF1"))
+            tw.setItem(row, 1, fo)
+
+        self._table_tabs.addTab(tw, "FIRST / FOLLOW")
 
     def _add_parse_table(self, name: str, table) -> None:
         states = sorted({s for s, _ in table.action} | {s for s, _ in table.goto_table})
