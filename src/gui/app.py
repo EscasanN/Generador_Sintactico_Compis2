@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QAction, QFont, QPixmap, QColor
+from PyQt6.QtGui import QAction, QFont, QPixmap, QColor, QTextCharFormat, QTextCursor
 
 
 class StepViewer(QWidget):
@@ -262,6 +262,7 @@ class MainWindow(QMainWindow):
     def _load_into_editor(self, path: str) -> None:
         with open(path, encoding='utf-8') as f:
             self._editor.setPlainText(f.read())
+        self._editor.setExtraSelections([])
         self._active_file = path
         self._tabs.setCurrentIndex(0)
         self.statusBar().showMessage(f"Loaded {path}")
@@ -414,6 +415,7 @@ class MainWindow(QMainWindow):
                     lines.append(f"      ⚠ Error : {err}")
             lines.append("")
 
+        self._highlight_input_results(bundle['results'])
         html = self._build_results_html(lines, bundle['results'])
         self._results.setHtml(html)
         self._tabs.setCurrentIndex(5)
@@ -445,6 +447,42 @@ class MainWindow(QMainWindow):
             f'ERROR:\n{esc}</pre>'
         )
         self._tabs.setCurrentIndex(5)
+
+    def _highlight_input_results(self, results: list) -> None:
+        """Color-code lines in the input editor: green=accepted, red=rejected."""
+        if self._active_file != self._input_path:
+            return
+
+        fmt_ok = QTextCharFormat()
+        fmt_ok.setBackground(QColor("#DFF0D8"))
+
+        fmt_err = QTextCharFormat()
+        fmt_err.setBackground(QColor("#F2DEDE"))
+        fmt_err.setUnderlineColor(QColor("#CC0000"))
+        fmt_err.setUnderlineStyle(QTextCharFormat.UnderlineStyle.WaveUnderline)
+
+        doc = self._editor.document()
+        selections = []
+        result_idx = 0
+
+        for line_idx in range(doc.blockCount()):
+            block = doc.findBlockByLineNumber(line_idx)
+            if not block.isValid() or not block.text().strip():
+                continue
+            if result_idx >= len(results):
+                break
+            r = results[result_idx]
+            accepted = r.slr1_result and r.slr1_result.accepted
+            fmt = fmt_ok if accepted else fmt_err
+
+            sel = QTextEdit.ExtraSelection()
+            sel.format = fmt
+            sel.cursor = QTextCursor(block)
+            sel.cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+            selections.append(sel)
+            result_idx += 1
+
+        self._editor.setExtraSelections(selections)
 
     def _add_first_follow_table(self, analyzer) -> None:
         from src.parser.grammar import EPSILON_SYM
