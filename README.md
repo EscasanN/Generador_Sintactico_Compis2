@@ -1,6 +1,6 @@
-# Proyecto 1 — Generador de Analizadores Léxicos
+# Proyecto 2 — Generador de Analizadores Sintácticos (YAPar IDE)
 
-**Curso:** Diseño de Compiladores 1  
+**Curso:** Diseño de Lenguajes de Programación  
 **Universidad:** Universidad del Valle de Guatemala  
 **Lenguaje:** Python 3.x
 
@@ -8,42 +8,59 @@
 
 ## Descripción
 
-Implementación de un generador de analizadores léxicos que parte de una especificación de tokens (archivo `.yal`) y produce un analizador capaz de reconocer cadenas de entrada. El proceso sigue la cadena clásica de construcción de autómatas:
+Implementación de un generador completo de analizadores léxicos (**YALex**) y sintácticos (**YAPar**) con una interfaz gráfica tipo IDE. El sistema toma una especificación de tokens (`.yal`) y una gramática libre de contexto (`.yapar`), construye los autómatas y tablas de parseo, y analiza cadenas de entrada usando tres métodos simultáneamente.
 
 ```
-Expresión Regular  →  NFA  →  DFA  →  DFA Mínimo  →  Simulación
+.yal  →  YALex  →  Tokens
+.yapar →  YAPar  →  LR(0)  →  SLR(1) / LALR / LL(1)  →  Análisis de cadenas
 ```
 
 ### Algoritmos implementados
 
-| Etapa | Algoritmo |
-|-------|-----------|
+| Componente | Algoritmo / Técnica |
+|------------|---------------------|
 | RE → NFA | Construcción de Thompson |
 | NFA → DFA | Construcción de subconjuntos |
 | DFA → DFA mínimo | Algoritmo de Hopcroft |
-| Simulación | Recorrido del DFA sobre cadena de entrada |
+| Autómata LR(0) | Cierre e items LR(0) |
+| Tabla SLR(1) | FOLLOW sets + LR(0) |
+| Tabla LALR | Items LR(1) fusionados por core LR(0) |
+| Tabla LL(1) | FIRST / FOLLOW sets |
+| Árbol de derivación | Construcción durante shift/reduce/expand |
 
 ---
 
 ## Estructura del proyecto
 
 ```
-Proyecto1/
+Generador_Sintactico/
 ├── src/
-│   ├── main.py              # Punto de entrada
+│   ├── main.py                  # Punto de entrada (GUI / CLI / modo léxico)
+│   ├── gui/
+│   │   └── app.py               # IDE PyQt6
 │   ├── lexer/
-│   │   ├── scanner.py       # Lectura y parseo del archivo .yal
-│   │   ├── regex_parser.py  # Parser de expresiones regulares (infix → postfix)
-│   │   ├── thompson.py      # Construcción de Thompson (RE → NFA)
-│   │   ├── subset.py        # Construcción de subconjuntos (NFA → DFA)
-│   │   ├── hopcroft.py      # Minimización de DFA (Hopcroft)
-│   │   └── simulator.py     # Simulación del DFA sobre entradas
+│   │   ├── scanner.py           # Lectura del archivo .yal
+│   │   ├── regex_parser.py      # Parser de expresiones regulares
+│   │   ├── resolver.py          # Resolución de definiciones
+│   │   ├── nfa.py               # Construcción de Thompson (RE → NFA)
+│   │   ├── dfa.py               # Subconjuntos + Hopcroft (NFA → DFA mínimo)
+│   │   └── codegen.py           # Generación de lexer
+│   ├── parser/
+│   │   ├── yapar_scanner.py     # Lectura del archivo .yapar
+│   │   ├── grammar.py           # Estructura de gramática y producciones
+│   │   ├── lr0.py               # Autómata LR(0)
+│   │   ├── first_follow.py      # Cálculo de FIRST y FOLLOW
+│   │   ├── slr1.py              # Tabla y parser SLR(1) + árbol de derivación
+│   │   ├── lalr.py              # Tabla y parser LALR + árbol de derivación
+│   │   ├── ll1.py               # Tabla y parser LL(1) + árbol de derivación
+│   │   ├── parse_tree.py        # Nodo del árbol de derivación
+│   │   ├── string_analyzer.py   # Coordinador de análisis (SLR/LALR/LL1)
+│   │   └── tokenizer_bridge.py  # Integración YALex → YAPar
 │   └── utils/
-│       └── visualizer.py    # Generación de grafos con Graphviz
+│       └── visualizer.py        # Generación de imágenes (Graphviz)
 ├── tests/
-│   ├── inputs/              # Archivos .yal de prueba
-│   └── expected/            # Salidas esperadas para validación
-├── output/                  # Imágenes generadas de los autómatas
+│   ├── grammars/                # Gramáticas .yapar de prueba
+│   └── inputs/                  # Archivos .yal de prueba
 ├── requirements.txt
 └── README.md
 ```
@@ -55,8 +72,6 @@ Proyecto1/
 - Python 3.10 o superior
 - [Graphviz](https://graphviz.org/download/) instalado en el sistema y en el PATH
 
-Instalar dependencias de Python:
-
 ```bash
 pip install -r requirements.txt
 ```
@@ -65,29 +80,47 @@ pip install -r requirements.txt
 
 ## Uso
 
-```bash
-python src/main.py <archivo.yal> <cadena_de_entrada>
-```
-
-**Ejemplo:**
+### Modo GUI (recomendado)
 
 ```bash
-python src/main.py tests/inputs/ejemplo.yal "abc123"
+python src/main.py
 ```
 
-### Salida esperada
+El IDE permite:
+1. Cargar archivos `.yal`, `.yapar` y archivo de cadenas de entrada
+2. Editar y guardar los archivos directamente
+3. Ejecutar el análisis completo con **Ctrl+R** o el botón **Analyze**
+4. Visualizar resultados en las pestañas:
 
-- Resultado de la simulación (`ACCEPTED` / `REJECTED`)
-- Imágenes de los autómatas generados en `output/`:
-  - `nfa.png` — NFA resultante de Thompson
-  - `dfa.png` — DFA resultante de la construcción de subconjuntos
-  - `dfa_min.png` — DFA minimizado con Hopcroft
+| Pestaña | Contenido |
+|---------|-----------|
+| **LR(0)** | Imagen del autómata LR(0) generado |
+| **Tables → FIRST/FOLLOW** | Conjuntos FIRST y FOLLOW por no-terminal |
+| **Tables → SLR(1)** | Tabla de parseo SLR(1) con tooltips por celda |
+| **Tables → LALR** | Tabla de parseo LALR con tooltips por celda |
+| **Tables → LL(1)** | Tabla de parseo LL(1) (si la gramática lo permite) |
+| **Tables → Productions** | Leyenda numerada de todas las producciones |
+| **Parse Tree** | Árbol de derivación por cadena aceptada |
+| **Steps** | Navegador paso a paso del proceso de parseo |
+| **Results** | Resumen con ACCEPT/REJECT por método y mensajes de error |
+
+### Modo CLI
+
+```bash
+python src/main.py --cli <archivo.yal> <archivo.yapar> <entrada.txt>
+```
+
+### Modo léxico (solo YALex)
+
+```bash
+python src/main.py --lex <archivo.yal>
+```
 
 ---
 
-## Formato del archivo `.yal`
+## Formato de archivos
 
-El archivo de especificación sigue la sintaxis de YALex:
+### Archivo `.yal` (YALex)
 
 ```
 (* Comentario *)
@@ -96,25 +129,40 @@ let letter = ['a'-'z''A'-'Z']
 let id = letter (letter | digit)*
 
 rule tokens =
-  | digit+       { INT }
-  | id           { ID }
-  | ' '          { skip }
-  | '\n'         { newline }
+  | digit+       { return INT }
+  | id           { return ID }
+  | ' '          { (* skip *) }
+```
+
+### Archivo `.yapar` (YAPar)
+
+```
+/* Tokens */
+%token ID NUMBER PLUS SEMICOLON
+IGNORE WS
+
+%%
+
+/* Producciones */
+expr:
+    expr PLUS term
+  | term
+;
+
+term:
+    NUMBER
+  | ID
+;
 ```
 
 ---
 
-## Ejemplos de expresiones regulares soportadas
+## Manejo de errores
 
-| Notación | Significado |
-|----------|-------------|
-| `a\|b`   | Unión |
-| `ab`     | Concatenación |
-| `a*`     | Kleene star (0 o más) |
-| `a+`     | Una o más repeticiones |
-| `a?`     | Cero o una repetición |
-| `[a-z]`  | Clase de caracteres |
-| `(ab)`   | Agrupación |
+- **Errores léxicos:** columna exacta del carácter inesperado
+- **Errores sintácticos:** columna, token inesperado y tokens esperados en ese estado
+- **Errores en `.yapar`:** línea exacta del problema en la gramática
+- **Visualización:** líneas del archivo de entrada coloreadas (verde = aceptado, rojo = rechazado)
 
 ---
 
