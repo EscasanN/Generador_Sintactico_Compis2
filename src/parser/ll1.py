@@ -9,32 +9,46 @@ class LL1Error(Exception):
     pass
 
 
-def build_ll1_table(grammar: Grammar) -> dict[tuple[str, str], Production]:
+def build_ll1_table(
+    grammar: Grammar,
+) -> tuple[dict[tuple[str, str], Production], list[str]]:
+    """
+    Build LL(1) predictive parsing table.
+
+    Conflict policy: when two productions compete for the same M[A, t] cell,
+    the first one (by definition order) wins. Conflicts are still recorded
+    and returned so the UI can warn that the grammar is not strict LL(1).
+
+    Returns:
+        (table, conflicts) — conflicts is the list of M[NT, T] entries that
+        were resolved by definition order.
+    """
     first = compute_first(grammar)
     follow = compute_follow(grammar, first)
     table: dict[tuple[str, str], Production] = {}
     conflicts: list[str] = []
+
+    def assign(key: tuple[str, str], prod: Production) -> None:
+        if key in table:
+            existing = table[key]
+            conflicts.append(
+                f"M[{key[0]},{key[1]}]: kept {existing} (defined first), "
+                f"skipped {prod}"
+            )
+            return
+        table[key] = prod
 
     for prod in grammar.productions:
         fa = first_of_sequence(prod.body, first)
         for sym in fa:
             if sym == EPSILON_SYM:
                 continue
-            key = (prod.head.name, sym.name)
-            if key in table:
-                conflicts.append(f"LL(1) conflict: M[{prod.head.name},{sym.name}]")
-            table[key] = prod
+            assign((prod.head.name, sym.name), prod)
         if EPSILON_SYM in fa:
             for sym in follow.get(prod.head, set()):
-                key = (prod.head.name, sym.name)
-                if key in table:
-                    conflicts.append(f"LL(1) conflict: M[{prod.head.name},{sym.name}]")
-                table[key] = prod
+                assign((prod.head.name, sym.name), prod)
 
-    if conflicts:
-        raise LL1Error("; ".join(conflicts))
-
-    return table
+    return table, conflicts
 
 
 @dataclass
@@ -56,15 +70,32 @@ def ll1_parse(
     tokens: list[str],
     table: dict[tuple[str, str], Production],
     grammar: Grammar,
+    max_steps: int | None = None,
 ) -> LL1ParseResult:
-    """tokens must end with '$'."""
+    """tokens must end with '$'.
+
+    Safety: when the grammar has unresolved left-recursion (typical when the
+    LL(1) table was built with first-wins conflict resolution), the parser
+    can loop forever expanding the same non-terminal. We cap total iterations
+    to `max_steps` and report a descriptive error.
+    """
     root = ParseTreeNode(str(grammar.start))
     parse_stack: list[str] = ['$', str(grammar.start)]
     node_stack: list[ParseTreeNode | None] = [None, root]
     pos = 0
     steps: list[LL1ParseStep] = []
+    cap = max_steps if max_steps is not None else max(1000, len(tokens) * 200)
 
     while parse_stack[-1] != '$':
+        if len(steps) >= cap:
+            return LL1ParseResult(
+                accepted=False, steps=steps,
+                error=(
+                    f"LL(1) parse exceeded {cap} steps — likely left-recursion "
+                    f"in the grammar (unresolvable by first-wins disambiguation)."
+                ),
+                tree=root,
+            )
         top = parse_stack[-1]
         top_node = node_stack[-1]
         token = tokens[pos] if pos < len(tokens) else '$'

@@ -7,18 +7,22 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog,
     QTextEdit, QMessageBox, QGroupBox, QScrollArea,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QListWidget, QListWidgetItem,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt6.QtGui import QAction, QFont, QPixmap, QColor, QTextCharFormat, QTextCursor
+
+from src.gui.theme import Palette, LIGHT, DARK, stylesheet
 
 
 class StepViewer(QWidget):
     """Navegador paso a paso del proceso de parseo (shift/reduce/expand)."""
 
-    def __init__(self, steps: list, mode: str = "LR", parent=None) -> None:
+    def __init__(self, steps: list, palette: Palette, mode: str = "LR", parent=None) -> None:
         super().__init__(parent)
         self._steps = steps
         self._mode = mode
+        self._palette = palette
         self._current = 0
         self._build_ui()
 
@@ -27,13 +31,13 @@ class StepViewer(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         nav = QHBoxLayout()
-        self._btn_first = QPushButton("|◀")
-        self._btn_prev  = QPushButton("◀ Prev")
-        self._btn_next  = QPushButton("Next ▶")
-        self._btn_last  = QPushButton("▶|")
+        self._btn_first = QPushButton("First")
+        self._btn_prev  = QPushButton("Prev")
+        self._btn_next  = QPushButton("Next")
+        self._btn_last  = QPushButton("Last")
         self._lbl_step  = QLabel()
         for btn in (self._btn_first, self._btn_prev, self._btn_next, self._btn_last):
-            btn.setFixedWidth(70)
+            btn.setFixedWidth(80)
         self._btn_first.clicked.connect(lambda: self._goto(0))
         self._btn_prev.clicked.connect(lambda: self._goto(self._current - 1))
         self._btn_next.clicked.connect(lambda: self._goto(self._current + 1))
@@ -57,22 +61,13 @@ class StepViewer(QWidget):
         self._table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setFont(QFont("Courier New", 9))
+        self._table.setFont(QFont("Cascadia Mono", 9))
 
         for row, step in enumerate(self._steps):
             if self._mode == "LR":
-                cells = [
-                    str(step.stack),
-                    str(step.symbols),
-                    str(step.remaining),
-                    step.action_taken,
-                ]
+                cells = [str(step.stack), str(step.symbols), str(step.remaining), step.action_taken]
             else:
-                cells = [
-                    str(step.stack),
-                    str(step.remaining),
-                    step.action_taken,
-                ]
+                cells = [str(step.stack), str(step.remaining), step.action_taken]
             for col, text in enumerate(cells):
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -94,8 +89,10 @@ class StepViewer(QWidget):
         self._btn_next.setEnabled(self._current < n - 1)
         self._btn_last.setEnabled(self._current < n - 1)
 
+        hl = QColor(self._palette.row_highlight)
+        base = QColor(self._palette.surface)
         for row in range(n):
-            bg = QColor("#D6EAF8") if row == self._current else QColor("#FFFFFF")
+            bg = hl if row == self._current else base
             for col in range(self._table.columnCount()):
                 item = self._table.item(row, col)
                 if item:
@@ -121,7 +118,7 @@ class AnalysisWorker(QThread):
         try:
             from src.parser.yapar_scanner import YAParScanner, build_grammar
             from src.parser.string_analyzer import StringAnalyzer
-            from src.parser.tokenizer_bridge import tokenize_input
+            from src.parser.tokenizer_bridge import tokenize_with_spans
             from src.utils.visualizer import render_lr0_automaton
 
             grammar = build_grammar(YAParScanner(self.yapar_path).scan())
@@ -130,7 +127,6 @@ class AnalysisWorker(QThread):
             results = []
             for line in lines:
                 try:
-                    from src.parser.tokenizer_bridge import tokenize_with_spans
                     toks, spans = tokenize_with_spans(self.yalex_path, line)
                     results.append(analyzer.analyze(toks, spans=spans, input_text=line))
                 except Exception as lex_err:
@@ -161,14 +157,34 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("YAPar IDE — Syntactic Analyzer Generator")
-        self.setMinimumSize(1280, 800)
+        self.setMinimumSize(1320, 820)
+
         self._yalex_path: str | None = None
         self._yapar_path: str | None = None
         self._input_path: str | None = None
         self._active_file: str | None = None
         self._worker: AnalysisWorker | None = None
+        self._last_bundle: dict | None = None
+
+        self._palette: Palette = LIGHT
         self._build_menu()
         self._build_ui()
+        self._apply_theme(LIGHT)
+
+    # ── Theming ───────────────────────────────────────────────────────────
+
+    def _apply_theme(self, p: Palette) -> None:
+        self._palette = p
+        QApplication.instance().setStyleSheet(stylesheet(p))
+        self._theme_btn.setText("Light Mode" if p.name == "dark" else "Dark Mode")
+        # re-render results if we have data
+        if self._last_bundle is not None:
+            self._render_bundle(self._last_bundle)
+
+    def _toggle_theme(self) -> None:
+        self._apply_theme(DARK if self._palette.name == "light" else LIGHT)
+
+    # ── Menu ──────────────────────────────────────────────────────────────
 
     def _build_menu(self) -> None:
         mb = self.menuBar()
@@ -182,19 +198,31 @@ class MainWindow(QMainWindow):
             a = QAction(label, self)
             a.triggered.connect(slot)
             fm.addAction(a)
+
         rm = mb.addMenu("&Run")
         ra = QAction("Analyze", self)
         ra.setShortcut("Ctrl+R")
         ra.triggered.connect(self._run_analysis)
         rm.addAction(ra)
 
+        vm = mb.addMenu("&View")
+        ta = QAction("Toggle Light / Dark", self)
+        ta.setShortcut("Ctrl+T")
+        ta.triggered.connect(self._toggle_theme)
+        vm.addAction(ta)
+
+    # ── UI build ──────────────────────────────────────────────────────────
+
     def _build_ui(self) -> None:
         c = QWidget()
         self.setCentralWidget(c)
         root = QVBoxLayout(c)
-        root.setContentsMargins(6, 6, 6, 6)
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(8)
 
+        # Top toolbar
         bar = QHBoxLayout()
+        bar.setSpacing(6)
         for text, slot in [
             ("Open YALex", self._open_yalex),
             ("Open YAPar", self._open_yapar),
@@ -202,43 +230,89 @@ class MainWindow(QMainWindow):
             ("Save", self._save_file),
         ]:
             b = QPushButton(text)
-            b.setFixedHeight(30)
+            b.setFixedHeight(32)
             b.clicked.connect(slot)
             bar.addWidget(b)
         bar.addStretch()
-        self._run_btn = QPushButton("▶  Analyze  (Ctrl+R)")
-        self._run_btn.setFixedHeight(30)
-        self._run_btn.setStyleSheet("background-color: #2d7a2d; color: white; font-weight: bold;")
+
+        self._theme_btn = QPushButton("Dark Mode")
+        self._theme_btn.setObjectName("themeBtn")
+        self._theme_btn.setFixedHeight(32)
+        self._theme_btn.clicked.connect(self._toggle_theme)
+        bar.addWidget(self._theme_btn)
+
+        self._run_btn = QPushButton("Analyze  (Ctrl+R)")
+        self._run_btn.setObjectName("analyzeBtn")
+        self._run_btn.setFixedHeight(32)
         self._run_btn.clicked.connect(self._run_analysis)
         bar.addWidget(self._run_btn)
         root.addLayout(bar)
 
+        # Main splitter
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
 
+        # ── Left panel: clickable loaded files ──
         left = QGroupBox("Loaded Files")
         ll = QVBoxLayout(left)
-        self._lbl_yalex = QLabel("YALex: none")
-        self._lbl_yapar = QLabel("YAPar: none")
-        self._lbl_input = QLabel("Input: none")
-        for lbl in (self._lbl_yalex, self._lbl_yapar, self._lbl_input):
-            lbl.setWordWrap(True)
-            ll.addWidget(lbl)
+        ll.setContentsMargins(10, 14, 10, 10)
+        ll.setSpacing(6)
+
+        hint = QLabel("Click to view in editor")
+        hint.setObjectName("sectionTitle")
+        ll.addWidget(hint)
+
+        self._file_list = QListWidget()
+        self._file_list.setIconSize(QSize(16, 16))
+        self._file_list.itemClicked.connect(self._on_file_clicked)
+        ll.addWidget(self._file_list)
+
+        # Build empty rows for the three slots
+        self._file_items: dict[str, QListWidgetItem] = {}
+        for key, label in [("yalex", "YALex: none"), ("yapar", "YAPar: none"), ("input", "Input: none")]:
+            it = QListWidgetItem(label)
+            it.setData(Qt.ItemDataRole.UserRole, None)
+            self._file_list.addItem(it)
+            self._file_items[key] = it
+
         ll.addStretch()
-        left.setFixedWidth(220)
+        left.setMinimumWidth(240)
+        left.setMaximumWidth(320)
         splitter.addWidget(left)
 
+        # ── Right tabs ──
         self._tabs = QTabWidget()
+        self._tabs.setDocumentMode(True)
 
         self._editor = QTextEdit()
-        self._editor.setFont(QFont("Courier New", 10))
+        self._editor.setFont(QFont("Cascadia Mono", 10))
         self._tabs.addTab(self._editor, "Editor")
 
-        self._lr0_img = QLabel("Run analysis to see LR(0) automaton.")
+        # LR(0) tab — image + open-externally button
+        lr0_container = QWidget()
+        lr0_layout = QVBoxLayout(lr0_container)
+        lr0_layout.setContentsMargins(4, 4, 4, 4)
+        lr0_layout.setSpacing(6)
+
+        lr0_bar = QHBoxLayout()
+        self._lr0_info = QLabel("Run analysis to see LR(0) automaton.")
+        self._lr0_info.setObjectName("sectionTitle")
+        lr0_bar.addWidget(self._lr0_info)
+        lr0_bar.addStretch()
+        self._lr0_open_btn = QPushButton("Open image externally")
+        self._lr0_open_btn.setEnabled(False)
+        self._lr0_open_btn.clicked.connect(self._open_lr0_externally)
+        lr0_bar.addWidget(self._lr0_open_btn)
+        lr0_layout.addLayout(lr0_bar)
+
+        self._lr0_img = QLabel()
         self._lr0_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sc = QScrollArea()
         sc.setWidget(self._lr0_img)
         sc.setWidgetResizable(True)
-        self._tabs.addTab(sc, "LR(0)")
+        lr0_layout.addWidget(sc, 1)
+        self._lr0_image_path: str | None = None
+        self._tabs.addTab(lr0_container, "LR(0)")
 
         self._table_tabs = QTabWidget()
         self._tabs.addTab(self._table_tabs, "Tables")
@@ -251,17 +325,37 @@ class MainWindow(QMainWindow):
 
         self._results = QTextEdit()
         self._results.setReadOnly(True)
-        self._results.setFont(QFont("Courier New", 10))
+        self._results.setFont(QFont("Cascadia Mono", 10))
         self._tabs.addTab(self._results, "Results")
 
         splitter.addWidget(self._tabs)
-        splitter.setSizes([220, 1060])
-        root.addWidget(splitter)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([260, 1060])
+        root.addWidget(splitter, 1)
+
         self.statusBar().showMessage("Ready — load YALex, YAPar, and input files, then press Analyze.")
 
+    # ── File handling ─────────────────────────────────────────────────────
+
+    def _set_file_slot(self, key: str, label_prefix: str, path: str) -> None:
+        it = self._file_items[key]
+        it.setText(f"{label_prefix}: {os.path.basename(path)}")
+        it.setToolTip(path)
+        it.setData(Qt.ItemDataRole.UserRole, path)
+
+    def _on_file_clicked(self, item: QListWidgetItem) -> None:
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if path and os.path.isfile(path):
+            self._load_into_editor(path)
+
     def _load_into_editor(self, path: str) -> None:
-        with open(path, encoding='utf-8') as f:
-            self._editor.setPlainText(f.read())
+        try:
+            with open(path, encoding='utf-8') as f:
+                self._editor.setPlainText(f.read())
+        except Exception as e:
+            QMessageBox.warning(self, "Read error", f"Could not read {path}\n\n{e}")
+            return
         self._editor.setExtraSelections([])
         self._active_file = path
         self._tabs.setCurrentIndex(0)
@@ -271,21 +365,21 @@ class MainWindow(QMainWindow):
         p, _ = QFileDialog.getOpenFileName(self, "Open YALex", "", "YALex (*.yal *.yalex);;All (*)")
         if p:
             self._yalex_path = p
-            self._lbl_yalex.setText(f"YALex: {os.path.basename(p)}")
+            self._set_file_slot("yalex", "YALex", p)
             self._load_into_editor(p)
 
     def _open_yapar(self) -> None:
         p, _ = QFileDialog.getOpenFileName(self, "Open YAPar", "", "YAPar (*.yapar *.yalp);;All (*)")
         if p:
             self._yapar_path = p
-            self._lbl_yapar.setText(f"YAPar: {os.path.basename(p)}")
+            self._set_file_slot("yapar", "YAPar", p)
             self._load_into_editor(p)
 
     def _open_input(self) -> None:
         p, _ = QFileDialog.getOpenFileName(self, "Open Input", "", "Text (*.txt);;All (*)")
         if p:
             self._input_path = p
-            self._lbl_input.setText(f"Input: {os.path.basename(p)}")
+            self._set_file_slot("input", "Input", p)
             self._load_into_editor(p)
 
     def _save_file(self) -> None:
@@ -295,6 +389,8 @@ class MainWindow(QMainWindow):
         with open(self._active_file, 'w', encoding='utf-8') as f:
             f.write(self._editor.toPlainText())
         self.statusBar().showMessage(f"Saved {self._active_file}")
+
+    # ── Analysis ──────────────────────────────────────────────────────────
 
     def _run_analysis(self) -> None:
         if not self._yalex_path or not self._yapar_path or not self._input_path:
@@ -310,16 +406,58 @@ class MainWindow(QMainWindow):
         self._worker.start()
 
     def _on_done(self, bundle: dict) -> None:
-        from src.utils.visualizer import render_parse_tree
-
         self._run_btn.setEnabled(True)
         self.statusBar().showMessage("Analysis complete.")
+        self._last_bundle = bundle
+        self._render_bundle(bundle)
+
+    def _load_lr0_image(self, path: str, state_count: int) -> None:
+        self._lr0_image_path = path if os.path.exists(path) else None
+        self._lr0_open_btn.setEnabled(self._lr0_image_path is not None)
+
+        if not self._lr0_image_path:
+            self._lr0_img.setText("LR(0) image not available.")
+            self._lr0_img.setPixmap(QPixmap())
+            self._lr0_info.setText("No image generated.")
+            return
+
+        size_mb = os.path.getsize(path) / (1024 * 1024)
+        px = QPixmap(path)
+        if px.isNull():
+            self._lr0_img.setPixmap(QPixmap())
+            self._lr0_img.setText(
+                f"Image too large to render in-app ({size_mb:.1f} MB).\n"
+                f"Use 'Open image externally' button above."
+            )
+            self._lr0_info.setText(
+                f"{state_count} states  |  image {size_mb:.1f} MB (rendered, view externally)"
+            )
+            return
+
+        # Scale down if too wide to keep GUI responsive
+        viewport_w = max(self.width() - 320, 800)
+        if px.width() > viewport_w * 2:
+            px = px.scaledToWidth(viewport_w * 2, Qt.TransformationMode.SmoothTransformation)
+        self._lr0_img.setPixmap(px)
+        self._lr0_img.adjustSize()
+        self._lr0_info.setText(
+            f"{state_count} states  |  image {px.width()}x{px.height()} px"
+        )
+
+    def _open_lr0_externally(self) -> None:
+        if not self._lr0_image_path:
+            return
+        try:
+            os.startfile(self._lr0_image_path)  # Windows
+        except AttributeError:
+            import subprocess
+            subprocess.Popen(["xdg-open", self._lr0_image_path])
+
+    def _render_bundle(self, bundle: dict) -> None:
+        from src.utils.visualizer import render_parse_tree
 
         img = bundle['lr0_image']
-        if os.path.exists(img):
-            px = QPixmap(img)
-            self._lr0_img.setPixmap(px)
-            self._lr0_img.adjustSize()
+        self._load_lr0_image(img, len(bundle['analyzer'].automaton.states))
 
         analyzer = bundle['analyzer']
         self._table_tabs.clear()
@@ -327,19 +465,12 @@ class MainWindow(QMainWindow):
         self._add_parse_table("SLR(1)", analyzer.slr1_table)
         self._add_parse_table("LALR", analyzer.lalr_table)
         self._add_productions_table(analyzer.slr1_table.grammar)
-        if analyzer.ll1_table:
-            self._add_ll1_table(analyzer.ll1_table, bundle['grammar'])
-        else:
-            lbl = QLabel(f"LL(1) not available (grammar is not LL(1)):\n\n{analyzer.ll1_error}")
-            lbl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-            lbl.setWordWrap(True)
-            lbl.setContentsMargins(12, 12, 12, 12)
-            self._table_tabs.addTab(lbl, "LL(1)")
+        self._add_ll1_table(analyzer.ll1_table, analyzer.ll1_conflicts)
 
         self._tree_tabs.clear()
         for i, r in enumerate(bundle['results'], 1):
             accepted = r.slr1_result and r.slr1_result.accepted
-            tab_label = f"[{i:02d}] {'✓' if accepted else '✗'}"
+            tab_label = f"[{i:02d}] {'OK' if accepted else 'FAIL'}"
             sc = QScrollArea()
             sc.setWidgetResizable(True)
             lbl = QLabel()
@@ -366,14 +497,14 @@ class MainWindow(QMainWindow):
         self._steps_tabs.clear()
         for i, r in enumerate(bundle['results'], 1):
             accepted = r.slr1_result and r.slr1_result.accepted
-            tab_label = f"[{i:02d}] {'✓' if accepted else '✗'}"
+            tab_label = f"[{i:02d}] {'OK' if accepted else 'FAIL'}"
             steps = (r.slr1_result.steps if r.slr1_result and r.slr1_result.steps else
                      r.lalr_result.steps if r.lalr_result and r.lalr_result.steps else [])
             if steps:
-                viewer = StepViewer(steps, mode="LR")
+                viewer = StepViewer(steps, palette=self._palette, mode="LR")
                 self._steps_tabs.addTab(viewer, tab_label)
             elif r.ll1_result and r.ll1_result.steps:
-                viewer = StepViewer(r.ll1_result.steps, mode="LL")
+                viewer = StepViewer(r.ll1_result.steps, palette=self._palette, mode="LL")
                 self._steps_tabs.addTab(viewer, tab_label)
             else:
                 lbl = QLabel("No steps available.")
@@ -388,24 +519,31 @@ class MainWindow(QMainWindow):
         slr_conflicts = analyzer.slr1_table.conflicts
         lalr_conflicts = analyzer.lalr_table.conflicts
         if slr_conflicts:
-            lines.append(f"\n⚠ SLR(1) conflicts detected:")
+            lines.append("\n[!] SLR(1) conflicts detected:")
             for c in slr_conflicts:
                 lines.append(f"    {c}")
         if lalr_conflicts:
-            lines.append(f"\n⚠ LALR conflicts detected:")
+            lines.append("\n[!] LALR conflicts detected:")
             for c in lalr_conflicts:
                 lines.append(f"    {c}")
-        if analyzer.ll1_error:
-            lines.append(f"\n⚠ LL(1): {analyzer.ll1_error[:120]}")
+        if analyzer.ll1_conflicts:
+            lines.append(
+                f"\n[!] LL(1): {len(analyzer.ll1_conflicts)} conflict(s) "
+                f"resolved by definition order (first wins):"
+            )
+            for c in analyzer.ll1_conflicts[:8]:
+                lines.append(f"    {c}")
+            if len(analyzer.ll1_conflicts) > 8:
+                lines.append(f"    … and {len(analyzer.ll1_conflicts) - 8} more")
 
         lines.append("")
         for i, r in enumerate(bundle['results'], 1):
             slr_ok = r.slr1_result and r.slr1_result.accepted
             lalr_ok = r.lalr_result and r.lalr_result.accepted
             ll1_ok = r.ll1_result is not None and r.ll1_result.accepted
-            slr  = "ACCEPT ✓" if slr_ok  else "REJECT ✗"
-            lalr = "ACCEPT ✓" if lalr_ok else "REJECT ✗"
-            ll1  = "N/A" if r.ll1_result is None else ("ACCEPT ✓" if ll1_ok else "REJECT ✗")
+            slr  = "ACCEPT" if slr_ok  else "REJECT"
+            lalr = "ACCEPT" if lalr_ok else "REJECT"
+            ll1  = "N/A" if r.ll1_result is None else ("ACCEPT" if ll1_ok else "REJECT")
             lines.append(f"[{i:02d}] {r.input_string}")
             lines.append(f"      Tokens : {r.tokens}")
             lines.append(f"      SLR(1) : {slr}  |  LALR: {lalr}  |  LL(1): {ll1}")
@@ -413,23 +551,24 @@ class MainWindow(QMainWindow):
                 err = (r.slr1_result.error if r.slr1_result else None) or \
                       (r.lalr_result.error if r.lalr_result else None)
                 if err:
-                    lines.append(f"      ⚠ Error : {err}")
+                    lines.append(f"      [!] Error : {err}")
             lines.append("")
 
         self._highlight_input_results(bundle['results'])
-        html = self._build_results_html(lines, bundle['results'])
+        html = self._build_results_html(lines)
         self._results.setHtml(html)
         self._tabs.setCurrentIndex(5)
 
-    def _build_results_html(self, lines: list[str], results: list) -> str:
+    def _build_results_html(self, lines: list[str]) -> str:
         import html as html_mod
-        parts = ['<pre style="font-family:Courier New,monospace;font-size:10pt;">']
+        p = self._palette
+        parts = [f'<pre style="font-family:Cascadia Mono,Courier New,monospace;font-size:10pt;color:{p.text};">']
         for line in lines:
             esc = html_mod.escape(line)
-            if '⚠' in line or 'REJECT' in line:
-                parts.append(f'<span style="color:#cc0000;">{esc}</span>')
+            if '[!]' in line or 'REJECT' in line:
+                parts.append(f'<span style="color:{p.danger};">{esc}</span>')
             elif 'ACCEPT' in line:
-                parts.append(f'<span style="color:#1a7a1a;">{esc}</span>')
+                parts.append(f'<span style="color:{p.success};">{esc}</span>')
             elif line.startswith('[') and line[3:4] == ']':
                 parts.append(f'<b>{esc}</b>')
             else:
@@ -443,23 +582,26 @@ class MainWindow(QMainWindow):
         self._run_btn.setEnabled(True)
         self.statusBar().showMessage("Error during analysis.")
         esc = html_mod.escape(tb)
+        p = self._palette
         self._results.setHtml(
-            f'<pre style="font-family:Courier New,monospace;font-size:10pt;color:#cc0000;">'
+            f'<pre style="font-family:Cascadia Mono,Courier New,monospace;font-size:10pt;color:{p.danger};">'
             f'ERROR:\n{esc}</pre>'
         )
         self._tabs.setCurrentIndex(5)
 
+    # ── Editor highlight ──────────────────────────────────────────────────
+
     def _highlight_input_results(self, results: list) -> None:
-        """Color-code lines in the input editor: green=accepted, red=rejected."""
+        """Color-code lines in input editor: green=accepted, red=rejected."""
         if self._active_file != self._input_path:
             return
 
         fmt_ok = QTextCharFormat()
-        fmt_ok.setBackground(QColor("#DFF0D8"))
+        fmt_ok.setBackground(QColor(self._palette.edit_ok))
 
         fmt_err = QTextCharFormat()
-        fmt_err.setBackground(QColor("#F2DEDE"))
-        fmt_err.setUnderlineColor(QColor("#CC0000"))
+        fmt_err.setBackground(QColor(self._palette.edit_err))
+        fmt_err.setUnderlineColor(QColor(self._palette.danger))
         fmt_err.setUnderlineStyle(QTextCharFormat.UnderlineStyle.WaveUnderline)
 
         doc = self._editor.document()
@@ -485,7 +627,10 @@ class MainWindow(QMainWindow):
 
         self._editor.setExtraSelections(selections)
 
+    # ── Table builders (palette-aware) ────────────────────────────────────
+
     def _add_productions_table(self, grammar) -> None:
+        p = self._palette
         prods = grammar.productions
         tw = QTableWidget(len(prods), 3)
         tw.setHorizontalHeaderLabels(["#", "Head", "Body"])
@@ -494,18 +639,18 @@ class MainWindow(QMainWindow):
         tw.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         tw.verticalHeader().setVisible(False)
         tw.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        tw.setFont(QFont("Courier New", 9))
+        tw.setFont(QFont("Cascadia Mono", 9))
 
         for row, prod in enumerate(prods):
             body_str = " ".join(str(s) for s in prod.body) if prod.body else "ε"
             num_item = QTableWidgetItem(str(prod.index))
             num_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            num_item.setBackground(QColor("#FFF9C4"))
+            num_item.setBackground(QColor(p.cell_prod_num))
             head_item = QTableWidgetItem(prod.head.name)
             head_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            head_item.setBackground(QColor("#E8F5E9"))
+            head_item.setBackground(QColor(p.cell_prod_head))
             body_item = QTableWidgetItem(body_str)
-            body_item.setBackground(QColor("#FAFAFA"))
+            body_item.setBackground(QColor(p.cell_prod_body))
             tw.setItem(row, 0, num_item)
             tw.setItem(row, 1, head_item)
             tw.setItem(row, 2, body_item)
@@ -513,7 +658,7 @@ class MainWindow(QMainWindow):
         self._table_tabs.addTab(tw, "Productions")
 
     def _add_first_follow_table(self, analyzer) -> None:
-        from src.parser.grammar import EPSILON_SYM
+        p = self._palette
         non_terms = sorted(analyzer.grammar.non_terminals, key=lambda s: s.name)
         tw = QTableWidget(len(non_terms), 2)
         tw.setHorizontalHeaderLabels(["FIRST", "FOLLOW"])
@@ -524,27 +669,23 @@ class MainWindow(QMainWindow):
         for row, nt in enumerate(non_terms):
             first_syms = analyzer.first.get(nt, set())
             follow_syms = analyzer.follow.get(nt, set())
-
-            first_str = "{ " + ", ".join(
-                sorted(s.name for s in first_syms)
-            ) + " }"
-            follow_str = "{ " + ", ".join(
-                sorted(s.name for s in follow_syms)
-            ) + " }"
+            first_str = "{ " + ", ".join(sorted(s.name for s in first_syms)) + " }"
+            follow_str = "{ " + ", ".join(sorted(s.name for s in follow_syms)) + " }"
 
             fi = QTableWidgetItem(first_str)
             fi.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            fi.setBackground(QColor("#EAF4FB"))
+            fi.setBackground(QColor(p.cell_first))
             tw.setItem(row, 0, fi)
 
             fo = QTableWidgetItem(follow_str)
             fo.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            fo.setBackground(QColor("#EAFAF1"))
+            fo.setBackground(QColor(p.cell_follow))
             tw.setItem(row, 1, fo)
 
         self._table_tabs.addTab(tw, "FIRST / FOLLOW")
 
     def _add_parse_table(self, name: str, table) -> None:
+        p = self._palette
         states = sorted({s for s, _ in table.action} | {s for s, _ in table.goto_table})
         terminals = sorted({t for _, t in table.action})
         non_terms = sorted({nt for _, nt in table.goto_table})
@@ -567,7 +708,11 @@ class MainWindow(QMainWindow):
             action_type, value = cell
             val = f"{action_type[0].upper()}{value}"
             item = QTableWidgetItem(val)
-            bg = {"shift": "#d4edda", "reduce": "#fff3cd", "accept": "#cce5ff"}.get(action_type, "#fff")
+            bg = {
+                "shift": p.cell_shift,
+                "reduce": p.cell_reduce,
+                "accept": p.cell_accept,
+            }.get(action_type, p.surface)
             item.setBackground(QColor(bg))
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if action_type == "reduce":
@@ -576,7 +721,7 @@ class MainWindow(QMainWindow):
             elif action_type == "shift":
                 item.setToolTip(f"Shift → state {value}")
             elif action_type == "accept":
-                item.setToolTip("Accept ✓")
+                item.setToolTip("Accept")
             tw.setItem(row, col, item)
 
         for (s, nt), ns in table.goto_table.items():
@@ -586,15 +731,42 @@ class MainWindow(QMainWindow):
                 continue
             item = QTableWidgetItem(str(ns))
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item.setBackground(QColor(p.cell_goto))
             item.setToolTip(f"GOTO({s}, {nt}) = {ns}")
             tw.setItem(row, col, item)
 
         if table.conflicts:
-            tw.setToolTip("⚠ Conflicts: " + "; ".join(table.conflicts[:3]))
+            tw.setToolTip("Conflicts: " + "; ".join(table.conflicts[:3]))
 
         self._table_tabs.addTab(tw, name)
 
-    def _add_ll1_table(self, table: dict, grammar) -> None:
+    def _add_ll1_table(
+        self,
+        table: dict,
+        conflicts: list[str] | None = None,
+    ) -> None:
+        p = self._palette
+        conflicts = conflicts or []
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        if conflicts:
+            banner = QLabel(
+                f"<b>Not strict LL(1):</b> {len(conflicts)} conflict(s) "
+                f"resolved by definition order (first production wins). "
+                f"Hover any conflicting cell for details."
+            )
+            banner.setWordWrap(True)
+            banner.setStyleSheet(
+                f"background-color: {p.cell_reduce}; color: {p.text}; "
+                f"border: 1px solid {p.warning}; border-radius: 6px; "
+                f"padding: 8px 12px; font-size: 9pt;"
+            )
+            layout.addWidget(banner)
+
         non_terms = sorted({nt for nt, _ in table})
         terminals = sorted({t for _, t in table})
         tw = QTableWidget(len(non_terms), len(terminals))
@@ -602,6 +774,16 @@ class MainWindow(QMainWindow):
         tw.setVerticalHeaderLabels(non_terms)
         tw.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         tw.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
+        # collect conflicting cells for tooltip
+        conflict_by_cell: dict[tuple[str, str], list[str]] = {}
+        import re as _re
+        for c in conflicts:
+            m = _re.match(r"M\[([^,]+),([^\]]+)\]:\s*(.*)", c)
+            if m:
+                nt, t, msg = m.group(1), m.group(2), m.group(3)
+                conflict_by_cell.setdefault((nt, t), []).append(msg)
+
         nt_idx = {nt: i for i, nt in enumerate(non_terms)}
         t_idx = {t: i for i, t in enumerate(terminals)}
         for (nt, t), prod in table.items():
@@ -610,9 +792,16 @@ class MainWindow(QMainWindow):
             if row is None or col is None:
                 continue
             item = QTableWidgetItem(repr(prod))
-            item.setBackground(QColor("#d4edda"))
+            cell_msgs = conflict_by_cell.get((nt, t))
+            if cell_msgs:
+                item.setBackground(QColor(p.cell_reduce))
+                item.setToolTip("Conflict resolved:\n" + "\n".join(cell_msgs))
+            else:
+                item.setBackground(QColor(p.cell_shift))
             tw.setItem(row, col, item)
-        self._table_tabs.addTab(tw, "LL(1)")
+
+        layout.addWidget(tw, 1)
+        self._table_tabs.addTab(container, "LL(1)")
 
 
 def launch_gui() -> None:

@@ -576,10 +576,29 @@ def render_lr0_automaton(
     fmt: str = "png",
     view: bool = False,
 ) -> str:
-    """Render LR(0) automaton states and transitions as a PNG."""
+    """Render LR(0) automaton states and transitions.
+
+    DPI scales down automatically when the automaton is large so the resulting
+    PNG stays within QPixmap / PIL safe limits (~89 MP). For very large
+    automata (>= 30 states) we also use top-bottom layout which is more compact.
+    """
+    n = len(automaton.states)
+    if n <= 15:
+        dpi, fontsize, node_fontsize = "150", "10", "8"
+        rankdir = "LR"
+    elif n <= 30:
+        dpi, fontsize, node_fontsize = "90", "9", "7"
+        rankdir = "LR"
+    elif n <= 60:
+        dpi, fontsize, node_fontsize = "70", "8", "6"
+        rankdir = "TB"
+    else:
+        dpi, fontsize, node_fontsize = "55", "7", "6"
+        rankdir = "TB"
+
     dot = graphviz.Digraph(name="LR(0)", format=fmt)
-    dot.attr(rankdir="LR", dpi="150", fontsize="10")
-    dot.attr("node", shape="rectangle", fontsize="8", margin="0.12")
+    dot.attr(rankdir=rankdir, dpi=dpi, fontsize=fontsize, nodesep="0.25", ranksep="0.4")
+    dot.attr("node", shape="rectangle", fontsize=node_fontsize, margin="0.08")
 
     dot.node("__start__", shape="none", label="")
     dot.edge("__start__", str(automaton.start.state_id))
@@ -593,7 +612,8 @@ def render_lr0_automaton(
         for sym, ns in state.transitions.items():
             dot.edge(str(state.state_id), str(ns.state_id), label=str(sym))
 
-    os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
+    out_dir = os.path.dirname(output_path) or "."
+    os.makedirs(out_dir, exist_ok=True)
     dot.render(output_path, cleanup=True, view=view)
     return f"{output_path}.{fmt}"
 
