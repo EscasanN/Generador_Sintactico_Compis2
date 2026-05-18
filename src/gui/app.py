@@ -6,10 +6,105 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QSplitter, QTabWidget,
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog,
     QTextEdit, QMessageBox, QGroupBox, QScrollArea,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QAction, QFont, QPixmap, QColor
+
+
+class StepViewer(QWidget):
+    """Navegador paso a paso del proceso de parseo (shift/reduce/expand)."""
+
+    def __init__(self, steps: list, mode: str = "LR", parent=None) -> None:
+        super().__init__(parent)
+        self._steps = steps
+        self._mode = mode
+        self._current = 0
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+
+        nav = QHBoxLayout()
+        self._btn_first = QPushButton("|◀")
+        self._btn_prev  = QPushButton("◀ Prev")
+        self._btn_next  = QPushButton("Next ▶")
+        self._btn_last  = QPushButton("▶|")
+        self._lbl_step  = QLabel()
+        for btn in (self._btn_first, self._btn_prev, self._btn_next, self._btn_last):
+            btn.setFixedWidth(70)
+        self._btn_first.clicked.connect(lambda: self._goto(0))
+        self._btn_prev.clicked.connect(lambda: self._goto(self._current - 1))
+        self._btn_next.clicked.connect(lambda: self._goto(self._current + 1))
+        self._btn_last.clicked.connect(lambda: self._goto(len(self._steps) - 1))
+        nav.addWidget(self._btn_first)
+        nav.addWidget(self._btn_prev)
+        nav.addWidget(self._lbl_step)
+        nav.addWidget(self._btn_next)
+        nav.addWidget(self._btn_last)
+        nav.addStretch()
+        layout.addLayout(nav)
+
+        if self._mode == "LR":
+            headers = ["Stack (states)", "Symbols", "Remaining Input", "Action"]
+        else:
+            headers = ["Parse Stack", "Remaining Input", "Action"]
+
+        self._table = QTableWidget(len(self._steps), len(headers))
+        self._table.setHorizontalHeaderLabels(headers)
+        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self._table.setFont(QFont("Courier New", 9))
+
+        for row, step in enumerate(self._steps):
+            if self._mode == "LR":
+                cells = [
+                    str(step.stack),
+                    str(step.symbols),
+                    str(step.remaining),
+                    step.action_taken,
+                ]
+            else:
+                cells = [
+                    str(step.stack),
+                    str(step.remaining),
+                    step.action_taken,
+                ]
+            for col, text in enumerate(cells):
+                item = QTableWidgetItem(text)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                self._table.setItem(row, col, item)
+
+        layout.addWidget(self._table)
+        self._update()
+
+    def _goto(self, idx: int) -> None:
+        if 0 <= idx < len(self._steps):
+            self._current = idx
+            self._update()
+
+    def _update(self) -> None:
+        n = len(self._steps)
+        self._lbl_step.setText(f"  Step {self._current + 1} / {n}  ")
+        self._btn_first.setEnabled(self._current > 0)
+        self._btn_prev.setEnabled(self._current > 0)
+        self._btn_next.setEnabled(self._current < n - 1)
+        self._btn_last.setEnabled(self._current < n - 1)
+
+        for row in range(n):
+            bg = QColor("#D6EAF8") if row == self._current else QColor("#FFFFFF")
+            for col in range(self._table.columnCount()):
+                item = self._table.item(row, col)
+                if item:
+                    item.setBackground(bg)
+
+        self._table.scrollTo(
+            self._table.model().index(self._current, 0),
+            QAbstractItemView.ScrollHint.PositionAtCenter,
+        )
 
 
 class AnalysisWorker(QThread):
@@ -151,6 +246,9 @@ class MainWindow(QMainWindow):
         self._tree_tabs = QTabWidget()
         self._tabs.addTab(self._tree_tabs, "Parse Tree")
 
+        self._steps_tabs = QTabWidget()
+        self._tabs.addTab(self._steps_tabs, "Steps")
+
         self._results = QTextEdit()
         self._results.setReadOnly(True)
         self._results.setFont(QFont("Courier New", 10))
@@ -263,6 +361,23 @@ class MainWindow(QMainWindow):
             sc.setWidget(lbl)
             self._tree_tabs.addTab(sc, tab_label)
 
+        self._steps_tabs.clear()
+        for i, r in enumerate(bundle['results'], 1):
+            accepted = r.slr1_result and r.slr1_result.accepted
+            tab_label = f"[{i:02d}] {'✓' if accepted else '✗'}"
+            steps = (r.slr1_result.steps if r.slr1_result and r.slr1_result.steps else
+                     r.lalr_result.steps if r.lalr_result and r.lalr_result.steps else [])
+            if steps:
+                viewer = StepViewer(steps, mode="LR")
+                self._steps_tabs.addTab(viewer, tab_label)
+            elif r.ll1_result and r.ll1_result.steps:
+                viewer = StepViewer(r.ll1_result.steps, mode="LL")
+                self._steps_tabs.addTab(viewer, tab_label)
+            else:
+                lbl = QLabel("No steps available.")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self._steps_tabs.addTab(lbl, tab_label)
+
         lines: list[str] = []
         lines.append(f"{'=' * 70}")
         lines.append(f"  ANALYSIS RESULTS")
@@ -301,7 +416,7 @@ class MainWindow(QMainWindow):
 
         html = self._build_results_html(lines, bundle['results'])
         self._results.setHtml(html)
-        self._tabs.setCurrentIndex(4)
+        self._tabs.setCurrentIndex(5)
 
     def _build_results_html(self, lines: list[str], results: list) -> str:
         import html as html_mod
@@ -329,7 +444,7 @@ class MainWindow(QMainWindow):
             f'<pre style="font-family:Courier New,monospace;font-size:10pt;color:#cc0000;">'
             f'ERROR:\n{esc}</pre>'
         )
-        self._tabs.setCurrentIndex(4)
+        self._tabs.setCurrentIndex(5)
 
     def _add_first_follow_table(self, analyzer) -> None:
         from src.parser.grammar import EPSILON_SYM
