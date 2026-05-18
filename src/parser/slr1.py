@@ -1,8 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from src.parser.grammar import Grammar, Symbol
 from src.parser.lr0 import LR0Automaton
 from src.parser.first_follow import compute_first, compute_follow
+from src.parser.parse_tree import ParseTreeNode
 
 
 @dataclass
@@ -29,6 +30,7 @@ class ParseResult:
     accepted: bool
     steps: list[ParseStep]
     error: str | None = None
+    tree: ParseTreeNode | None = None
 
 
 def build_slr1_table(automaton: LR0Automaton) -> ParseTable:
@@ -81,6 +83,7 @@ def slr1_parse(tokens: list[str], table: ParseTable) -> ParseResult:
     """tokens must end with '$'."""
     stack = [0]
     symbols: list[str] = []
+    node_stack: list[ParseTreeNode] = []
     steps: list[ParseStep] = []
     pos = 0
 
@@ -103,12 +106,21 @@ def slr1_parse(tokens: list[str], table: ParseTable) -> ParseResult:
         if action_type == 'shift':
             symbols.append(token)
             stack.append(value)
+            node_stack.append(ParseTreeNode(token))
             pos += 1
         elif action_type == 'reduce':
             prod = table.grammar.productions[value]
             for _ in prod.body:
                 stack.pop()
                 symbols.pop()
+            if prod.is_epsilon():
+                children = [ParseTreeNode('ε')]
+            else:
+                n = len(prod.body)
+                children = node_stack[-n:]
+                node_stack = node_stack[:-n]
+            parent = ParseTreeNode(str(prod.head), children)
+            node_stack.append(parent)
             gs = table.goto_table.get((stack[-1], prod.head.name))
             if gs is None:
                 return ParseResult(
@@ -118,4 +130,5 @@ def slr1_parse(tokens: list[str], table: ParseTable) -> ParseResult:
             stack.append(gs)
             symbols.append(str(prod.head))
         elif action_type == 'accept':
-            return ParseResult(accepted=True, steps=steps)
+            tree = node_stack[-1] if node_stack else None
+            return ParseResult(accepted=True, steps=steps, tree=tree)

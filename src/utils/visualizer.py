@@ -596,3 +596,46 @@ def render_lr0_automaton(
     os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
     dot.render(output_path, cleanup=True, view=view)
     return f"{output_path}.{fmt}"
+
+
+def render_parse_tree(
+    root,
+    output_path: str = "output/parse_tree",
+    fmt: str = "png",
+) -> str:
+    """Render a ParseTreeNode derivation tree as an image."""
+    counter = [0]
+
+    dot = graphviz.Digraph(
+        name="Parse Tree",
+        graph_attr={
+            "label": "Parse Tree",
+            "labelloc": "t",
+            "fontsize": "14",
+            "fontname": "Helvetica",
+            "rankdir": "TB",
+            "nodesep": "0.4",
+            "ranksep": "0.6",
+        },
+        node_attr={"fontname": "Helvetica", "fontsize": "11"},
+        edge_attr={"fontname": "Helvetica", "fontsize": "9"},
+    )
+
+    def add_node(node) -> str:
+        nid = f"n{counter[0]}"
+        counter[0] += 1
+        if node.is_leaf:
+            dot.node(nid, label=node.symbol, shape="box",
+                     style="filled", fillcolor="#AED6F1")
+        else:
+            dot.node(nid, label=node.symbol, shape="ellipse",
+                     style="filled", fillcolor="#A9DFBF")
+        for child in node.children:
+            child_id = add_node(child)
+            dot.edge(nid, child_id)
+        return nid
+
+    add_node(root)
+    os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
+    dot.render(output_path, format=fmt, cleanup=True)
+    return f"{output_path}.{fmt}"

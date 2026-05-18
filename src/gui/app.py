@@ -147,6 +147,9 @@ class MainWindow(QMainWindow):
         self._table_tabs = QTabWidget()
         self._tabs.addTab(self._table_tabs, "Tables")
 
+        self._tree_tabs = QTabWidget()
+        self._tabs.addTab(self._tree_tabs, "Parse Tree")
+
         self._results = QTextEdit()
         self._results.setReadOnly(True)
         self._results.setFont(QFont("Courier New", 10))
@@ -207,6 +210,8 @@ class MainWindow(QMainWindow):
         self._worker.start()
 
     def _on_done(self, bundle: dict) -> None:
+        from src.utils.visualizer import render_parse_tree
+
         self._run_btn.setEnabled(True)
         self.statusBar().showMessage("Analysis complete.")
 
@@ -228,6 +233,33 @@ class MainWindow(QMainWindow):
             lbl.setWordWrap(True)
             lbl.setContentsMargins(12, 12, 12, 12)
             self._table_tabs.addTab(lbl, "LL(1)")
+
+        self._tree_tabs.clear()
+        for i, r in enumerate(bundle['results'], 1):
+            accepted = r.slr1_result and r.slr1_result.accepted
+            tab_label = f"[{i:02d}] {'✓' if accepted else '✗'}"
+            sc = QScrollArea()
+            sc.setWidgetResizable(True)
+            lbl = QLabel()
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            tree = (r.slr1_result.tree if r.slr1_result else None) or \
+                   (r.lalr_result.tree if r.lalr_result else None) or \
+                   (r.ll1_result.tree if r.ll1_result else None)
+            if accepted and tree is not None:
+                try:
+                    tree_path = render_parse_tree(tree, f"output/tree_{i:02d}")
+                    if os.path.exists(tree_path):
+                        px = QPixmap(tree_path)
+                        lbl.setPixmap(px)
+                        lbl.adjustSize()
+                    else:
+                        lbl.setText("Tree image could not be rendered.")
+                except Exception as exc:
+                    lbl.setText(f"Tree render error: {exc}")
+            else:
+                lbl.setText("String rejected — no parse tree available.")
+            sc.setWidget(lbl)
+            self._tree_tabs.addTab(sc, tab_label)
 
         lines: list[str] = []
         lines.append(f"{'=' * 70}")
@@ -260,13 +292,13 @@ class MainWindow(QMainWindow):
             lines.append("")
 
         self._results.setPlainText("\n".join(lines))
-        self._tabs.setCurrentIndex(3)
+        self._tabs.setCurrentIndex(4)
 
     def _on_error(self, tb: str) -> None:
         self._run_btn.setEnabled(True)
         self.statusBar().showMessage("Error during analysis.")
         self._results.setPlainText("ERROR:\n" + tb)
-        self._tabs.setCurrentIndex(3)
+        self._tabs.setCurrentIndex(4)
 
     def _add_parse_table(self, name: str, table) -> None:
         states = sorted({s for s, _ in table.action} | {s for s, _ in table.goto_table})
