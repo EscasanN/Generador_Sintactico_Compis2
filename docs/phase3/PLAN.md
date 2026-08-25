@@ -2,143 +2,106 @@
 
 ## Objetivo
 
-Construir un front-end de Compiscript que use ANTLR para producir el árbol sintáctico y un Visitor para:
+Conservar las fases 1 y 2, agregar carga dinámica de gramáticas ANTLR `.g4` y
+construir análisis semántico sin codificar una gramática específica dentro del
+motor.
 
-- validar tipos, ámbitos, funciones, control de flujo, clases y listas;
-- conservar una tabla de símbolos con entornos globales, de función, clase y bloque;
-- reportar diagnósticos con categoría, mensaje, línea y columna;
-- mostrar el árbol sintáctico, los errores y la tabla de símbolos desde el IDE;
-- ejecutar casos exitosos y fallidos para cada regla evaluada.
+## Criterios del producto
 
-## Criterios de entrega
+- IDE multimodo.
+- Gramática seleccionable en tiempo de ejecución.
+- Árbol con ubicaciones y alternativas.
+- Diagnósticos acumulados.
+- Tabla de símbolos con scopes.
+- Pruebas con Compiscript y otra gramática.
+- Regresiones YALex/YAPar intactas.
 
-| Componente | Peso |
-|---|---:|
-| IDE funcional para código `.cps` | 15 puntos |
-| Analizador sintáctico y semántico, árbol y pruebas | 60 puntos |
-| Tabla de símbolos con entornos anidados | 25 puntos |
+## Fase 0 — Base multimodo
 
-Los puntos son criterios del producto final, no una forma de calificar individualmente a los integrantes.
+- [x] Mantener YALex + YAPar.
+- [x] Crear `src/antlr_mode/`.
+- [x] Inspeccionar gramáticas `.g4`.
+- [x] Descubrir reglas y elegir inicio.
+- [x] Descargar o resolver ANTLR 4.13.2.
+- [x] Generar Python en caché ignorada.
+- [x] Cargar Lexer y Parser dinámicamente.
+- [x] Recolectar errores léxicos y sintácticos.
+- [x] Convertir al árbol común.
+- [x] Integrar modo, archivo G4 y regla inicial en GUI.
+- [x] Mostrar tokens, árbol y diagnósticos.
+- [x] Probar Compiscript y MiniCalc.
+- [x] Ejecutar regresiones de fases anteriores.
 
-## Arquitectura objetivo
+## Fase 1 — Contratos semánticos
 
-```text
-src/
-├── compiscript/
-│   ├── __init__.py
-│   ├── grammar/
-│   │   └── Compiscript.g4
-│   ├── generated/
-│   │   ├── __init__.py
-│   │   ├── CompiscriptLexer.py
-│   │   ├── CompiscriptParser.py
-│   │   └── CompiscriptVisitor.py
-│   ├── parser.py
-│   └── analyzer.py
-├── semantic/
-│   ├── __init__.py
-│   ├── diagnostics.py
-│   ├── types.py
-│   ├── expressions.py
-│   ├── symbol_table.py
-│   ├── functions.py
-│   ├── control_flow.py
-│   └── classes.py
-├── gui/
-│   ├── app.py
-│   └── compiscript_tab.py
-└── utils/
-    └── visualizer.py
+- [ ] Confirmar cómo se entregarán las reglas semánticas.
+- [ ] Definir `Diagnostic` y `DiagnosticBag`.
+- [ ] Definir jerarquía `Type`.
+- [ ] Definir `SemanticValue`.
+- [ ] Definir `Symbol`, `Scope` y `SymbolTable`.
+- [ ] Definir esquema JSON del perfil.
+- [ ] Definir `SemanticAnalysisResult`.
+- [ ] Congelar firmas antes del trabajo paralelo.
 
-tests/
-└── semantic/
-    ├── fixtures/
-    ├── test_parser.py
-    ├── test_types.py
-    ├── test_arrays.py
-    ├── test_scopes.py
-    ├── test_functions.py
-    ├── test_control_flow.py
-    ├── test_classes.py
-    └── test_end_to_end.py
-```
+## Fase 2 — Motor genérico
 
-`grammar/` contiene la fuente editable y `generated/` contiene únicamente la salida de ANTLR. No se usarán dos ubicaciones distintas para los mismos archivos generados.
+- [ ] Cargar y validar perfiles.
+- [ ] Resolver bindings por alternativa y regla.
+- [ ] Crear registro seguro de acciones.
+- [ ] Recorrer `ParseTreeNode`.
+- [ ] Implementar scopes persistentes.
+- [ ] Implementar tipos y valores.
+- [ ] Acumular diagnósticos.
+- [ ] Rechazar reglas, selectores y acciones desconocidas.
+- [ ] Probar el motor con árboles manuales y ANTLR.
 
-## Fase 0 — Contrato común
+## Fase 3 — Reglas semánticas
 
-- [ ] Obtener la gramática oficial directamente del material del curso.
-- [ ] Registrar la versión de ANTLR usada para generar el parser.
-- [ ] Resolver las contradicciones de [REGLAS_Y_DECISIONES.md](REGLAS_Y_DECISIONES.md).
-- [ ] Definir las interfaces mínimas `ParseResult`, `AnalysisResult`, `Diagnostic`, `Type`, `Symbol` y `SymbolTable`.
-- [ ] Crear un programa `.cps` mínimo que el parser acepte.
-- [ ] Acordar nombres de métodos y módulos antes de desarrollar en paralelo.
+- [ ] Declaraciones y resolución.
+- [ ] Inferencia y asignación.
+- [ ] Operadores y comparación.
+- [ ] Listas e índices.
+- [ ] Funciones, llamadas y retornos.
+- [ ] Control de flujo y código muerto.
+- [ ] Clases, miembros, constructores y `this`.
+- [ ] Caso exitoso y fallido por regla confirmada.
 
-Esta fase debe integrarse primero. Después, los cuatro frentes pueden avanzar en paralelo.
+Estas capacidades son acciones genéricas. El perfil decide qué regla gramatical
+las invoca.
 
-## Fase 1 — Parser y fundamentos
+## Fase 4 — IDE semántico
 
-- [ ] Generar Lexer, Parser y Visitor de ANTLR.
-- [ ] Implementar recolección de errores léxicos y sintácticos sin detener la aplicación.
-- [ ] Implementar tipos primitivos, arreglos, funciones, clases y el tipo centinela de error.
-- [ ] Implementar la tabla de símbolos y el árbol de entornos.
-- [ ] Agregar pruebas unitarias del parser, tipos y tabla de símbolos.
+- [ ] Seleccionar perfil semántico o detectarlo de forma acordada.
+- [ ] Ejecutar semántica fuera del hilo principal.
+- [ ] Mostrar diagnósticos sintácticos y semánticos.
+- [ ] Mostrar árbol de scopes y símbolos.
+- [ ] Distinguir warnings y errores.
+- [ ] Conservar resultados ANTLR y YAPar.
+- [ ] Documentar prueba manual.
 
-## Fase 2 — Reglas semánticas
+## Fase 5 — Entrega
 
-- [ ] Declaraciones, inferencia y asignaciones.
-- [ ] Operaciones aritméticas, lógicas y comparaciones.
-- [ ] Listas, índices y asignación de elementos.
-- [ ] Resolución de nombres, redeclaración y shadowing.
-- [ ] Funciones, parámetros, retornos, recursión y closures.
-- [ ] Condiciones, bucles, `break`, `continue`, `return` y código muerto.
-- [ ] Clases, constructores, `this`, atributos y métodos.
-- [ ] Al menos un caso exitoso y uno fallido por cada regla.
-
-## Fase 3 — IDE y visualización
-
-- [ ] Crear `CompiscriptTab` sin mezclar su lógica con la interfaz YAPar existente.
-- [ ] Integrarla explícitamente en `MainWindow` de `src/gui/app.py`.
-- [ ] Permitir abrir, editar y guardar `.cps`.
-- [ ] Ejecutar el análisis fuera del hilo principal de Qt.
-- [ ] Mostrar árbol sintáctico, diagnósticos y tabla de símbolos.
-- [ ] Agregar al menos una prueba de integración sin interfaz y una prueba manual documentada de GUI.
-
-## Fase 4 — Integración y entrega
-
-- [ ] Ejecutar las regresiones de las fases anteriores.
-- [ ] Ejecutar `pytest tests/semantic/` desde un entorno limpio.
-- [ ] Verificar casos de recuperación después de múltiples errores.
-- [ ] Confirmar que los archivos generados se puedan importar con la versión instalada del runtime.
-- [ ] Actualizar el README con instrucciones reales de ejecución.
-- [ ] Revisar que cada integrante tenga commits propios y trazables.
-
-## Estrategia de pruebas
-
-El objetivo no es alcanzar una cantidad arbitraria de tests. Se mantendrá una matriz que relacione cada requisito con:
-
-- un caso exitoso;
-- un caso fallido;
-- la categoría esperada;
-- la ubicación esperada cuando aplique;
-- el responsable del código y de la prueba.
-
-Quien implementa una regla también implementa sus pruebas. `test_end_to_end.py` valida la integración completa y no sustituye las pruebas por dominio.
+- [ ] Ejecutar `python -m pytest tests/antlr_mode -q`.
+- [ ] Ejecutar `python -m pytest tests/semantic -q`.
+- [ ] Probar 75 entradas válidas anteriores.
+- [ ] Probar 8 entradas negativas anteriores.
+- [ ] Probar Compiscript y MiniCalc sin cambios Python.
+- [ ] Verificar Java, Graphviz y modo sin red con caché.
+- [ ] Confirmar que `output/` está limpio en Git.
+- [ ] Revisar commits individuales.
+- [ ] Actualizar instrucciones finales.
 
 ## Flujo de Git
 
-1. Crear cada rama desde `feature/fase3-compiscript` actualizado.
-2. Hacer commits pequeños y de un solo autor.
-3. Abrir PRs por capacidad completa: implementación, pruebas y documentación correspondiente.
-4. Revisar los contratos compartidos antes de hacer merge.
-5. Integrar continuamente; ningún integrante debe esperar a que termine todo otro frente.
+1. Actualizar desde `feature/fase3-compiscript`.
+2. Crear la rama asignada.
+3. Mantener un propietario por archivo.
+4. Hacer commits pequeños.
+5. Incluir pruebas y documentación del contrato.
+6. Abrir PR y recibir revisión externa.
+7. Integrar continuamente.
 
 ## Definición de terminado
 
-Una tarea se considera terminada cuando:
-
-- el código implementa una regla confirmada;
-- incluye casos exitosos y fallidos;
-- no rompe las regresiones léxicas y sintácticas;
-- está documentada sin afirmar capacidades inexistentes;
-- fue revisada por al menos otro integrante.
+Una tarea termina cuando funciona con contratos propios, incluye éxito y error,
+no acopla el motor a Compiscript, no rompe regresiones y está revisada.

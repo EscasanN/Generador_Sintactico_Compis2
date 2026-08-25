@@ -1,5 +1,11 @@
 # 🧪 Compiscript
 
+> **Estado del material:** este documento acompaña una gramática ANTLR entregada
+> como ejemplo y base de trabajo. La gramática final oficial todavía no ha sido
+> proporcionada o confirmada; cualquier diferencia futura deberá registrarse y
+> reflejarse en el perfil semántico y las pruebas. El motor carga otro `.g4`
+> desde el IDE sin modificar el código Python.
+
 ## 📋 Descripción General
 
 Este lenguaje se encuentra basado en Typescript, por lo que representa un subset del mismo, con algunas diferencias.

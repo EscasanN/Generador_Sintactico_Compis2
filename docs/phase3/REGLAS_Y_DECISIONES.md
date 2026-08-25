@@ -1,6 +1,9 @@
 # Reglas y decisiones — Compiscript
 
-Este documento evita que ejemplos internos contradigan el enunciado o la gramática oficial. Cualquier corrección del profesor debe registrarse aquí con fecha.
+Este documento evita que ejemplos internos contradigan el enunciado. La gramática
+actual es un ejemplo base, no la versión final oficial. Cualquier diferencia con
+otra gramática o corrección del profesor debe registrarse aquí con fecha. El
+motor carga gramáticas en tiempo de ejecución y no se modifica por cada archivo.
 
 ## Decisiones confirmadas
 
@@ -17,6 +20,9 @@ Este documento evita que ejemplos internos contradigan el enunciado o la gramát
 | Clases | Validar atributos, métodos, constructores y `this`. |
 | Reportes | Incluir categoría, mensaje, línea y columna. |
 | Pruebas | Incluir al menos un caso exitoso y uno fallido por regla. |
+| Gramática como entrada | Seleccionar otro `.g4` no requiere cambios en Python. |
+| Modos previos | YALex y YAPar se conservan completos. |
+| Generados | Se almacenan solo en `output/antlr/` y no se versionan. |
 
 ## Política provisional ante contradicciones
 
@@ -28,26 +34,36 @@ Hasta recibir una corrección escrita, se implementará la lectura literal del e
 
 Si el profesor confirma semántica convencional para `switch` o permite `break` dentro de este, se actualizarán primero este documento y sus pruebas.
 
-## Preguntas que deben resolverse en la Fase 0
+## Preguntas que deben resolverse antes de implementar semántica
 
 | Pregunta | Riesgo si no se resuelve |
 |---|---|
-| ¿La gramática oficial incluye literales `float`? | El enunciado exige operaciones con `float`, pero una gramática sin literal decimal no puede probarlas correctamente. |
+| ¿La gramática final incluirá literales `float`? | El enunciado exige operaciones con `float`, pero la gramática base no contiene un literal decimal. |
 | ¿La concatenación `string + string` está permitida? | Los ejemplos informales suelen usarla, pero la regla aritmética menciona solamente números. |
-| ¿La falta de inicialización de `const` debe ser error sintáctico o semántico? | Si la gramática exige `= expression`, el Visitor nunca verá una constante incompleta. |
+| ¿La falta de inicialización de `const` debe ser error sintáctico o semántico? | Si la gramática exige `= expression`, el árbol nunca contendrá una constante incompleta. |
 | ¿`switch` realmente exige boolean o compara el discriminante con cada `case`? | Ambas interpretaciones producen pruebas y lógica diferentes. |
 | ¿`break` es válido dentro de `switch`? | El enunciado literal lo restringe a bucles. |
 | ¿Se exige herencia o es una mejora opcional? | Puede consumir tiempo sin aportar al mínimo evaluado. |
 | ¿La gramática permite `else if` directamente? | No debe incluirse como fixture válido si solo acepta `else` seguido de bloque. |
 | ¿Existe sintaxis `new Tipo[tamaño]`? | No debe asumirse para arreglos si la gramática solo permite literales de lista. |
+| ¿Se permite omitir el tipo de un parámetro? | El equipo debe acordar si se infiere o se representa como tipo desconocido. |
+| ¿Se permite declarar una variable sin tipo y sin inicializador? | Sin ninguna de las dos fuentes no hay información suficiente para determinar su tipo. |
+| ¿Una función sin anotación de retorno es `void` o infiere el tipo? | Cambia la validación de cada sentencia `return`. |
+| ¿`null` puede asignarse a clases y arreglos? | Se necesita una única regla de compatibilidad para todos los integrantes. |
+| ¿El cuerpo de un `if` requiere llaves obligatoriamente? | La gramática exige bloques, pero algunos ejemplos pueden mostrar sentencias individuales. |
+| ¿Cómo se entregarán las reglas semánticas? | Una gramática sintáctica no basta para deducir tipos, scopes o retornos. |
+| ¿Se permite un perfil semántico JSON separado? | Es el mecanismo propuesto para cambiar de gramática sin modificar Python. |
 
 ## Reglas para crear fixtures
 
 - Cada fixture debe parsearse correctamente antes de usarse para probar semántica, salvo que sea una prueba sintáctica negativa.
-- No se inventarán palabras clave ni construcciones que no estén en la gramática oficial.
+- No se inventarán palabras clave ni construcciones ausentes de la gramática
+  seleccionada y el enunciado.
 - Un caso semántico negativo debe tener sintaxis válida; de lo contrario solo demuestra un error del parser.
 - Cada fixture indicará qué regla valida y qué diagnósticos espera.
-- Los ejemplos removidos durante la limpieza no se restaurarán hasta validarlos contra el parser oficial.
+- Cada fixture registra la gramática y regla inicial usadas.
+- Cuando se entregue otra gramática se carga desde el IDE y se ejecuta nuevamente
+  la matriz; no se modifica el motor.
 
 ## Matriz inicial de cobertura
 

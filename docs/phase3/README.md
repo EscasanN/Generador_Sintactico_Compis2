@@ -1,49 +1,60 @@
-# Fase 3 — Análisis semántico de Compiscript
+# Fase 3 — Modo ANTLR y análisis semántico
 
 ## Estado actual
 
-La Fase 3 está en **planificación**. Existe únicamente el scaffold de carpetas descrito abajo; todavía no existen el parser ANTLR de Compiscript, el analizador semántico, la tabla de símbolos de esta fase ni sus pruebas automatizadas.
+La rama base es `feature/fase3-compiscript`, creada desde
+`origin/feature/gui-enhancement`. El profesor autorizó un equipo de cuatro
+integrantes.
 
-La base sobre la que se trabajará es la rama `feature/fase3-compiscript`, creada desde `origin/feature/gui-enhancement` en el commit `6309ef4`.
+El IDE conserva el flujo YALex + YAPar e incorpora un segundo modo que:
 
-El profesor autorizó que el equipo esté formado por cuatro integrantes.
+- abre gramáticas ANTLR combinadas `.g4`;
+- descubre sus reglas sintácticas;
+- permite elegir la regla inicial;
+- genera Lexer, Parser y Visitor Python en `output/antlr/`;
+- reutiliza la generación mediante caché por hash;
+- analiza una entrada completa;
+- muestra tokens, árbol y diagnósticos.
 
-## Scaffold disponible
+El análisis semántico y la tabla de símbolos de esta fase todavía están
+pendientes.
 
-```text
-src/
-├── compiscript/
-│   ├── grammar/
-│   └── generated/
-└── semantic/
+`Compiscript.g4` es una gramática de ejemplo. Debe funcionar como entrada, pero
+el motor no puede depender de sus nombres ni requerir cambios Python cuando se
+cargue otra gramática.
 
-tests/
-└── semantic/
-    └── fixtures/
-```
+## Modos del IDE
 
-Cada carpeta nueva contiene únicamente un `.gitkeep`. Al agregar el primer archivo real a una carpeta, su `.gitkeep` puede eliminarse en el mismo commit.
+| Modo | Entradas | Resultados |
+|---|---|---|
+| YALex + YAPar | `.yal`, `.yapar`, entrada | NFA, DFA, LR(0), SLR, LALR, LL(1), pasos y árboles |
+| ANTLR | `.g4`, regla inicial, entrada | tokens, árbol y diagnósticos ANTLR |
+
+Los resultados propios de YAPar no se atribuyen a ANTLR ni se eliminan.
 
 ## Documentos
 
-- [Gramática ANTLR de Compiscript](../../src/compiscript/grammar/Compiscript.g4)
-- [Especificación del lenguaje](../compiscript/ESPECIFICACION.md)
+- [Gramática ANTLR de ejemplo](../../src/compiscript/grammar/Compiscript.g4)
+- [Especificación de referencia](../compiscript/ESPECIFICACION.md)
 - [Plan de implementación](PLAN.md)
-- [Arquitectura propuesta](ARQUITECTURA.md)
-- [División del trabajo](DIVISION_TRABAJO.md)
+- [Arquitectura](ARQUITECTURA.md)
+- [División resumida](DIVISION_TRABAJO.md)
+- [Guía detallada por integrante](GUIA_IMPLEMENTACION_POR_INTEGRANTE.md)
 - [Reglas y decisiones pendientes](REGLAS_Y_DECISIONES.md)
 
 ## Fuentes de verdad
 
-Cuando dos documentos se contradigan, se seguirá este orden:
+1. Instrucciones o correcciones escritas del profesor.
+2. Enunciado oficial.
+3. Requisitos confirmados de entrada y evaluación.
+4. Gramáticas entregadas, tratadas como datos de entrada.
+5. Decisiones internas documentadas.
 
-1. Instrucciones escritas o correcciones del profesor.
-2. Enunciado oficial del proyecto.
-3. Gramática oficial de Compiscript entregada por el curso.
-4. Decisiones internas documentadas por el equipo.
-
-Los ejemplos creados por el equipo nunca deben considerarse una especificación oficial.
+Ninguna gramática de ejemplo debe convertirse en lógica codificada dentro del
+motor.
 
 ## Regla de documentación
 
-Cada documento debe indicar el estado real del proyecto. Una sección propuesta debe usar expresiones como “por implementar” o “arquitectura objetivo”; no debe describir archivos futuros como si ya existieran.
+Los documentos deben distinguir capacidades implementadas, pendientes y
+opcionales. Una prueba con Compiscript no significa que el motor sea exclusivo
+de Compiscript.

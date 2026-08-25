@@ -6,13 +6,21 @@
 
 **Lenguaje:** Python 3.x
 
-> **Estado:** la fase léxica y sintáctica constituye la base estable. La fase de análisis semántico de Compiscript está planificada, pero aún no está implementada.
+> **Estado:** las fases léxica y sintáctica constituyen la base estable. El IDE
+> conserva el modo YALex + YAPar y agrega un modo ANTLR capaz de cargar gramáticas
+> combinadas `.g4` sin modificar el código. El análisis semántico todavía está
+> planificado.
 
 ---
 
 ## Descripción
 
-Implementación de un generador completo de analizadores léxicos (**YALex**) y sintácticos (**YAPar**) con una interfaz gráfica tipo IDE. El sistema toma una especificación de tokens (`.yal`) y una gramática libre de contexto (`.yapar`), construye los autómatas y tablas de parseo, y analiza cadenas de entrada usando tres métodos simultáneamente.
+Implementación de un generador completo de analizadores léxicos (**YALex**) y
+sintácticos (**YAPar**) con una interfaz gráfica tipo IDE. El modo original toma
+una especificación de tokens (`.yal`) y una gramática libre de contexto
+(`.yapar`), construye los autómatas y tablas de parseo, y analiza cadenas con
+tres métodos simultáneamente. El modo adicional genera y ejecuta automáticamente
+Lexer y Parser de Python a partir de una gramática ANTLR `.g4`.
 
 ```
 .yal  →  YALex  →  Tokens
@@ -42,6 +50,9 @@ Generador_Sintactico/
 │   ├── main.py                  # Punto de entrada (GUI / CLI / modo léxico)
 │   ├── gui/
 │   │   └── app.py               # IDE PyQt6
+│   ├── antlr_mode/
+│   │   ├── grammar_info.py      # Inspección de gramáticas .g4
+│   │   └── runner.py            # Generación, caché y ejecución ANTLR
 │   ├── lexer/
 │   │   ├── scanner.py           # Lectura del archivo .yal
 │   │   ├── regex_parser.py      # Parser de expresiones regulares
@@ -76,6 +87,7 @@ Generador_Sintactico/
 ## Requisitos
 
 - Python 3.10 o superior
+- Java 11 o superior para generar parsers ANTLR
 - [Graphviz](https://graphviz.org/download/) instalado en el sistema y en el PATH
 
 ```bash
@@ -93,10 +105,13 @@ python src/main.py
 ```
 
 El IDE permite:
-1. Cargar archivos `.yal`, `.yapar` y archivo de cadenas de entrada
-2. Editar y guardar los archivos directamente
-3. Ejecutar el análisis completo con **Ctrl+R** o el botón **Analyze**
-4. Visualizar resultados en las pestañas:
+
+1. Elegir entre los modos **YALex + YAPar** y **ANTLR (.g4)**.
+2. Cargar archivos `.yal`, `.yapar`, `.g4` y el archivo de entrada requerido.
+3. Seleccionar la regla inicial de una gramática ANTLR.
+4. Editar y guardar los archivos directamente.
+5. Ejecutar el análisis completo con **Ctrl+R** o el botón **Analyze**.
+6. Visualizar resultados en las pestañas:
 
 | Pestaña | Contenido |
 |---------|-----------|
@@ -109,6 +124,22 @@ El IDE permite:
 | **Parse Tree** | Árbol de derivación por cadena aceptada |
 | **Steps** | Navegador paso a paso del proceso de parseo |
 | **Results** | Resumen con ACCEPT/REJECT por método y mensajes de error |
+
+### Modo ANTLR `.g4`
+
+1. Seleccionar **ANTLR (.g4)** en `Mode` o presionar **Open G4**.
+2. Cargar una gramática combinada cuyo encabezado sea `grammar Nombre;`.
+3. Elegir una regla sintáctica en `Start`.
+4. Cargar el programa de entrada y presionar **Analyze**.
+
+Durante el primer uso, el IDE descarga ANTLR 4.13.2 desde su sitio oficial y lo
+guarda en `output/antlr/`, carpeta ignorada por Git. Cada parser generado también
+se almacena allí usando un hash del contenido de la gramática. Para trabajar sin
+descarga automática se puede definir `ANTLR4_JAR` con la ruta local del JAR.
+
+En este modo se muestran tokens, árbol y diagnósticos de ANTLR. Las pestañas
+LR(0), SLR, LALR, LL(1) y pasos continúan perteneciendo al modo YAPar y no se
+eliminan ni reemplazan.
 
 ### Modo CLI
 
@@ -174,7 +205,12 @@ term:
 
 ## Fase 3 — Análisis semántico de Compiscript
 
-La planificación de la siguiente fase está documentada en [`docs/phase3/`](docs/phase3/README.md). La documentación distingue requisitos confirmados, decisiones pendientes y responsabilidades del equipo. El repositorio incluye un scaffold de carpetas con archivos `.gitkeep`; todavía no contiene implementación de la Fase 3.
+La planificación de la siguiente fase está documentada en
+[`docs/phase3/`](docs/phase3/README.md). Ya están incorporados el modo genérico
+ANTLR, una gramática de ejemplo, la especificación y el scaffold; todavía no
+existe la implementación del análisis semántico. El reparto concreto de archivos,
+clases, funciones y pruebas está en la
+[guía detallada por integrante](docs/phase3/GUIA_IMPLEMENTACION_POR_INTEGRANTE.md).
 
 ---
 

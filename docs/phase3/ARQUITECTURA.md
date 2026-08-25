@@ -1,91 +1,128 @@
-# Arquitectura propuesta — Fase 3
+# Arquitectura — Fase 3
 
-## Estado de la base
+## Base estable
 
-El repositorio ya contiene dos subsistemas funcionales:
+El repositorio conserva:
 
-- `src/lexer/`: procesa especificaciones YALex y construye NFA, DFA y DFA mínimo.
-- `src/parser/`: procesa gramáticas YAPar y construye analizadores LR(0), SLR(1), LALR y LL(1).
+- `src/lexer/`: YALex, NFA, DFA y minimización;
+- `src/parser/`: YAPar, LR(0), SLR, LALR, LL(1) y árbol;
+- `src/gui/app.py`: IDE de las fases 1 y 2.
 
-Estos módulos se conservan como base y como regresión. La Fase 3 agrega un front-end específico para Compiscript; no reemplaza los analizadores existentes.
+El modo ANTLR se agrega como frontend paralelo y no reemplaza esos módulos.
 
-## Flujo objetivo
-
-```text
-Código .cps
-    ↓
-Lexer y Parser generados por ANTLR
-    ↓
-ParseResult (árbol + diagnósticos sintácticos)
-    ↓
-SemanticVisitor
-    ├── sistema de tipos
-    ├── tabla de símbolos
-    ├── validadores por dominio
-    └── recolector de diagnósticos
-    ↓
-AnalysisResult
-    ├── árbol sintáctico
-    ├── errores semánticos
-    └── árbol de entornos y símbolos
-    ↓
-IDE Compiscript
-```
-
-## Límites de responsabilidad
-
-### `src/compiscript/`
-
-Contiene todo lo dependiente de la gramática y de las clases generadas por ANTLR. `parser.py` adapta ANTLR a estructuras propias y `analyzer.py` coordina el recorrido semántico.
-
-### `src/semantic/`
-
-Contiene estructuras y reglas que no necesitan conocer widgets de Qt ni rutas de archivos. El sistema de tipos es la única fuente de verdad para compatibilidad; no se duplicarán esas reglas en un `validator.py` genérico.
-
-### `src/gui/`
-
-Solo presenta resultados y coordina el trabajo en segundo plano. No debe decidir reglas semánticas.
-
-### `tests/semantic/`
-
-Separa fixtures `.cps` de pruebas Python. Los ejemplos se agregarán únicamente después de comprobar que son válidos para la gramática oficial.
-
-## Contratos mínimos
+## Flujo multimodo
 
 ```text
-ParseResult
-├── tree
-├── lexer
-├── parser
-└── diagnostics: list[Diagnostic]
-
-AnalysisResult
-├── parse_result: ParseResult
-├── diagnostics: list[Diagnostic]
-└── symbols: SymbolTable
-
-Diagnostic
-├── category
-├── message
-├── line
-├── column
-└── severity
+                ┌── .yal + .yapar ──> motor propio YALex/YAPar ──┐
+IDE + entrada ──┤                                                ├──> vistas
+                └── .g4 + start rule ──> runtime ANTLR ──────────┘
+                                                    │
+                                                    v
+                                           ParseTreeNode común
+                                                    │
+                                                    v
+                                      motor semántico configurable
 ```
 
-Los nombres finales pueden cambiar durante la Fase 0, pero deben acordarse antes de dividir el desarrollo.
+## `src/antlr_mode/`
 
-## Código generado
+### `grammar_info.py`
 
-- `Compiscript.g4` es la fuente.
-- `src/compiscript/generated/` es la única salida.
-- Los `.py` generados se versionarán para que la evaluación no dependa de tener Java instalado.
-- La versión del generador ANTLR y la del runtime Python deben ser compatibles.
-- Los archivos generados nunca se editan manualmente.
+Inspecciona la gramática sin generar código. Produce `GrammarInfo` con ruta,
+nombre, tipo y reglas de parser.
 
-## Decisiones de diseño
+### `runner.py`
 
-- Los diagnósticos se acumulan para reportar varios problemas en una pasada.
-- Un tipo de error centinela evita cascadas de mensajes derivados de un mismo fallo.
-- Los scopes cerrados se conservan como hijos del scope raíz para visualizar la tabla completa.
-- La GUI ejecuta parser, análisis y renderizado fuera del hilo principal.
-- La semántica se prueba sin GUI; la interfaz se considera un consumidor de `AnalysisResult`.
+1. valida la gramática y regla inicial;
+2. resuelve Java y ANTLR 4.13.2;
+3. descarga el JAR en el primer uso si es necesario;
+4. calcula hash de versión y contenido;
+5. genera Python en `output/antlr/generated/`;
+6. carga Lexer y Parser dinámicamente;
+7. recolecta errores;
+8. verifica consumo completo;
+9. convierte el árbol al modelo común.
+
+Los generados son caché reproducible, no código fuente del proyecto.
+
+## Árbol común
+
+`ParseTreeNode` mantiene compatibilidad con YAPar y agrega metadatos opcionales:
+
+- regla;
+- alternativa etiquetada;
+- tipo y texto de token;
+- ubicación inicial y final.
+
+La semántica futura consume este modelo, nunca contextos ANTLR concretos.
+
+## GUI
+
+`MainWindow` conserva una sola aplicación. `AnalysisWorker` atiende YAPar y
+`AntlrAnalysisWorker` atiende `.g4`. Ambos trabajan fuera del hilo principal.
+
+El modo determina requisitos y renderizado:
+
+- YAPar: vistas históricas completas;
+- ANTLR: tokens, árbol y diagnósticos;
+- cambiar de modo no borra archivos cargados del otro flujo.
+
+## Semántica genérica
+
+Una gramática solo describe sintaxis. Para evitar código diferente por lenguaje,
+se propone un perfil declarativo que asocie reglas o alternativas con acciones
+registradas:
+
+```text
+semantic profile + ParseTreeNode
+              │
+              v
+SemanticEvaluator
+├── TypeSystem
+├── SymbolTable
+├── ExpressionActions
+├── acciones de función/control/clase
+└── DiagnosticBag
+```
+
+El perfil no ejecuta Python arbitrario. No se permite `eval`, `exec` ni
+imports configurables.
+
+## Límites
+
+- `src/antlr_mode/` no contiene semántica Compiscript.
+- `src/semantic/` no importa ANTLR ni PyQt6.
+- `src/gui/` presenta resultados, no decide tipos o scopes.
+- `src/lexer/` y `src/parser/` no se reescriben para soportar `.g4`.
+- `output/` no se versiona.
+
+## Dependencias
+
+- Java 11 o superior para ejecutar el generador.
+- ANTLR Tool 4.13.2, descargado o indicado mediante `ANTLR4_JAR`.
+- `antlr4-python3-runtime==4.13.2`.
+- Graphviz para imágenes.
+- PyQt6 para el IDE.
+
+Generador y runtime deben compartir versión.
+
+## Seguridad y fallos
+
+Las gramáticas se consideran entradas proporcionadas por el curso. Aun así:
+
+- la descarga usa la URL oficial;
+- los procesos se invocan con argumentos, no mediante shell;
+- la generación tiene timeout;
+- los errores se muestran sin cerrar el IDE;
+- las cachés se encuentran bajo una ruta ignorada;
+- acciones embebidas no confiables quedan fuera del alcance.
+
+## Generalidad verificable
+
+La base prueba:
+
+- `Compiscript.g4` con regla `program`;
+- `MiniCalc.g4` con regla `root`.
+
+Ambas usan la misma función `analyze_with_g4`. Esta prueba debe mantenerse para
+impedir acoplamiento accidental.
