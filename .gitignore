@@ -48,10 +48,6 @@ $RECYCLE.BIN/
 .AppleDouble
 .LSOverride
 
-# Markdown (except README)
-*.md
-!README.md
-
 # Linux
 *~
 
@@ -82,5 +78,3 @@ $RECYCLE.BIN/
 
 .claude
 .agents/*
-.vscode
-.github

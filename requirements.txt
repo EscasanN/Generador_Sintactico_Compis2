@@ -1,2 +1,4 @@
 graphviz
 PyQt6
+antlr4-python3-runtime
+pytest
