@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog,
     QTextEdit, QMessageBox, QGroupBox, QScrollArea,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QListWidget, QListWidgetItem,
+    QListWidget, QListWidgetItem, QComboBox,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt6.QtGui import QAction, QFont, QPixmap, QColor, QTextCharFormat, QTextCursor
@@ -153,6 +153,52 @@ class AnalysisWorker(QThread):
             self.error.emit(traceback.format_exc())
 
 
+class AntlrAnalysisWorker(QThread):
+    """Generate and execute a selected .g4 grammar outside the GUI thread."""
+
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(self, grammar_path: str, start_rule: str, input_text: str) -> None:
+        super().__init__()
+        self.grammar_path = grammar_path
+        self.start_rule = start_rule
+        self.input_text = input_text
+
+    def run(self) -> None:
+        try:
+            from src.antlr_mode.runner import AntlrModeError, analyze_with_g4
+            from src.utils.visualizer import render_parse_tree
+
+            result = analyze_with_g4(
+                self.grammar_path,
+                self.input_text,
+                self.start_rule,
+            )
+            tree_image = None
+            tree_error = None
+            if result.tree is not None:
+                try:
+                    output_name = result.generated_directory.name
+                    tree_image = render_parse_tree(
+                        result.tree,
+                        f"output/antlr/tree-{output_name}",
+                    )
+                except Exception as exc:
+                    tree_error = str(exc)
+            self.finished.emit({
+                "mode": "antlr",
+                "result": result,
+                "tree_image": tree_image,
+                "tree_error": tree_error,
+            })
+        except AntlrModeError as exc:
+            self.error.emit(str(exc))
+        except Exception:
+            import traceback
+            self.error.emit(traceback.format_exc())
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -161,9 +207,10 @@ class MainWindow(QMainWindow):
 
         self._yalex_path: str | None = None
         self._yapar_path: str | None = None
+        self._g4_path: str | None = None
         self._input_path: str | None = None
         self._active_file: str | None = None
-        self._worker: AnalysisWorker | None = None
+        self._worker: AnalysisWorker | AntlrAnalysisWorker | None = None
         self._last_bundle: dict | None = None
 
         self._palette: Palette = LIGHT
@@ -192,6 +239,7 @@ class MainWindow(QMainWindow):
         for label, slot in [
             ("Open .yalex…", self._open_yalex),
             ("Open .yapar…", self._open_yapar),
+            ("Open .g4…", self._open_g4),
             ("Open Input…", self._open_input),
             ("Save Current File", self._save_file),
         ]:
@@ -226,6 +274,7 @@ class MainWindow(QMainWindow):
         for text, slot in [
             ("Open YALex", self._open_yalex),
             ("Open YAPar", self._open_yapar),
+            ("Open G4", self._open_g4),
             ("Open Input", self._open_input),
             ("Save", self._save_file),
         ]:
@@ -234,6 +283,22 @@ class MainWindow(QMainWindow):
             b.clicked.connect(slot)
             bar.addWidget(b)
         bar.addStretch()
+
+        bar.addWidget(QLabel("Mode:"))
+        self._mode_combo = QComboBox()
+        self._mode_combo.addItem("YALex + YAPar", "yapar")
+        self._mode_combo.addItem("ANTLR (.g4)", "antlr")
+        self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        bar.addWidget(self._mode_combo)
+
+        bar.addWidget(QLabel("Start:"))
+        self._start_rule_combo = QComboBox()
+        self._start_rule_combo.setMinimumWidth(130)
+        self._start_rule_combo.setEnabled(False)
+        self._start_rule_combo.setToolTip(
+            "Regla de parser desde la que ANTLR comienza el análisis."
+        )
+        bar.addWidget(self._start_rule_combo)
 
         self._theme_btn = QPushButton("Dark Mode")
         self._theme_btn.setObjectName("themeBtn")
@@ -267,9 +332,14 @@ class MainWindow(QMainWindow):
         self._file_list.itemClicked.connect(self._on_file_clicked)
         ll.addWidget(self._file_list)
 
-        # Build empty rows for the three slots
+        # Build empty rows for the supported input slots
         self._file_items: dict[str, QListWidgetItem] = {}
-        for key, label in [("yalex", "YALex: none"), ("yapar", "YAPar: none"), ("input", "Input: none")]:
+        for key, label in [
+            ("yalex", "YALex: none"),
+            ("yapar", "YAPar: none"),
+            ("g4", "ANTLR G4: none"),
+            ("input", "Input: none"),
+        ]:
             it = QListWidgetItem(label)
             it.setData(Qt.ItemDataRole.UserRole, None)
             self._file_list.addItem(it)
@@ -365,6 +435,7 @@ class MainWindow(QMainWindow):
         p, _ = QFileDialog.getOpenFileName(self, "Open YALex", "", "YALex (*.yal *.yalex);;All (*)")
         if p:
             self._yalex_path = p
+            self._set_mode("yapar")
             self._set_file_slot("yalex", "YALex", p)
             self._load_into_editor(p)
 
@@ -372,11 +443,64 @@ class MainWindow(QMainWindow):
         p, _ = QFileDialog.getOpenFileName(self, "Open YAPar", "", "YAPar (*.yapar *.yalp);;All (*)")
         if p:
             self._yapar_path = p
+            self._set_mode("yapar")
             self._set_file_slot("yapar", "YAPar", p)
             self._load_into_editor(p)
 
+    def _open_g4(self) -> None:
+        p, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open ANTLR Grammar",
+            "",
+            "ANTLR Grammar (*.g4);;All (*)",
+        )
+        if not p:
+            return
+        try:
+            self._load_g4_rules(p)
+        except Exception as exc:
+            QMessageBox.warning(self, "Invalid ANTLR grammar", str(exc))
+            return
+        self._g4_path = p
+        self._set_mode("antlr")
+        self._set_file_slot("g4", "ANTLR G4", p)
+        self._load_into_editor(p)
+
+    def _load_g4_rules(self, path: str) -> None:
+        from src.antlr_mode.grammar_info import inspect_g4
+
+        info = inspect_g4(path)
+        self._start_rule_combo.clear()
+        self._start_rule_combo.addItems(info.parser_rules)
+        self._start_rule_combo.setCurrentText(info.default_start_rule)
+        self._start_rule_combo.setToolTip(
+            f"{info.name}: {len(info.parser_rules)} regla(s) de parser."
+        )
+
+    def _set_mode(self, mode: str) -> None:
+        index = self._mode_combo.findData(mode)
+        if index >= 0:
+            self._mode_combo.setCurrentIndex(index)
+
+    def _on_mode_changed(self) -> None:
+        is_antlr = self._mode_combo.currentData() == "antlr"
+        self._start_rule_combo.setEnabled(is_antlr and self._start_rule_combo.count() > 0)
+        if is_antlr:
+            self.statusBar().showMessage(
+                "ANTLR mode — load a .g4 grammar and an input file."
+            )
+        else:
+            self.statusBar().showMessage(
+                "YAPar mode — load YALex, YAPar, and input files."
+            )
+
     def _open_input(self) -> None:
-        p, _ = QFileDialog.getOpenFileName(self, "Open Input", "", "Text (*.txt);;All (*)")
+        p, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Input",
+            "",
+            "Source (*.txt *.cps);;All (*)",
+        )
         if p:
             self._input_path = p
             self._set_file_slot("input", "Input", p)
@@ -388,11 +512,19 @@ class MainWindow(QMainWindow):
             return
         with open(self._active_file, 'w', encoding='utf-8') as f:
             f.write(self._editor.toPlainText())
+        if self._active_file == self._g4_path:
+            try:
+                self._load_g4_rules(self._g4_path)
+            except Exception as exc:
+                QMessageBox.warning(self, "Invalid ANTLR grammar", str(exc))
         self.statusBar().showMessage(f"Saved {self._active_file}")
 
     # ── Analysis ──────────────────────────────────────────────────────────
 
     def _run_analysis(self) -> None:
+        if self._mode_combo.currentData() == "antlr":
+            self._run_antlr_analysis()
+            return
         if not self._yalex_path or not self._yapar_path or not self._input_path:
             QMessageBox.warning(self, "Missing Files", "Load .yalex, .yapar, and input file first.")
             return
@@ -405,9 +537,30 @@ class MainWindow(QMainWindow):
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
+    def _run_antlr_analysis(self) -> None:
+        start_rule = self._start_rule_combo.currentText()
+        if not self._g4_path or not self._input_path or not start_rule:
+            QMessageBox.warning(
+                self,
+                "Missing Files",
+                "Load a .g4 grammar, select its start rule, and load an input file.",
+            )
+            return
+        with open(self._input_path, encoding="utf-8") as source_file:
+            text = source_file.read()
+        self._run_btn.setEnabled(False)
+        self.statusBar().showMessage(
+            "Generating ANTLR parser and analyzing… First use may download ANTLR."
+        )
+        self._worker = AntlrAnalysisWorker(self._g4_path, start_rule, text)
+        self._worker.finished.connect(self._on_done)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
     def _on_done(self, bundle: dict) -> None:
         self._run_btn.setEnabled(True)
-        self.statusBar().showMessage("Analysis complete.")
+        mode = "ANTLR" if bundle.get("mode") == "antlr" else "YAPar"
+        self.statusBar().showMessage(f"{mode} analysis complete.")
         self._last_bundle = bundle
         self._render_bundle(bundle)
 
@@ -454,6 +607,9 @@ class MainWindow(QMainWindow):
             subprocess.Popen(["xdg-open", self._lr0_image_path])
 
     def _render_bundle(self, bundle: dict) -> None:
+        if bundle.get("mode") == "antlr":
+            self._render_antlr_bundle(bundle)
+            return
         from src.utils.visualizer import render_parse_tree
 
         img = bundle['lr0_image']
@@ -557,6 +713,111 @@ class MainWindow(QMainWindow):
         self._highlight_input_results(bundle['results'])
         html = self._build_results_html(lines)
         self._results.setHtml(html)
+        self._tabs.setCurrentIndex(5)
+
+    def _render_antlr_bundle(self, bundle: dict) -> None:
+        result = bundle["result"]
+        self._lr0_image_path = None
+        self._lr0_open_btn.setEnabled(False)
+        self._lr0_img.setPixmap(QPixmap())
+        self._lr0_img.setText(
+            "LR(0) belongs to the YAPar mode.\n"
+            "ANTLR uses its own adaptive prediction engine."
+        )
+        self._lr0_info.setText("ANTLR mode — YAPar automaton remains unchanged.")
+
+        self._table_tabs.clear()
+        tokens = result.tokens
+        token_table = QTableWidget(len(tokens), 5)
+        token_table.setHorizontalHeaderLabels(
+            ["#", "Type", "Text", "Line", "Column"]
+        )
+        token_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )
+        token_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.ResizeToContents
+        )
+        token_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        token_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.ResizeToContents
+        )
+        token_table.horizontalHeader().setSectionResizeMode(
+            4, QHeaderView.ResizeMode.ResizeToContents
+        )
+        token_table.verticalHeader().setVisible(False)
+        token_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        token_table.setFont(QFont("Cascadia Mono", 9))
+        for row, token in enumerate(tokens):
+            values = [
+                str(row),
+                token.token_type,
+                token.text,
+                str(token.line),
+                str(token.column),
+            ]
+            for column, value in enumerate(values):
+                token_table.setItem(row, column, QTableWidgetItem(value))
+        self._table_tabs.addTab(token_table, "ANTLR Tokens")
+
+        self._tree_tabs.clear()
+        tree_container = QScrollArea()
+        tree_container.setWidgetResizable(True)
+        tree_label = QLabel()
+        tree_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image_path = bundle.get("tree_image")
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                tree_label.setText("The ANTLR tree image could not be loaded.")
+            else:
+                tree_label.setPixmap(pixmap)
+                tree_label.adjustSize()
+        elif bundle.get("tree_error"):
+            tree_label.setText(f"Tree render error: {bundle['tree_error']}")
+        else:
+            tree_label.setText("No parse tree was produced.")
+        tree_container.setWidget(tree_label)
+        self._tree_tabs.addTab(
+            tree_container,
+            "ACCEPT" if result.accepted else "WITH ERRORS",
+        )
+
+        self._steps_tabs.clear()
+        steps_note = QLabel(
+            "Shift/reduce and LL(1) steps belong to the YAPar engine.\n"
+            "They remain available when the YALex + YAPar mode is selected."
+        )
+        steps_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._steps_tabs.addTab(steps_note, "ANTLR")
+
+        lines = [
+            "=" * 70,
+            "  ANTLR ANALYSIS RESULTS",
+            "=" * 70,
+            f"Grammar   : {result.grammar.name}",
+            f"File      : {result.grammar.path}",
+            f"Start rule: {result.start_rule}",
+            f"Tokens    : {len(result.tokens)}",
+            f"Result    : {'ACCEPT' if result.accepted else 'WITH ERRORS'}",
+            "",
+        ]
+        if result.diagnostics:
+            lines.append("Diagnostics:")
+            for diagnostic in result.diagnostics:
+                lines.append(
+                    f"[!] {diagnostic.stage} {diagnostic.line}:"
+                    f"{diagnostic.column} — {diagnostic.message}"
+                )
+        else:
+            lines.append("No lexical or syntactic errors.")
+        if bundle.get("tree_error"):
+            lines.extend(["", f"[!] Tree render: {bundle['tree_error']}"])
+
+        self._editor.setExtraSelections([])
+        self._results.setHtml(self._build_results_html(lines))
         self._tabs.setCurrentIndex(5)
 
     def _build_results_html(self, lines: list[str]) -> str:
