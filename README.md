@@ -1,8 +1,12 @@
-# Proyecto 2 — Generador de Analizadores Sintácticos (YAPar IDE)
+# Proyecto de Compiladores — YALex y YAPar
 
-**Curso:** Diseño de Lenguajes de Programación  
-**Universidad:** Universidad del Valle de Guatemala  
+**Curso:** Construcción de Compiladores
+
+**Universidad:** Universidad del Valle de Guatemala
+
 **Lenguaje:** Python 3.x
+
+> **Estado:** la fase léxica y sintáctica constituye la base estable. La fase de análisis semántico de Compiscript está planificada, pero aún no está implementada.
 
 ---
 
@@ -59,8 +63,10 @@ Generador_Sintactico/
 │   └── utils/
 │       └── visualizer.py        # Generación de imágenes (Graphviz)
 ├── tests/
-│   ├── grammars/                # Gramáticas .yapar de prueba
-│   └── inputs/                  # Archivos .yal de prueba
+│   ├── cases/                   # Casos activos de aceptación y rechazo
+│   └── legacy/                  # Fixtures heredados de fases anteriores
+├── docs/
+│   └── phase3/                  # Plan y decisiones para análisis semántico
 ├── requirements.txt
 └── README.md
 ```
@@ -163,6 +169,12 @@ term:
 - **Errores sintácticos:** columna, token inesperado y tokens esperados en ese estado
 - **Errores en `.yapar`:** línea exacta del problema en la gramática
 - **Visualización:** líneas del archivo de entrada coloreadas (verde = aceptado, rojo = rechazado)
+
+---
+
+## Fase 3 — Análisis semántico de Compiscript
+
+La planificación de la siguiente fase está documentada en [`docs/phase3/`](docs/phase3/README.md). La documentación distingue requisitos confirmados, decisiones pendientes y responsabilidades del equipo. El repositorio incluye un scaffold de carpetas con archivos `.gitkeep`; todavía no contiene implementación de la Fase 3.
 
 ---
 
