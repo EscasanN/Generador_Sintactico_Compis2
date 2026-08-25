@@ -31,6 +31,7 @@ htmlcov/
 
 # ─── Salidas generadas ───────────────────────────────────────────────────────
 output/
+tools/antlr-*-complete.jar
 *.png
 *.pdf
 *.svg
