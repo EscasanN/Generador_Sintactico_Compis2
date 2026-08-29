@@ -21,28 +21,53 @@ motor carga gramáticas en tiempo de ejecución y no se modifica por cada archiv
 | Reportes | Incluir categoría, mensaje, línea y columna. |
 | Pruebas | Incluir al menos un caso exitoso y uno fallido por regla. |
 | Gramática como entrada | Seleccionar otro `.g4` no requiere cambios en Python. |
+| Entrada evaluada | El IDE crea, abre, edita, guarda y compila archivos `.cps`. |
+| Recorrido | La integración semántica usa Listener/Visitor de ANTLR sobre el árbol nativo. |
+| Árbol | Se presenta visualmente mediante nodos y aristas. |
+| Aceptación | Requiere cero errores léxicos, sintácticos y semánticos. |
+| Perfil JSON | Es configuración declarativa interna; no reemplaza el Listener/Visitor. |
 | Modos previos | YALex y YAPar se conservan completos. |
 | Generados | Se almacenan solo en `output/antlr/` y no se versionan. |
+| Orden de trabajo | Daniel, Nadissa, Dulce y Nelson trabajan en ese orden. |
+| Cierre de bloques | Cada responsable corrige y termina su bloque antes de integrarlo. |
+| Contratos | Una API aceptada no se cambia en un bloque posterior. |
+| Dependencias | Se puede usar un bloque anterior; nunca se deja trabajo para que su autor regrese. |
 
-## Política provisional ante contradicciones
+## Lectura literal del enunciado oficial
 
-Hasta recibir una corrección escrita, se implementará la lectura literal del enunciado de evaluación:
+Salvo corrección escrita posterior del profesor, se implementan estas reglas tal
+como aparecen en el PDF:
 
 - Las condiciones de `if`, `while`, `do-while`, `for` y `switch` deben ser booleanas.
 - `break` y `continue` solo son válidos dentro de bucles.
 - Los operandos aritméticos deben ser `integer` o `float`.
 
-Si el profesor confirma semántica convencional para `switch` o permite `break` dentro de este, se actualizarán primero este documento y sus pruebas.
+Por tanto, `switch` no usa por defecto la semántica convencional de un
+discriminante arbitrario y `break` dentro de `switch` no se permite si no existe
+también un bucle envolvente. Cualquier corrección del profesor se registra antes
+de cambiar el perfil y las pruebas.
 
-## Preguntas que deben resolverse antes de implementar semántica
+## Preguntas pendientes y bloque responsable
+
+Estas preguntas no requieren que los cuatro integrantes trabajen al mismo
+tiempo. Cada una se resuelve y documenta dentro del bloque indicado, antes de
+cerrarlo:
+
+- Daniel: compatibilidad de tipos, literales y `null`;
+- Nadissa: declaraciones, funciones, control, scopes y clases;
+- Dulce: diferencias sintácticas detectables desde la gramática;
+- Nelson: correspondencia final entre la gramática de entrega y su perfil.
+
+Si una respuesta del profesor cambia una decisión antes de cerrar el bloque
+responsable, ese bloque incorpora la corrección. Después de aceptarse una
+puerta, los bloques posteriores adaptan sus propios archivos sin pedir que un
+integrante anterior regrese.
 
 | Pregunta | Riesgo si no se resuelve |
 |---|---|
 | ¿La gramática final incluirá literales `float`? | El enunciado exige operaciones con `float`, pero la gramática base no contiene un literal decimal. |
 | ¿La concatenación `string + string` está permitida? | Los ejemplos informales suelen usarla, pero la regla aritmética menciona solamente números. |
 | ¿La falta de inicialización de `const` debe ser error sintáctico o semántico? | Si la gramática exige `= expression`, el árbol nunca contendrá una constante incompleta. |
-| ¿`switch` realmente exige boolean o compara el discriminante con cada `case`? | Ambas interpretaciones producen pruebas y lógica diferentes. |
-| ¿`break` es válido dentro de `switch`? | El enunciado literal lo restringe a bucles. |
 | ¿Se exige herencia o es una mejora opcional? | Puede consumir tiempo sin aportar al mínimo evaluado. |
 | ¿La gramática permite `else if` directamente? | No debe incluirse como fixture válido si solo acepta `else` seguido de bloque. |
 | ¿Existe sintaxis `new Tipo[tamaño]`? | No debe asumirse para arreglos si la gramática solo permite literales de lista. |
@@ -51,8 +76,11 @@ Si el profesor confirma semántica convencional para `switch` o permite `break` 
 | ¿Una función sin anotación de retorno es `void` o infiere el tipo? | Cambia la validación de cada sentencia `return`. |
 | ¿`null` puede asignarse a clases y arreglos? | Se necesita una única regla de compatibilidad para todos los integrantes. |
 | ¿El cuerpo de un `if` requiere llaves obligatoriamente? | La gramática exige bloques, pero algunos ejemplos pueden mostrar sentencias individuales. |
-| ¿Cómo se entregarán las reglas semánticas? | Una gramática sintáctica no basta para deducir tipos, scopes o retornos. |
-| ¿Se permite un perfil semántico JSON separado? | Es el mecanismo propuesto para cambiar de gramática sin modificar Python. |
+
+El perfil JSON es una decisión interna de arquitectura: asocia reglas con
+acciones seguras, mientras un Listener/Visitor de ANTLR realiza el recorrido
+exigido. Si el profesor entrega acciones o convenciones adicionales, se traducen
+al mismo registro sin ejecutar código arbitrario desde el perfil.
 
 ## Reglas para crear fixtures
 
@@ -76,3 +104,14 @@ Si el profesor confirma semántica convencional para `switch` o permite `break` 
 | Clases | atributo, método, constructor y `this` |
 | Listas | homogeneidad, índice y asignación de elemento |
 | Integración | programa válido completo y programa con errores de varias categorías |
+
+Esta tabla es solo un resumen. La fuente de verdad para casos positivos,
+negativos, responsables y evidencia es
+[`MATRIZ_CUMPLIMIENTO.md`](MATRIZ_CUMPLIMIENTO.md).
+
+## Alcance no mínimo
+
+`foreach`, `try/catch`, herencia y `new` aparecen en la especificación de
+ejemplo, pero no están enumerados como reglas semánticas mínimas en el PDF. Se
+implementan después de completar la matriz oficial, salvo que la gramática final
+o una instrucción del profesor los vuelva obligatorios.

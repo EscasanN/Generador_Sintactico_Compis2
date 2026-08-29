@@ -212,6 +212,28 @@ existe la implementación del análisis semántico. El reparto concreto de archi
 clases, funciones y pruebas está en la
 [guía detallada por integrante](docs/phase3/GUIA_IMPLEMENTACION_POR_INTEGRANTE.md).
 
+El flujo final del Proyecto 2 será:
+
+```text
+Compiscript.g4 → Lexer/Parser ANTLR → programa.cps → árbol visual
+                                                   → Listener/Visitor semántico
+                                                   → errores + tabla de símbolos
+```
+
+El IDE deberá crear, abrir, editar, guardar y compilar `.cps`. En este alcance,
+compilar significa completar los análisis léxico, sintáctico y semántico; no se
+requiere generar código máquina. La cobertura exacta del enunciado está en la
+[matriz de cumplimiento](docs/phase3/MATRIZ_CUMPLIMIENTO.md).
+
+Al completar los cuatro bloques, la batería completa se ejecuta con:
+
+```bash
+python -m pytest -q
+```
+
+Los IDs de la matriz deben aparecer en las pruebas o parametrizaciones para
+localizar fácilmente el caso exitoso y fallido de cada regla semántica.
+
 ---
 
 ## Autor

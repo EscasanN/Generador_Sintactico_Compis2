@@ -6,6 +6,25 @@
 > reflejarse en el perfil semántico y las pruebas. El motor carga otro `.g4`
 > desde el IDE sin modificar el código Python.
 
+## Relación con el enunciado oficial
+
+Las construcciones de este documento describen el lenguaje de ejemplo, pero no
+todas constituyen reglas semánticas mínimas de evaluación. El PDF del Proyecto 2
+exige explícitamente:
+
+- tipos en aritmética, lógica, comparación, asignación, constantes y listas;
+- resolución, redeclaración y entornos anidados;
+- argumentos, retornos, recursión, funciones anidadas y closures;
+- condiciones booleanas y contexto de `break`, `continue` y `return`;
+- atributos, métodos, constructores y `this`;
+- listas, índices, código muerto y declaraciones duplicadas;
+- árbol sintáctico visual, Listener/Visitor de ANTLR y tabla de símbolos.
+
+`foreach`, `try/catch`, herencia y `new` permanecen como capacidades del
+ejemplo, pero solo pasan a ser requisitos semánticos obligatorios si aparecen en
+la gramática oficial o el profesor los confirma. La evidencia exacta se controla
+en la [matriz de cumplimiento](../phase3/MATRIZ_CUMPLIMIENTO.md).
+
 ## 📋 Descripción General
 
 Este lenguaje se encuentra basado en Typescript, por lo que representa un subset del mismo, con algunas diferencias.
