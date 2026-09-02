@@ -1,0 +1,60 @@
+{
+  "name": "MiniCalc",
+  "version": 1,
+  "bindings": [
+    {
+      "rule": "expression",
+      "alternative": "AddExpression",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "+",
+            "left": {"$select": "child", "index": 0},
+            "right": {"$select": "child", "index": 2}
+          }
+        }
+      ]
+    },
+    {
+      "rule": "expression",
+      "alternative": "SubtractExpression",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "-",
+            "left": {"$select": "child", "index": 0},
+            "right": {"$select": "child", "index": 2}
+          }
+        }
+      ]
+    },
+    {
+      "rule": "expression",
+      "alternative": "IntegerExpression",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "integer",
+            "text": {"$select": "text"}
+          }
+        }
+      ]
+    },
+    {
+      "rule": "expression",
+      "alternative": "StringExpression",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "string",
+            "text": {"$select": "text"}
+          }
+        }
+      ]
+    }
+  ]
+}

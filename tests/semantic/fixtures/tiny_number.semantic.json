@@ -1,0 +1,19 @@
+{
+  "name": "TinyNumber",
+  "version": 1,
+  "bindings": [
+    {
+      "rule": "value",
+      "alternative": "WholeNumber",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "integer",
+            "text": {"$select": "text"}
+          }
+        }
+      ]
+    }
+  ]
+}
