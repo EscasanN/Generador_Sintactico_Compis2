@@ -1,0 +1,19 @@
+{
+  "name": "LiteralFixture",
+  "version": 1,
+  "bindings": [
+    {
+      "rule": "expression",
+      "alternative": "IntegerExpression",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "integer",
+            "text": {"$select": "text"}
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "WrongGrammar",
+  "version": 1,
+  "bindings": [
+    {
+      "rule": "declaration",
+      "actions": ["scope.enter"]
+    }
+  ]
+}
