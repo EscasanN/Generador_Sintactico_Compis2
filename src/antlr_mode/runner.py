@@ -11,7 +11,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
@@ -61,6 +61,14 @@ class AntlrToken:
     column: int
 
 
+@dataclass(frozen=True, slots=True)
+class AntlrRuntimeSession:
+    """Retain only the parser-neutral state required for a tree walk."""
+
+    native_tree: object
+    rule_names: tuple[str, ...]
+
+
 @dataclass(slots=True)
 class AntlrAnalysisResult:
     grammar: GrammarInfo
@@ -69,10 +77,21 @@ class AntlrAnalysisResult:
     diagnostics: list[AntlrDiagnostic]
     tokens: list[AntlrToken]
     generated_directory: Path
+    runtime_session: AntlrRuntimeSession | None = field(default=None, repr=False)
 
     @property
     def accepted(self) -> bool:
         return not any(d.severity == "ERROR" for d in self.diagnostics)
+
+    @property
+    def native_tree(self) -> object | None:
+        """Expose the native tree only through the retained runtime session."""
+        return self.runtime_session.native_tree if self.runtime_session else None
+
+    @property
+    def rule_names(self) -> tuple[str, ...]:
+        """Return parser rule names without exposing a generated parser class."""
+        return self.runtime_session.rule_names if self.runtime_session else ()
 
 
 def _download_antlr_jar(target: Path) -> None:
@@ -381,4 +400,8 @@ def analyze_with_g4(
         diagnostics=diagnostics,
         tokens=public_tokens,
         generated_directory=generated_dir,
+        runtime_session=AntlrRuntimeSession(
+            native_tree=antlr_tree,
+            rule_names=tuple(parser.ruleNames),
+        ),
     )

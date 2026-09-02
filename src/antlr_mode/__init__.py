@@ -10,6 +10,7 @@ from src.antlr_mode.runner import (
     AntlrAnalysisResult,
     AntlrDiagnostic,
     AntlrModeError,
+    AntlrRuntimeSession,
     AntlrToken,
     analyze_with_g4,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "AntlrAnalysisResult",
     "AntlrDiagnostic",
     "AntlrModeError",
+    "AntlrRuntimeSession",
     "AntlrToken",
     "GrammarInfo",
     "GrammarInfoError",
