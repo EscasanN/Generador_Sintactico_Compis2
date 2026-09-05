@@ -8,8 +8,10 @@
 
 > **Estado:** las fases léxica y sintáctica constituyen la base estable. El IDE
 > conserva el modo YALex + YAPar y agrega un modo ANTLR capaz de cargar gramáticas
-> combinadas `.g4` sin modificar el código. El análisis semántico todavía está
-> planificado.
+> combinadas `.g4` sin modificar el código. El análisis semántico de Compiscript
+> (Proyecto 2) está implementado: gramática oficial, perfil semántico, motor
+> genérico y flujo completo de IDE para archivos `.cps` — ver la sección
+> "Fase 3" más abajo.
 
 ---
 
@@ -205,34 +207,86 @@ term:
 
 ## Fase 3 — Análisis semántico de Compiscript
 
-La planificación de la siguiente fase está documentada en
-[`docs/phase3/`](docs/phase3/README.md). Ya están incorporados el modo genérico
-ANTLR, una gramática de ejemplo, la especificación y el scaffold; todavía no
-existe la implementación del análisis semántico. El reparto concreto de archivos,
-clases, funciones y pruebas está en la
-[guía detallada por integrante](docs/phase3/GUIA_IMPLEMENTACION_POR_INTEGRANTE.md).
-
-El flujo final del Proyecto 2 será:
+El Proyecto 2 (analizador semántico + IDE para Compiscript) está implementado
+por los cuatro integrantes en el orden documentado en
+[`docs/phase3/`](docs/phase3/README.md): Daniel (núcleo semántico), Nadissa
+(motor y tabla de símbolos), Dulce (puente ANTLR↔semántica) y Nelson (gramática
+final, perfil de Compiscript e IDE). El flujo real es:
 
 ```text
 Compiscript.g4 → Lexer/Parser ANTLR → programa.cps → árbol visual
-                                                   → Listener/Visitor semántico
-                                                   → errores + tabla de símbolos
+                                                    → Listener/Visitor semántico
+                                                    → errores + tabla de símbolos
 ```
 
-El IDE deberá crear, abrir, editar, guardar y compilar `.cps`. En este alcance,
-compilar significa completar los análisis léxico, sintáctico y semántico; no se
-requiere generar código máquina. La cobertura exacta del enunciado está en la
-[matriz de cumplimiento](docs/phase3/MATRIZ_CUMPLIMIENTO.md).
+### Compilar un `.cps` desde la GUI
 
-Al completar los cuatro bloques, la batería completa se ejecuta con:
+1. `python -m src.main` (o el punto de entrada del modo GUI, ver arriba).
+2. Botón **"Open G4"** → selecciona `src/compiscript/grammar/Compiscript.g4`.
+   El modo cambia automáticamente a **ANTLR (.g4)** y la regla inicial queda
+   en `program`.
+3. Botón **"Load Profile"** → selecciona
+   `semantic_profiles/compiscript.semantic.json`. Es opcional: sin perfil,
+   "Analyze" solo corre léxico + sintáctico, igual que con cualquier otra
+   gramática `.g4`.
+4. **File → New .cps…** para crear un programa nuevo, o **"Open Input"**
+   (o **File → Open .cps**) para abrir uno existente. El editor permite
+   escribir y modificar libremente; **"Save"**/**File → Save As…** guardan
+   sin cambiar la extensión.
+5. **Analyze (Ctrl+R)**: con un perfil cargado, corre sintaxis y semántica en
+   un hilo aparte (la ventana no se congela) y abre la pestaña **Semantics**
+   con la tabla de diagnósticos (severidad, categoría, línea, columna) y el
+   árbol de entornos (global, función, clase, bloque). La pestaña
+   **Parse Tree** agrega, junto a la imagen Graphviz, una vista **Navigable**
+   (árbol expandible) del mismo árbol sintáctico.
+
+### Compilar un `.cps` desde Python
+
+```python
+from src.gui.semantic_bridge import analyze_semantics_with_extensions
+
+run = analyze_semantics_with_extensions(
+    grammar_path="src/compiscript/grammar/Compiscript.g4",
+    source=open("programa.cps", encoding="utf-8").read(),
+    profile_path="semantic_profiles/compiscript.semantic.json",
+    start_rule="program",
+    source_path="programa.cps",
+)
+
+print(run.accepted)                       # True si no hay errores
+for d in run.semantic_result.diagnostics: # severidad, categoría, línea, columna
+    print(d.severity.value, d.category.value, d.location.line, d.message)
+```
+
+`analyze_semantics_with_extensions` (no `analyze_semantics_with_g4`) es el
+punto de entrada correcto para Compiscript: su perfil usa un pequeño conjunto
+de acciones adicionales (`x.*`, documentadas en
+`src/gui/semantic_bridge.py` y en `docs/phase3/REGLAS_Y_DECISIONES.md`) que el
+registro genérico por defecto no conoce. Otras gramáticas (por ejemplo
+`MiniCalc.g4`) siguen usando `analyze_semantics_with_g4` sin cambios.
+
+### Cargar otra gramática o perfil
+
+Cambiar de gramática o de perfil no requiere tocar código: basta con abrir un
+`.g4` y un `.semantic.json` distintos desde la GUI, o pasar otras rutas a
+`analyze_semantics_with_extensions`. La cobertura exacta del enunciado y el
+detalle de cada regla están en la
+[matriz de cumplimiento](docs/phase3/MATRIZ_CUMPLIMIENTO.md); las decisiones
+de diseño y limitaciones conocidas están fechadas en
+[`REGLAS_Y_DECISIONES.md`](docs/phase3/REGLAS_Y_DECISIONES.md).
+
+### Pruebas
 
 ```bash
-python -m pytest -q
+python -m pytest tests/antlr_mode -q   # frontend ANTLR genérico
+python -m pytest tests/semantic -q     # motor semántico + matriz de Compiscript
+python -m pytest tests/gui -q          # flujo del IDE (.cps, IDE-01..08)
+python -m pytest -q                    # batería completa
 ```
 
-Los IDs de la matriz deben aparecer en las pruebas o parametrizaciones para
-localizar fácilmente el caso exitoso y fallido de cada regla semántica.
+Los IDs de la matriz aparecen en los nombres de las pruebas
+(`tests/semantic/test_end_to_end.py`, `tests/gui/test_cps_workflow.py`) para
+localizar fácilmente el caso exitoso y fallido de cada regla.
 
 ---
 

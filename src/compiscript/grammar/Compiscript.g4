@@ -3,6 +3,16 @@ grammar Compiscript;
 // ------------------
 // Parser Rules
 // ------------------
+//
+// NOTA DE DISEÑO (bloque 4 -- Nelson, ver docs/phase3/REGLAS_Y_DECISIONES.md):
+// El perfil semantico (semantic_profiles/compiscript.semantic.json) solo puede
+// seleccionar hijos de un nodo por indice fijo, por tipo de token directo, o por
+// texto concatenado del nodo actual. No existe un selector que aplane listas de
+// aridad variable ni que dependa de que alternativa opcional se uso. Por eso,
+// toda regla que en el ejemplo original combinaba varias partes opcionales
+// (X? Y?) se dividio aqui en alternativas etiquetadas de aridad fija -- misma
+// gramatica superficial, mismo lenguaje aceptado, arbol de derivacion mas
+// regular. Los cambios estan documentados con fecha en REGLAS_Y_DECISIONES.md.
 
 program: statement* EOF;
 
@@ -30,32 +40,53 @@ statement
 block: '{' statement* '}';
 
 variableDeclaration
-  : ('let' | 'var') Identifier typeAnnotation? initializer? ';'
+  : ('let' | 'var') Identifier ';'                                   # VarNoTypeNoInit
+  | ('let' | 'var') Identifier typeAnnotation ';'                    # VarTypeNoInit
+  | ('let' | 'var') Identifier initializer ';'                       # VarNoTypeInit
+  | ('let' | 'var') Identifier typeAnnotation initializer ';'        # VarTypeInit
   ;
 
 constantDeclaration
-  : 'const' Identifier typeAnnotation? '=' expression ';'
+  : 'const' Identifier '=' expression ';'                            # ConstNoType
+  | 'const' Identifier typeAnnotation '=' expression ';'             # ConstWithType
   ;
 
 typeAnnotation: ':' type;
 initializer: '=' expression;
 
 assignment
-  : Identifier '=' expression ';'
-  | expression '.' Identifier '=' expression ';' // property assignment
+  : Identifier '=' expression ';'                                    # SimpleAssignment
+  | expression '.' Identifier '=' expression ';'                     # PropertyAssignment
   ;
 
 expressionStatement: expression ';';
 printStatement: 'print' '(' expression ')' ';';
 
-ifStatement: 'if' '(' expression ')' block ('else' block)?;
+ifStatement
+  : 'if' '(' expression ')' block                                    # IfNoElse
+  | 'if' '(' expression ')' block 'else' block                       # IfWithElse
+  ;
+
 whileStatement: 'while' '(' expression ')' block;
 doWhileStatement: 'do' block 'while' '(' expression ')' ';';
-forStatement: 'for' '(' (variableDeclaration | assignment | ';') expression? ';' expression? ')' block;
+
+forInit: variableDeclaration | assignment | ';';
+
+forStatement
+  : 'for' '(' forInit ';' ')' block                                  # ForNoCondNoUpdate
+  | 'for' '(' forInit expression ';' ')' block                       # ForCondNoUpdate
+  | 'for' '(' forInit ';' expression ')' block                       # ForNoCondUpdate
+  | 'for' '(' forInit expression ';' expression ')' block            # ForCondUpdate
+  ;
+
 foreachStatement: 'foreach' '(' Identifier 'in' expression ')' block;
 breakStatement: 'break' ';';
 continueStatement: 'continue' ';';
-returnStatement: 'return' expression? ';';
+
+returnStatement
+  : 'return' ';'                                                     # ReturnVoid
+  | 'return' expression ';'                                          # ReturnValue
+  ;
 
 tryCatchStatement: 'try' block 'catch' '(' Identifier ')' block;
 
@@ -63,91 +94,153 @@ switchStatement: 'switch' '(' expression ')' '{' switchCase* defaultCase? '}';
 switchCase: 'case' expression ':' statement*;
 defaultCase: 'default' ':' statement*;
 
-functionDeclaration: 'function' Identifier '(' parameters? ')' (':' type)? block;
-parameters: parameter (',' parameter)*;
-parameter: Identifier (':' type)?;
+functionDeclaration
+  : 'function' Identifier '(' ')' block                              # FunctionNoParamsNoReturn
+  | 'function' Identifier '(' parameters ')' block                   # FunctionWithParamsNoReturn
+  | 'function' Identifier '(' ')' ':' type block                     # FunctionNoParamsWithReturn
+  | 'function' Identifier '(' parameters ')' ':' type block          # FunctionWithParamsWithReturn
+  ;
 
-classDeclaration: 'class' Identifier (':' Identifier)? '{' classMember* '}';
-classMember: functionDeclaration | variableDeclaration | constantDeclaration;
+parameters
+  : parameters ',' parameter                                         # MoreParameters
+  | parameter                                                        # FirstParameter
+  ;
+
+parameter
+  : Identifier ':' type                                              # TypedParameter
+  | Identifier                                                       # UntypedParameter
+  ;
+
+classDeclaration
+  : 'class' Identifier '{' classMember* '}'                          # ClassNoSuper
+  | 'class' Identifier ':' Identifier '{' classMember* '}'           # ClassWithSuper
+  ;
+
+classMember: classMethod | classField | classConstant;
+
+classMethod
+  : 'function' Identifier '(' ')' block                              # MethodNoParamsNoReturn
+  | 'function' Identifier '(' parameters ')' block                   # MethodWithParamsNoReturn
+  | 'function' Identifier '(' ')' ':' type block                     # MethodNoParamsWithReturn
+  | 'function' Identifier '(' parameters ')' ':' type block          # MethodWithParamsWithReturn
+  ;
+
+classField
+  : ('let' | 'var') Identifier ';'                                   # FieldNoTypeNoInit
+  | ('let' | 'var') Identifier typeAnnotation ';'                    # FieldTypeNoInit
+  | ('let' | 'var') Identifier initializer ';'                       # FieldNoTypeInit
+  | ('let' | 'var') Identifier typeAnnotation initializer ';'        # FieldTypeInit
+  ;
+
+classConstant
+  : 'const' Identifier '=' expression ';'                            # ConstFieldNoType
+  | 'const' Identifier typeAnnotation '=' expression ';'             # ConstFieldWithType
+  ;
 
 // ------------------
-// Expression Rules — Operator Precedence
+// Expression Rules -- Operator Precedence
 // ------------------
 
 expression: assignmentExpr;
 
 assignmentExpr
-  : lhs=leftHandSide '=' assignmentExpr            # AssignExpr
+  : lhs=leftHandSide '=' assignmentExpr                # AssignExpr
   | lhs=leftHandSide '.' Identifier '=' assignmentExpr # PropertyAssignExpr
-  | conditionalExpr                                # ExprNoAssign
+  | conditionalExpr                                    # ExprNoAssign
   ;
 
 conditionalExpr
-  : logicalOrExpr ('?' expression ':' expression)? # TernaryExpr
+  : logicalOrExpr '?' expression ':' expression        # TernaryExpr
+  | logicalOrExpr                                      # ConditionalAtom
   ;
 
 logicalOrExpr
-  : logicalAndExpr ( '||' logicalAndExpr )*
+  : logicalOrExpr '||' logicalAndExpr                  # OrExpr
+  | logicalAndExpr                                     # LogicalOrAtom
   ;
 
 logicalAndExpr
-  : equalityExpr ( '&&' equalityExpr )*
+  : logicalAndExpr '&&' equalityExpr                   # AndExpr
+  | equalityExpr                                       # LogicalAndAtom
   ;
 
 equalityExpr
-  : relationalExpr ( ('==' | '!=') relationalExpr )*
+  : equalityExpr '==' relationalExpr                   # EqualsExpr
+  | equalityExpr '!=' relationalExpr                   # NotEqualsExpr
+  | relationalExpr                                     # EqualityAtom
   ;
 
 relationalExpr
-  : additiveExpr ( ('<' | '<=' | '>' | '>=') additiveExpr )*
+  : relationalExpr '<' additiveExpr                    # LessExpr
+  | relationalExpr '<=' additiveExpr                   # LessEqualExpr
+  | relationalExpr '>' additiveExpr                    # GreaterExpr
+  | relationalExpr '>=' additiveExpr                   # GreaterEqualExpr
+  | additiveExpr                                       # RelationalAtom
   ;
 
 additiveExpr
-  : multiplicativeExpr ( ('+' | '-') multiplicativeExpr )*
+  : additiveExpr '+' multiplicativeExpr                # AddExpr
+  | additiveExpr '-' multiplicativeExpr                # SubExpr
+  | multiplicativeExpr                                 # AdditiveAtom
   ;
 
 multiplicativeExpr
-  : unaryExpr ( ('*' | '/' | '%') unaryExpr )*
+  : multiplicativeExpr '*' unaryExpr                   # MulExpr
+  | multiplicativeExpr '/' unaryExpr                   # DivExpr
+  | multiplicativeExpr '%' unaryExpr                   # ModExpr
+  | unaryExpr                                          # MultiplicativeAtom
   ;
 
 unaryExpr
-  : ('-' | '!') unaryExpr
-  | primaryExpr
+  : '-' unaryExpr                                      # NegExpr
+  | '!' unaryExpr                                      # NotExpr
+  | primaryExpr                                        # UnaryAtom
   ;
 
 primaryExpr
-  : literalExpr
-  | leftHandSide
-  | '(' expression ')'
+  : literalExpr                                        # LiteralPrimary
+  | leftHandSide                                       # LeftHandSidePrimary
+  | '(' expression ')'                                 # ParenPrimary
   ;
 
 literalExpr
-  : Literal
-  | arrayLiteral
-  | 'null'
-  | 'true'
-  | 'false'
+  : IntegerLiteral                                     # IntegerLiteralExpr
+  | StringLiteral                                      # StringLiteralExpr
+  | arrayLiteral                                       # ArrayLiteralExpr
+  | 'null'                                             # NullLiteral
+  | 'true'                                             # TrueLiteral
+  | 'false'                                            # FalseLiteral
   ;
 
 leftHandSide
-  : primaryAtom (suffixOp)*
+  : primaryAtom                                        # LeftHandSideAtom
+  | leftHandSide '(' ')'                               # CallExprNoArgs
+  | leftHandSide '(' argumentList ')'                  # CallExprWithArgs
+  | leftHandSide '[' expression ']'                    # IndexExpr
+  | leftHandSide '.' Identifier                        # PropertyAccessExpr
   ;
 
 primaryAtom
-  : Identifier                                 # IdentifierExpr
-  | 'new' Identifier '(' arguments? ')'        # NewExpr
-  | 'this'                                     # ThisExpr
+  : Identifier                                         # IdentifierExpr
+  | 'new' Identifier '(' ')'                           # NewExprNoArgs
+  | 'new' Identifier '(' argumentList ')'              # NewExprWithArgs
+  | 'this'                                             # ThisExpr
   ;
 
-suffixOp
-  : '(' arguments? ')'                        # CallExpr
-  | '[' expression ']'                        # IndexExpr
-  | '.' Identifier                            # PropertyAccessExpr
+argumentList
+  : argumentList ',' expression                        # MoreArguments
+  | expression                                         # FirstArgument
   ;
 
-arguments: expression (',' expression)*;
+arrayLiteral
+  : '[' ']'                                            # EmptyArrayLiteral
+  | '[' elementList ']'                                # NonEmptyArrayLiteral
+  ;
 
-arrayLiteral: '[' (expression (',' expression)*)? ']';
+elementList
+  : elementList ',' expression                         # MoreElements
+  | expression                                         # FirstElement
+  ;
 
 // ------------------
 // Types
@@ -159,11 +252,6 @@ baseType: 'boolean' | 'integer' | 'string' | Identifier;
 // ------------------
 // Lexer Rules
 // ------------------
-
-Literal
-  : IntegerLiteral
-  | StringLiteral
-  ;
 
 IntegerLiteral: [0-9]+;
 StringLiteral: '"' (~["\r\n])* '"';

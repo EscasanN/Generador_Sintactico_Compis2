@@ -1,0 +1,1511 @@
+{
+  "name": "Compiscript",
+  "version": 1,
+  "bindings": [
+    {
+      "rule": "program",
+      "actions": [
+        {
+          "name": "x.sequence",
+          "arguments": {
+            "statements": {
+              "$select": "children"
+            },
+            "skip_start": 0,
+            "skip_end": 1
+          }
+        }
+      ]
+    },
+    {
+      "rule": "block",
+      "actions": [
+        {
+          "name": "scope.enter",
+          "phase": "enter",
+          "arguments": {
+            "kind": "block"
+          }
+        },
+        {
+          "name": "x.sequence",
+          "arguments": {
+            "statements": {
+              "$select": "children"
+            },
+            "skip_start": 1,
+            "skip_end": 1
+          }
+        },
+        {
+          "name": "scope.exit"
+        }
+      ]
+    },
+    {
+      "rule": "variableDeclaration",
+      "alternative": "VarNoTypeNoInit",
+      "actions": [
+        {
+          "name": "declare.variable",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "variableDeclaration",
+      "alternative": "VarTypeNoInit",
+      "actions": [
+        {
+          "name": "declare.variable",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "variableDeclaration",
+      "alternative": "VarNoTypeInit",
+      "actions": [
+        {
+          "name": "declare.variable",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "variableDeclaration",
+      "alternative": "VarTypeInit",
+      "actions": [
+        {
+          "name": "declare.variable",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "constantDeclaration",
+      "alternative": "ConstNoType",
+      "actions": [
+        {
+          "name": "declare.constant",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "constantDeclaration",
+      "alternative": "ConstWithType",
+      "actions": [
+        {
+          "name": "declare.constant",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "assignment",
+      "alternative": "SimpleAssignment",
+      "actions": [
+        {
+          "name": "x.assign_identifier",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "value": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "assignment",
+      "alternative": "PropertyAssignment",
+      "actions": [
+        {
+          "name": "x.assign_member",
+          "arguments": {
+            "instance": {
+              "$select": "child",
+              "index": 0
+            },
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "value": {
+              "$select": "child",
+              "index": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "ifStatement",
+      "alternative": "IfNoElse",
+      "actions": [
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 2
+            },
+            "construct": "if"
+          }
+        }
+      ]
+    },
+    {
+      "rule": "ifStatement",
+      "alternative": "IfWithElse",
+      "actions": [
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 2
+            },
+            "construct": "if"
+          }
+        }
+      ]
+    },
+    {
+      "rule": "whileStatement",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 2
+            },
+            "construct": "while"
+          }
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "doWhileStatement",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 4
+            },
+            "construct": "do-while"
+          }
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "forStatement",
+      "alternative": "ForNoCondNoUpdate",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "forStatement",
+      "alternative": "ForCondNoUpdate",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 3
+            },
+            "construct": "for"
+          }
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "forStatement",
+      "alternative": "ForNoCondUpdate",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "forStatement",
+      "alternative": "ForCondUpdate",
+      "actions": [
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 3
+            },
+            "construct": "for"
+          }
+        },
+        {
+          "name": "loop.exit"
+        }
+      ]
+    },
+    {
+      "rule": "foreachStatement",
+      "actions": [
+        {
+          "name": "scope.enter",
+          "phase": "enter",
+          "arguments": {
+            "kind": "block",
+            "name": "foreach"
+          }
+        },
+        {
+          "name": "declare.variable",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "loop.exit"
+        },
+        {
+          "name": "scope.exit"
+        }
+      ]
+    },
+    {
+      "rule": "returnStatement",
+      "alternative": "ReturnVoid",
+      "actions": [
+        {
+          "name": "function.return",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "returnStatement",
+      "alternative": "ReturnValue",
+      "actions": [
+        {
+          "name": "function.return",
+          "arguments": {
+            "value": {
+              "$select": "child",
+              "index": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "breakStatement",
+      "actions": [
+        {
+          "name": "control.break",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "continueStatement",
+      "actions": [
+        {
+          "name": "control.continue",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "switchStatement",
+      "actions": [
+        {
+          "name": "control.condition",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 2
+            },
+            "construct": "switch"
+          }
+        }
+      ]
+    },
+    {
+      "rule": "switchCase",
+      "actions": [
+        {
+          "name": "x.sequence",
+          "arguments": {
+            "statements": {
+              "$select": "children"
+            },
+            "skip_start": 3,
+            "skip_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "rule": "defaultCase",
+      "actions": [
+        {
+          "name": "x.sequence",
+          "arguments": {
+            "statements": {
+              "$select": "children"
+            },
+            "skip_start": 2,
+            "skip_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "rule": "functionDeclaration",
+      "alternative": "FunctionNoParamsNoReturn",
+      "actions": [
+        {
+          "name": "x.declare_function",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "functionDeclaration",
+      "alternative": "FunctionWithParamsNoReturn",
+      "actions": [
+        {
+          "name": "x.declare_function",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "functionDeclaration",
+      "alternative": "FunctionNoParamsWithReturn",
+      "actions": [
+        {
+          "name": "x.declare_function",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "functionDeclaration",
+      "alternative": "FunctionWithParamsWithReturn",
+      "actions": [
+        {
+          "name": "x.declare_function",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classDeclaration",
+      "alternative": "ClassNoSuper",
+      "actions": [
+        {
+          "name": "class.declare",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "class.enter",
+          "phase": "enter",
+          "arguments": {
+            "class_": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "class.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classDeclaration",
+      "alternative": "ClassWithSuper",
+      "actions": [
+        {
+          "name": "class.declare",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "class.enter",
+          "phase": "enter",
+          "arguments": {
+            "class_": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "class.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classMethod",
+      "alternative": "MethodNoParamsNoReturn",
+      "actions": [
+        {
+          "name": "x.declare_method",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classMethod",
+      "alternative": "MethodWithParamsNoReturn",
+      "actions": [
+        {
+          "name": "x.declare_method",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classMethod",
+      "alternative": "MethodNoParamsWithReturn",
+      "actions": [
+        {
+          "name": "x.declare_method",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classMethod",
+      "alternative": "MethodWithParamsWithReturn",
+      "actions": [
+        {
+          "name": "x.declare_method",
+          "phase": "enter",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.enter",
+          "phase": "enter",
+          "arguments": {
+            "function": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        },
+        {
+          "name": "function.exit"
+        }
+      ]
+    },
+    {
+      "rule": "classField",
+      "alternative": "FieldNoTypeNoInit",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "classField",
+      "alternative": "FieldTypeNoInit",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "classField",
+      "alternative": "FieldNoTypeInit",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "classField",
+      "alternative": "FieldTypeInit",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "classConstant",
+      "alternative": "ConstFieldNoType",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "mutable": false
+          }
+        }
+      ]
+    },
+    {
+      "rule": "classConstant",
+      "alternative": "ConstFieldWithType",
+      "actions": [
+        {
+          "name": "class.field",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": {
+              "$select": "child",
+              "index": 2
+            },
+            "mutable": false
+          }
+        }
+      ]
+    },
+    {
+      "rule": "assignmentExpr",
+      "alternative": "AssignExpr",
+      "actions": [
+        {
+          "name": "expression.assignment",
+          "arguments": {
+            "target": {
+              "$select": "child",
+              "index": 0
+            },
+            "value": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "conditionalExpr",
+      "alternative": "TernaryExpr",
+      "actions": [
+        {
+          "name": "expression.ternary",
+          "arguments": {
+            "condition": {
+              "$select": "child",
+              "index": 0
+            },
+            "true_value": {
+              "$select": "child",
+              "index": 2
+            },
+            "false_value": {
+              "$select": "child",
+              "index": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "logicalOrExpr",
+      "alternative": "OrExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "||",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "logicalAndExpr",
+      "alternative": "AndExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "&&",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "equalityExpr",
+      "alternative": "EqualsExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "==",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "equalityExpr",
+      "alternative": "NotEqualsExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "!=",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "relationalExpr",
+      "alternative": "LessExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "<",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "relationalExpr",
+      "alternative": "LessEqualExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "<=",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "relationalExpr",
+      "alternative": "GreaterExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": ">",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "relationalExpr",
+      "alternative": "GreaterEqualExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": ">=",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "additiveExpr",
+      "alternative": "AddExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "+",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "additiveExpr",
+      "alternative": "SubExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "-",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "multiplicativeExpr",
+      "alternative": "MulExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "*",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "multiplicativeExpr",
+      "alternative": "DivExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "/",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "multiplicativeExpr",
+      "alternative": "ModExpr",
+      "actions": [
+        {
+          "name": "expression.binary",
+          "arguments": {
+            "operator": "%",
+            "left": {
+              "$select": "child",
+              "index": 0
+            },
+            "right": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "unaryExpr",
+      "alternative": "NegExpr",
+      "actions": [
+        {
+          "name": "expression.unary",
+          "arguments": {
+            "operator": "-",
+            "operand": {
+              "$select": "child",
+              "index": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "unaryExpr",
+      "alternative": "NotExpr",
+      "actions": [
+        {
+          "name": "expression.unary",
+          "arguments": {
+            "operator": "!",
+            "operand": {
+              "$select": "child",
+              "index": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
+      "alternative": "IntegerLiteralExpr",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "integer",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
+      "alternative": "StringLiteralExpr",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "string",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
+      "alternative": "NullLiteral",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "null",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
+      "alternative": "TrueLiteral",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "boolean",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
+      "alternative": "FalseLiteral",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "boolean",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "arrayLiteral",
+      "alternative": "EmptyArrayLiteral",
+      "actions": [
+        {
+          "name": "x.array",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "arrayLiteral",
+      "alternative": "NonEmptyArrayLiteral",
+      "actions": [
+        {
+          "name": "x.array",
+          "arguments": {
+            "elements": {
+              "$select": "child",
+              "index": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "elementList",
+      "alternative": "FirstElement",
+      "actions": [
+        {
+          "name": "x.list_start",
+          "arguments": {
+            "first": {
+              "$select": "child",
+              "index": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "elementList",
+      "alternative": "MoreElements",
+      "actions": [
+        {
+          "name": "x.list_append",
+          "arguments": {
+            "previous": {
+              "$select": "child",
+              "index": 0
+            },
+            "next": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "leftHandSide",
+      "alternative": "CallExprNoArgs",
+      "actions": [
+        {
+          "name": "function.call",
+          "arguments": {
+            "callee": {
+              "$select": "child",
+              "index": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "leftHandSide",
+      "alternative": "CallExprWithArgs",
+      "actions": [
+        {
+          "name": "function.call",
+          "arguments": {
+            "callee": {
+              "$select": "child",
+              "index": 0
+            },
+            "arguments": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "leftHandSide",
+      "alternative": "IndexExpr",
+      "actions": [
+        {
+          "name": "expression.index",
+          "arguments": {
+            "container": {
+              "$select": "child",
+              "index": 0
+            },
+            "index": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "leftHandSide",
+      "alternative": "PropertyAccessExpr",
+      "actions": [
+        {
+          "name": "class.member",
+          "arguments": {
+            "instance": {
+              "$select": "child",
+              "index": 0
+            },
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "primaryAtom",
+      "alternative": "IdentifierExpr",
+      "actions": [
+        {
+          "name": "identifier.resolve",
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "primaryAtom",
+      "alternative": "NewExprNoArgs",
+      "actions": [
+        {
+          "name": "class.construct",
+          "arguments": {
+            "class_": {
+              "$select": "token",
+              "token": "Identifier"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "primaryAtom",
+      "alternative": "NewExprWithArgs",
+      "actions": [
+        {
+          "name": "class.construct",
+          "arguments": {
+            "class_": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "arguments": {
+              "$select": "child",
+              "index": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "primaryAtom",
+      "alternative": "ThisExpr",
+      "actions": [
+        {
+          "name": "class.this",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "argumentList",
+      "alternative": "FirstArgument",
+      "actions": [
+        {
+          "name": "x.list_start",
+          "arguments": {
+            "first": {
+              "$select": "child",
+              "index": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "argumentList",
+      "alternative": "MoreArguments",
+      "actions": [
+        {
+          "name": "x.list_append",
+          "arguments": {
+            "previous": {
+              "$select": "child",
+              "index": 0
+            },
+            "next": {
+              "$select": "child",
+              "index": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "type",
+      "actions": [
+        {
+          "name": "x.text",
+          "arguments": {}
+        }
+      ]
+    }
+  ]
+}

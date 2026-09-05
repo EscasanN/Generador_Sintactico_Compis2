@@ -13,6 +13,8 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt6.QtGui import QAction, QFont, QPixmap, QColor, QTextCharFormat, QTextCursor
 
 from src.gui.theme import Palette, LIGHT, DARK, stylesheet
+from src.gui.parse_tree_view import build_tree_widget
+from src.gui.semantic_results import SemanticResultsPanel
 
 
 class StepViewer(QWidget):
@@ -199,6 +201,74 @@ class AntlrAnalysisWorker(QThread):
             self.error.emit(traceback.format_exc())
 
 
+class SemanticAnalysisWorker(QThread):
+    """Run syntax + semantics (Nelson's extended registry) off the GUI thread.
+
+    Used only when a semantic profile is loaded alongside a ``.g4`` grammar
+    (IDE-04, IDE-08); with no profile loaded the existing
+    :class:`AntlrAnalysisWorker` path (syntax only) is unaffected.
+    """
+
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        grammar_path: str,
+        profile_path: str,
+        start_rule: str,
+        input_text: str,
+        source_path: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.grammar_path = grammar_path
+        self.profile_path = profile_path
+        self.start_rule = start_rule
+        self.input_text = input_text
+        self.source_path = source_path
+
+    def run(self) -> None:
+        try:
+            from src.antlr_mode.runner import AntlrModeError
+            from src.gui.semantic_bridge import (
+                SemanticBridgeError,
+                analyze_semantics_with_extensions,
+            )
+            from src.utils.visualizer import render_parse_tree
+
+            result = analyze_semantics_with_extensions(
+                self.grammar_path,
+                self.input_text,
+                self.profile_path,
+                self.start_rule,
+                self.source_path,
+            )
+            tree_image = None
+            tree_error = None
+            syntax_result = result.syntax_result
+            if syntax_result.tree is not None:
+                try:
+                    output_name = syntax_result.generated_directory.name
+                    tree_image = render_parse_tree(
+                        syntax_result.tree,
+                        f"output/antlr/tree-{output_name}",
+                    )
+                except Exception as exc:
+                    tree_error = str(exc)
+            self.finished.emit({
+                "mode": "semantic",
+                "result": syntax_result,
+                "semantic_result": result.semantic_result,
+                "tree_image": tree_image,
+                "tree_error": tree_error,
+            })
+        except (AntlrModeError, SemanticBridgeError) as exc:
+            self.error.emit(str(exc))
+        except Exception:
+            import traceback
+            self.error.emit(traceback.format_exc())
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -209,8 +279,9 @@ class MainWindow(QMainWindow):
         self._yapar_path: str | None = None
         self._g4_path: str | None = None
         self._input_path: str | None = None
+        self._profile_path: str | None = None
         self._active_file: str | None = None
-        self._worker: AnalysisWorker | AntlrAnalysisWorker | None = None
+        self._worker: AnalysisWorker | AntlrAnalysisWorker | SemanticAnalysisWorker | None = None
         self._last_bundle: dict | None = None
 
         self._palette: Palette = LIGHT
@@ -237,11 +308,14 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
         fm = mb.addMenu("&File")
         for label, slot in [
+            ("New .cps…", self._new_cps),
             ("Open .yalex…", self._open_yalex),
             ("Open .yapar…", self._open_yapar),
             ("Open .g4…", self._open_g4),
             ("Open Input…", self._open_input),
+            ("Open Semantic Profile…", self._open_profile),
             ("Save Current File", self._save_file),
+            ("Save As…", self._save_file_as),
         ]:
             a = QAction(label, self)
             a.triggered.connect(slot)
@@ -299,6 +373,16 @@ class MainWindow(QMainWindow):
             "Regla de parser desde la que ANTLR comienza el análisis."
         )
         bar.addWidget(self._start_rule_combo)
+
+        self._profile_btn = QPushButton("Load Profile")
+        self._profile_btn.setToolTip(
+            "Cargar un perfil semántico JSON (opcional) para compilar .cps con análisis semántico."
+        )
+        self._profile_btn.clicked.connect(self._open_profile)
+        bar.addWidget(self._profile_btn)
+        self._profile_label = QLabel("Profile: none")
+        self._profile_label.setObjectName("sectionTitle")
+        bar.addWidget(self._profile_label)
 
         self._theme_btn = QPushButton("Dark Mode")
         self._theme_btn.setObjectName("themeBtn")
@@ -389,6 +473,9 @@ class MainWindow(QMainWindow):
 
         self._tree_tabs = QTabWidget()
         self._tabs.addTab(self._tree_tabs, "Parse Tree")
+
+        self._semantic_panel = SemanticResultsPanel()
+        self._tabs.addTab(self._semantic_panel, "Semantics")
 
         self._steps_tabs = QTabWidget()
         self._tabs.addTab(self._steps_tabs, "Steps")
@@ -506,6 +593,58 @@ class MainWindow(QMainWindow):
             self._set_file_slot("input", "Input", p)
             self._load_into_editor(p)
 
+    def _new_cps(self) -> None:
+        """Create a new, empty .cps file and load it into the editor (IDE-01/02)."""
+        p, _ = QFileDialog.getSaveFileName(self, "New Compiscript file", "programa.cps", "Compiscript (*.cps)")
+        if not p:
+            return
+        if not p.endswith(".cps"):
+            p += ".cps"
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("")
+        self._input_path = p
+        self._active_file = p
+        self._set_file_slot("input", "Input", p)
+        self._editor.setPlainText("")
+        self._editor.setExtraSelections([])
+        self._tabs.setCurrentIndex(0)
+        self.statusBar().showMessage(f"Created {p}")
+
+    def _open_profile(self) -> None:
+        """Load an optional semantic profile JSON (IDE-04)."""
+        p, _ = QFileDialog.getOpenFileName(
+            self, "Open Semantic Profile", "", "Semantic profile (*.json);;All (*)"
+        )
+        if not p:
+            return
+        try:
+            from src.semantic.profile import load_profile
+
+            profile = load_profile(p)
+        except Exception as exc:
+            QMessageBox.warning(self, "Invalid semantic profile", str(exc))
+            return
+        self._profile_path = p
+        self._profile_label.setText(f"Profile: {profile.name}")
+        self.statusBar().showMessage(f"Loaded semantic profile {os.path.basename(p)}")
+
+    def _save_file_as(self) -> None:
+        """Save the editor's contents to a new path without losing the extension."""
+        default_ext = ".cps" if (self._active_file or "").endswith(".cps") else ""
+        p, _ = QFileDialog.getSaveFileName(
+            self, "Save As", self._active_file or f"programa{default_ext}",
+            "Compiscript (*.cps);;All (*)",
+        )
+        if not p:
+            return
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(self._editor.toPlainText())
+        self._active_file = p
+        if p.endswith(".cps") or p == self._input_path:
+            self._input_path = p
+            self._set_file_slot("input", "Input", p)
+        self.statusBar().showMessage(f"Saved {p}")
+
     def _save_file(self) -> None:
         if not self._active_file:
             QMessageBox.information(self, "Save", "No file active in editor.")
@@ -523,7 +662,10 @@ class MainWindow(QMainWindow):
 
     def _run_analysis(self) -> None:
         if self._mode_combo.currentData() == "antlr":
-            self._run_antlr_analysis()
+            if self._profile_path:
+                self._run_semantic_analysis()
+            else:
+                self._run_antlr_analysis()
             return
         if not self._yalex_path or not self._yapar_path or not self._input_path:
             QMessageBox.warning(self, "Missing Files", "Load .yalex, .yapar, and input file first.")
@@ -557,10 +699,36 @@ class MainWindow(QMainWindow):
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
+    def _run_semantic_analysis(self) -> None:
+        """Compile a .cps with syntax + semantics (IDE-04), off the GUI thread."""
+        start_rule = self._start_rule_combo.currentText()
+        if not self._g4_path or not self._input_path or not start_rule:
+            QMessageBox.warning(
+                self,
+                "Missing Files",
+                "Load a .g4 grammar, select its start rule, and load an input file.",
+            )
+            return
+        if not self._profile_path:
+            QMessageBox.warning(self, "Missing Profile", "Load a semantic profile first.")
+            return
+        with open(self._input_path, encoding="utf-8") as source_file:
+            text = source_file.read()
+        self._run_btn.setEnabled(False)
+        self.statusBar().showMessage("Compiling (syntax + semantics)…")
+        self._worker = SemanticAnalysisWorker(
+            self._g4_path, self._profile_path, start_rule, text, self._input_path
+        )
+        self._worker.finished.connect(self._on_done)
+        self._worker.error.connect(self._on_error)
+        self._worker.start()
+
     def _on_done(self, bundle: dict) -> None:
         self._run_btn.setEnabled(True)
-        mode = "ANTLR" if bundle.get("mode") == "antlr" else "YAPar"
-        self.statusBar().showMessage(f"{mode} analysis complete.")
+        mode_label = {"antlr": "ANTLR", "semantic": "Compiscript"}.get(
+            bundle.get("mode"), "YAPar"
+        )
+        self.statusBar().showMessage(f"{mode_label} analysis complete.")
         self._last_bundle = bundle
         self._render_bundle(bundle)
 
@@ -607,6 +775,9 @@ class MainWindow(QMainWindow):
             subprocess.Popen(["xdg-open", self._lr0_image_path])
 
     def _render_bundle(self, bundle: dict) -> None:
+        if bundle.get("mode") == "semantic":
+            self._render_semantic_bundle(bundle)
+            return
         if bundle.get("mode") == "antlr":
             self._render_antlr_bundle(bundle)
             return
@@ -819,6 +990,61 @@ class MainWindow(QMainWindow):
         self._editor.setExtraSelections([])
         self._results.setHtml(self._build_results_html(lines))
         self._tabs.setCurrentIndex(5)
+
+    def _render_semantic_bundle(self, bundle: dict) -> None:
+        """Render syntax (reusing the ANTLR path) plus semantics (IDE-04..07).
+
+        A navigable tree tab (``src/gui/parse_tree_view.py``) is appended
+        here rather than inside ``_render_antlr_bundle`` itself, so the
+        existing regression test that calls ``_render_antlr_bundle``
+        directly and asserts ``_tree_tabs.count() == 1`` keeps passing.
+        """
+        result = bundle["result"]
+        self._render_antlr_bundle({
+            "mode": "antlr",
+            "result": result,
+            "tree_image": bundle.get("tree_image"),
+            "tree_error": bundle.get("tree_error"),
+        })
+        if result.tree is not None:
+            self._tree_tabs.addTab(build_tree_widget(result.tree), "Navigable")
+
+        semantic_result = bundle.get("semantic_result")
+        self._semantic_panel.set_result(semantic_result)
+
+        lines = [
+            "=" * 70,
+            "  COMPISCRIPT SEMANTIC ANALYSIS",
+            "=" * 70,
+            f"Grammar   : {result.grammar.name}",
+            f"Profile   : {self._profile_path}",
+            f"Start rule: {result.start_rule}",
+        ]
+        if not result.accepted:
+            lines.append("Result    : SYNTAX ERRORS — semantics did not run.")
+            for diagnostic in result.diagnostics:
+                lines.append(
+                    f"[!] {diagnostic.stage} {diagnostic.line}:"
+                    f"{diagnostic.column} — {diagnostic.message}"
+                )
+        elif semantic_result is None:
+            lines.append("Result    : semantic analysis did not run.")
+        else:
+            lines.append(
+                f"Result    : {'ACCEPT' if semantic_result.accepted else 'WITH ERRORS'}"
+            )
+            lines.append(f"Diagnostics: {len(semantic_result.diagnostics)}")
+            for diagnostic in semantic_result.diagnostics:
+                lines.append(
+                    f"[!] {diagnostic.severity.value} {diagnostic.category.value} "
+                    f"{diagnostic.location.line}:{diagnostic.location.column} — "
+                    f"{diagnostic.message}"
+                )
+        if bundle.get("tree_error"):
+            lines.extend(["", f"[!] Tree render: {bundle['tree_error']}"])
+
+        self._results.setHtml(self._build_results_html(lines))
+        self._tabs.setCurrentIndex(self._tabs.indexOf(self._semantic_panel))
 
     def _build_results_html(self, lines: list[str]) -> str:
         import html as html_mod
