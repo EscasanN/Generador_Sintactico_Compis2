@@ -244,3 +244,108 @@ por `MATRIZ_CUMPLIMIENTO.md`.
 
 Cada paso se integra y congela antes de comenzar el siguiente. No existe una
 segunda ronda de implementación para ninguno de los cuatro integrantes.
+
+## Alcance y estado del producto
+
+La Fase 3 entrega un IDE que conserva el flujo YALex + YAPar y agrega un modo
+ANTLR configurable. El producto evaluado permite escribir, abrir, editar,
+guardar y compilar archivos `.cps` usando una gramática `.g4`, una regla inicial
+y un perfil semántico seleccionados en tiempo de ejecución.
+
+La base multimodo previa al trabajo semántico incluye inspección de gramáticas,
+selección de regla inicial, generación y caché de ANTLR, carga dinámica,
+diagnósticos léxicos y sintácticos, árbol común, tokens y pruebas con
+Compiscript y MiniCalc. Las capacidades pendientes o entregadas se mantienen
+detalladas en `PLAN.md`; esta arquitectura describe el diseño objetivo y sus
+contratos.
+
+## Invariantes del producto
+
+- YALex + YAPar conserva sus entradas, algoritmos, vistas y regresiones.
+- ANTLR recibe `.g4`, regla inicial, perfil y fuente `.cps` sin depender de
+  nombres propios de Compiscript.
+- Lexer, Parser y Visitor generados se almacenan únicamente en
+  `output/antlr/`, que no se versiona.
+- Una segunda gramática funciona sin modificar el código Python del motor.
+- Los perfiles son datos declarativos: no ejecutan `eval`, `exec` ni imports
+  configurables.
+- El análisis, la generación y el renderizado se ejecutan fuera del hilo de Qt.
+- El árbol se presenta como nodos y aristas; un volcado de texto aislado no es
+  la representación visual principal.
+- `ACCEPT` requiere cero errores léxicos, sintácticos y semánticos. Los warnings
+  se muestran, pero no rechazan el resultado.
+
+## Contratos públicos congelados
+
+`GrammarInfo` expone `path`, `name`, `kind`, `parser_rules` y
+`default_start_rule`. Sus operaciones públicas son `parse_g4_info(source,
+path)` e `inspect_g4(path)`.
+
+`AntlrAnalysisResult` conserva `grammar`, `start_rule`, `tree`, el árbol nativo
+o una sesión equivalente, nombres de reglas, `diagnostics`, `tokens`,
+`generated_directory` y `accepted`. La operación pública es
+`analyze_with_g4(grammar_path, source, start_rule=None)`.
+
+Los consumidores usan estos contratos y no helpers privados ni clases
+generadas concretas. `src/semantic/` no importa ANTLR ni PyQt6, salvo los dos
+módulos explícitos de integración (`antlr_listener.py` y `antlr_adapter.py`),
+y el listener nunca importa clases generadas de Compiscript.
+
+## Flujo de aceptación
+
+El frontend rechaza la entrada si quedan tokens sin consumir. Si existen errores
+léxicos o sintácticos, devuelve el resultado del frontend y no inicia el
+recorrido semántico. Después valida el perfil contra las reglas de
+`GrammarInfo`, crea el `SemanticTreeListener` y ejecuta
+`ParseTreeWalker.DEFAULT.walk(...)` o un Visitor equivalente.
+
+El evaluador conserva scopes globales, de función, clase y bloque para que el
+IDE pueda consultarlos. Rechaza redeclaraciones en el mismo scope, resuelve
+nombres desde el scope actual hacia sus ancestros y valida argumentos
+posicionales, retornos, listas, miembros, constructores y `this`. Las
+condiciones de `if`, `while`, `do-while`, `for` y `switch` son booleanas;
+`break` y `continue` solo son válidos dentro de bucles; `return` solo dentro de
+funciones. También se diagnostican código muerto y duplicación de variables o
+parámetros.
+
+## Puertas de aceptación
+
+Cada bloque incluye implementación, casos exitosos y fallidos, documentación y
+regresión antes de habilitar el siguiente:
+
+| Puerta | Evidencia mínima |
+|---|---|
+| Base → Daniel | YAPar y ANTLR pasan; contratos del árbol congelados. |
+| Daniel → Nadissa | Diagnósticos, tipos, valores y expresiones pasan sin ANTLR ni GUI. |
+| Nadissa → Dulce | Evaluador probado con árboles manuales y símbolos persistentes. |
+| Dulce → Nelson | Listener/adaptador funciona con Compiscript y otra gramática sin cambiar el motor. |
+| Nelson → entrega | IDE compila `.cps`, muestra árbol y símbolos, y pasan las regresiones. |
+
+La evidencia completa y los identificadores `TYP-*`, `SCP-*`, `FUN-*`,
+`CTL-*`, `CLS-*`, `LST-*`, `GEN-*`, `ANT-*` e `IDE-*` se mantienen en
+`MATRIZ_CUMPLIMIENTO.md`. Las pruebas mínimas de entrega son:
+
+```text
+python -m pytest tests/antlr_mode -q
+python -m pytest tests/semantic -q
+python -m pytest tests/gui -q
+python -m pytest -q
+```
+
+La suite final debe demostrar un programa `.cps` válido, otro con errores de
+varias categorías, Compiscript y MiniCalc sin cambios Python, y las regresiones
+de YALex + YAPar.
+
+## Decisiones y límites conocidos
+
+- La gramática de ejemplo no es una dependencia del motor ni necesariamente la
+  gramática oficial definitiva.
+- Los casos semánticos negativos deben tener sintaxis válida; una entrada que
+  falla en el parser solo demuestra un error sintáctico.
+- `foreach`, `try/catch`, herencia y `new` son capacidades no mínimas salvo que
+  la gramática oficial o el profesor las vuelvan obligatorias.
+- La concatenación `string + string` no se asume: solo se acepta si el sistema
+  de tipos y el perfil la definen explícitamente.
+- Las decisiones pendientes o confirmadas sobre gramática, tipos y perfiles se
+  registran en `REGLAS_Y_DECISIONES.md`; no se resuelven implícitamente en la
+  GUI.
