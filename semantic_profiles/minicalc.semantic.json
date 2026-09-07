@@ -1,6 +1,10 @@
 {
   "name": "MiniCalc",
   "version": 1,
+  "grammar": {
+    "name": "MiniCalc",
+    "sha256": "18d2e797c537b8b366c0cd3faba99136482ad06b009e8c9833498c11a629cbeb"
+  },
   "bindings": [
     {
       "rule": "expression",

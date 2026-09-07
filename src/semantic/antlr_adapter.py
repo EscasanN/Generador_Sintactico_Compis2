@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.antlr_mode.runner import AntlrAnalysisResult, analyze_with_g4
-from src.semantic.profile import ProfileError, load_profile, validate_profile
+from src.semantic.profile import (
+    ProfileError,
+    load_profile,
+    validate_profile,
+    validate_profile_identity,
+)
 from src.semantic.results import SemanticAnalysisResult
 
 
@@ -75,6 +80,11 @@ def analyze_semantics_with_g4(
 
     try:
         profile = load_profile(request.profile_path)
+        validate_profile_identity(
+            profile,
+            syntax_result.grammar.name,
+            syntax_result.grammar.path,
+        )
         validate_profile(profile, syntax_result.grammar.parser_rules)
     except ProfileError as exc:
         raise SemanticAdapterError(f"invalid semantic profile: {exc}") from exc
@@ -105,7 +115,7 @@ def analyze_semantics_with_g4(
         )
         ParseTreeWalker.DEFAULT.walk(listener, syntax_result.native_tree)
         semantic_result = listener.result
-    except (ProfileError, SemanticListenerError) as exc:
+    except (SemanticListenerError, TypeError, ValueError) as exc:
         if listener is not None:
             listener.abort()
         raise SemanticAdapterError(f"semantic traversal failed: {exc}") from exc

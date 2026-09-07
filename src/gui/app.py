@@ -202,7 +202,7 @@ class AntlrAnalysisWorker(QThread):
 
 
 class SemanticAnalysisWorker(QThread):
-    """Run syntax + semantics (Nelson's extended registry) off the GUI thread.
+    """Run syntax and semantics through the public adapter off the GUI thread.
 
     Used only when a semantic profile is loaded alongside a ``.g4`` grammar
     (IDE-04, IDE-08); with no profile loaded the existing
@@ -230,13 +230,13 @@ class SemanticAnalysisWorker(QThread):
     def run(self) -> None:
         try:
             from src.antlr_mode.runner import AntlrModeError
-            from src.gui.semantic_bridge import (
-                SemanticBridgeError,
-                analyze_semantics_with_extensions,
+            from src.semantic.antlr_adapter import (
+                SemanticAdapterError,
+                analyze_semantics_with_g4,
             )
             from src.utils.visualizer import render_parse_tree
 
-            result = analyze_semantics_with_extensions(
+            result = analyze_semantics_with_g4(
                 self.grammar_path,
                 self.input_text,
                 self.profile_path,
@@ -262,7 +262,7 @@ class SemanticAnalysisWorker(QThread):
                 "tree_image": tree_image,
                 "tree_error": tree_error,
             })
-        except (AntlrModeError, SemanticBridgeError) as exc:
+        except (AntlrModeError, SemanticAdapterError) as exc:
             self.error.emit(str(exc))
         except Exception:
             import traceback
@@ -637,6 +637,8 @@ class MainWindow(QMainWindow):
         )
         if not p:
             return
+        if default_ext and not p.lower().endswith(default_ext):
+            p += default_ext
         with open(p, "w", encoding="utf-8") as f:
             f.write(self._editor.toPlainText())
         self._active_file = p
@@ -712,8 +714,11 @@ class MainWindow(QMainWindow):
         if not self._profile_path:
             QMessageBox.warning(self, "Missing Profile", "Load a semantic profile first.")
             return
-        with open(self._input_path, encoding="utf-8") as source_file:
-            text = source_file.read()
+        if self._active_file == self._input_path:
+            text = self._editor.toPlainText()
+        else:
+            with open(self._input_path, encoding="utf-8") as source_file:
+                text = source_file.read()
         self._run_btn.setEnabled(False)
         self.statusBar().showMessage("Compiling (syntax + semantics)…")
         self._worker = SemanticAnalysisWorker(

@@ -119,6 +119,7 @@ def test_invalid_literals_accumulate_diagnostics_and_return_error_values() -> No
         pytest.param("-", FLOAT, INTEGER, FLOAT, id="TYP-01-success-subtract-promotes"),
         pytest.param("*", INTEGER, FLOAT, FLOAT, id="TYP-01-success-multiply-promotes"),
         pytest.param("/", INTEGER, INTEGER, INTEGER, id="TYP-01-success-divide"),
+        pytest.param("%", INTEGER, INTEGER, INTEGER, id="TYP-01-success-modulo"),
     ],
 )
 def test_typ_01_success_arithmetic_accepts_only_numeric_operands(
@@ -137,6 +138,21 @@ def test_typ_01_success_arithmetic_accepts_only_numeric_operands(
     )
 
     assert result.type is expected_type
+    assert len(diagnostics) == 0
+
+
+def test_string_concatenation_accepts_two_strings() -> None:
+    """Removing the string-specific ``+`` branch must reject concatenation."""
+    diagnostics = DiagnosticBag()
+
+    result = ExpressionActions(diagnostics).binary(
+        "+",
+        value(STRING),
+        value(STRING),
+        SourceLocation(2, 3),
+    )
+
+    assert result.type is STRING
     assert len(diagnostics) == 0
 
 
@@ -372,6 +388,7 @@ def test_unary_error_and_unknown_propagate_and_unknown_operator_is_reported() ->
         pytest.param("<=", FLOAT, INTEGER, id="TYP-03-success-less-equal"),
         pytest.param(">", INTEGER, FLOAT, id="TYP-03-success-greater"),
         pytest.param(">=", FLOAT, FLOAT, id="TYP-03-success-greater-equal"),
+        pytest.param("==", NULL, ClassType("Node"), id="null-equals-class-reference"),
     ],
 )
 def test_typ_03_success_comparisons_accept_compatible_types(
@@ -402,7 +419,6 @@ def test_typ_03_success_comparisons_accept_compatible_types(
             ArrayType(FLOAT),
             id="TYP-03-failure-invariant-arrays",
         ),
-        pytest.param(NULL, ClassType("Node"), id="TYP-03-failure-null-class"),
     ],
 )
 def test_typ_03_failure_comparisons_reject_incompatible_types(

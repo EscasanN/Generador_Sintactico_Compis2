@@ -9,7 +9,7 @@
 > **Estado:** las fases léxica y sintáctica constituyen la base estable. El IDE
 > conserva el modo YALex + YAPar y agrega un modo ANTLR capaz de cargar gramáticas
 > combinadas `.g4` sin modificar el código. El análisis semántico de Compiscript
-> (Proyecto 2) está implementado: gramática oficial, perfil semántico, motor
+> (Proyecto 2) está implementado: gramática de entrega, perfil semántico, motor
 > genérico y flujo completo de IDE para archivos `.cps` — ver la sección
 > "Fase 3" más abajo.
 
@@ -55,6 +55,7 @@ Generador_Sintactico/
 │   ├── antlr_mode/
 │   │   ├── grammar_info.py      # Inspección de gramáticas .g4
 │   │   └── runner.py            # Generación, caché y ejecución ANTLR
+│   ├── semantic/                 # Tipos, acciones, perfiles, listener y símbolos
 │   ├── lexer/
 │   │   ├── scanner.py           # Lectura del archivo .yal
 │   │   ├── regex_parser.py      # Parser de expresiones regulares
@@ -143,11 +144,37 @@ En este modo se muestran tokens, árbol y diagnósticos de ANTLR. Las pestañas
 LR(0), SLR, LALR, LL(1) y pasos continúan perteneciendo al modo YAPar y no se
 eliminan ni reemplazan.
 
-### Modo CLI
+### Modo CLI YALex + YAPar
 
 ```bash
 python src/main.py --cli <archivo.yal> <archivo.yapar> <entrada.txt>
 ```
+
+### Modo CLI Compiscript
+
+Con la gramática y el perfil incluidos:
+
+```bash
+python -m src.main --cps programa.cps
+```
+
+Con otra gramática, sin perfil, se ejecuta únicamente lexer y parser:
+
+```bash
+python -m src.main --cps entrada.cps --grammar Otra.g4 --start reglaInicial
+```
+
+Para análisis completo de otra gramática se debe proporcionar su perfil
+compatible:
+
+```bash
+python -m src.main --cps entrada.cps --grammar Otra.g4 \
+  --profile otra.semantic.json --start reglaInicial
+```
+
+El comando devuelve código `0` para **ACCEPT**, `1` para **REJECT** y `2` para
+errores de configuración o archivos. `--syntax-only` fuerza explícitamente el
+análisis léxico y sintáctico.
 
 ### Modo léxico (solo YALex)
 
@@ -211,7 +238,7 @@ El Proyecto 2 (analizador semántico + IDE para Compiscript) está implementado
 por los cuatro integrantes en el orden documentado en
 [`docs/phase3/`](docs/phase3/README.md): Daniel (núcleo semántico), Nadissa
 (motor y tabla de símbolos), Dulce (puente ANTLR↔semántica) y Nelson (gramática
-final, perfil de Compiscript e IDE). El flujo real es:
+de entrega, perfil de Compiscript e IDE). El flujo real es:
 
 ```text
 Compiscript.g4 → Lexer/Parser ANTLR → programa.cps → árbol visual
@@ -243,9 +270,9 @@ Compiscript.g4 → Lexer/Parser ANTLR → programa.cps → árbol visual
 ### Compilar un `.cps` desde Python
 
 ```python
-from src.gui.semantic_bridge import analyze_semantics_with_extensions
+from src.semantic.antlr_adapter import analyze_semantics_with_g4
 
-run = analyze_semantics_with_extensions(
+run = analyze_semantics_with_g4(
     grammar_path="src/compiscript/grammar/Compiscript.g4",
     source=open("programa.cps", encoding="utf-8").read(),
     profile_path="semantic_profiles/compiscript.semantic.json",
@@ -258,18 +285,20 @@ for d in run.semantic_result.diagnostics: # severidad, categoría, línea, colum
     print(d.severity.value, d.category.value, d.location.line, d.message)
 ```
 
-`analyze_semantics_with_extensions` (no `analyze_semantics_with_g4`) es el
-punto de entrada correcto para Compiscript: su perfil usa un pequeño conjunto
-de acciones adicionales (`x.*`, documentadas en
-`src/gui/semantic_bridge.py` y en `docs/phase3/REGLAS_Y_DECISIONES.md`) que el
-registro genérico por defecto no conoce. Otras gramáticas (por ejemplo
-`MiniCalc.g4`) siguen usando `analyze_semantics_with_g4` sin cambios.
+`analyze_semantics_with_g4` es el único punto de entrada público para
+Compiscript y para otras gramáticas (por ejemplo `MiniCalc.g4`). Todas las
+acciones permitidas pertenecen al registro genérico del motor; los nombres de
+reglas y tokens permanecen exclusivamente en cada perfil JSON.
 
 ### Cargar otra gramática o perfil
 
-Cambiar de gramática o de perfil no requiere tocar código: basta con abrir un
-`.g4` y un `.semantic.json` distintos desde la GUI, o pasar otras rutas a
-`analyze_semantics_with_extensions`. La cobertura exacta del enunciado y el
+El frontend puede cargar otra `.g4` sin modificar Python. Para ejecutar también
+semántica se necesita un `.semantic.json` compatible con las reglas,
+alternativas y forma de árbol de esa gramática; la semántica no puede inferirse
+solo desde la sintaxis. Ambos archivos pueden elegirse desde la GUI o pasarse a
+`analyze_semantics_with_g4`. Los perfiles incluidos registran nombre y huella
+SHA-256 normalizada de su `.g4`, por lo que una sustitución incompatible falla
+antes del recorrido semántico. La cobertura exacta del enunciado y el
 detalle de cada regla están en la
 [matriz de cumplimiento](docs/phase3/MATRIZ_CUMPLIMIENTO.md); las decisiones
 de diseño y limitaciones conocidas están fechadas en
@@ -281,12 +310,15 @@ de diseño y limitaciones conocidas están fechadas en
 python -m pytest tests/antlr_mode -q   # frontend ANTLR genérico
 python -m pytest tests/semantic -q     # motor semántico + matriz de Compiscript
 python -m pytest tests/gui -q          # flujo del IDE (.cps, IDE-01..08)
-python -m pytest -q                    # batería completa
+python -m pytest tests -q              # batería completa
 ```
 
 Los IDs de la matriz aparecen en los nombres de las pruebas
 (`tests/semantic/test_end_to_end.py`, `tests/gui/test_cps_workflow.py`) para
 localizar fácilmente el caso exitoso y fallido de cada regla.
+También hay programas `.cps` listos para abrir o compilar en
+[`tests/cps/`](tests/cps/README.md), incluyendo una demostración válida, una
+demostración con múltiples errores y casos aislados por cada ID de la matriz.
 
 ---
 

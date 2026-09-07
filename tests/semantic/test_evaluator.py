@@ -94,6 +94,29 @@ def test_evaluator_visits_children_left_to_right_between_enter_and_exit_actions(
     assert events == ["enter", "a", "b", "exit"]
 
 
+def test_evaluator_runs_after_child_action_before_the_next_sibling():
+    """Moving a mid-rule action to node exit would make the event order fail."""
+    events = []
+    registry = ActionRegistry()
+    registry.register("leaf", lambda context, current: events.append(current.text))
+    registry.register("between", lambda context, current: events.append("between"))
+    profile = SemanticProfile(
+        "mid-rule",
+        (
+            RuleBinding(
+                "root",
+                (ActionInvocation("between", phase="after_child", after_child=0),),
+            ),
+            RuleBinding("leaf", (ActionInvocation("leaf"),)),
+        ),
+    )
+    tree = node("root", children=(node("leaf", "a"), node("leaf", "b")))
+
+    SemanticEvaluator(registry).analyze(tree, profile)
+
+    assert events == ["a", "between", "b"]
+
+
 def test_evaluator_restores_context_when_an_action_raises():
     registry = ActionRegistry()
     registry.register(

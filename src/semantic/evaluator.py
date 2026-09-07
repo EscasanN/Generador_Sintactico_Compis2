@@ -35,6 +35,7 @@ class SemanticContext:
     loop_stack: list[object] = field(default_factory=list)
     results: dict[int, object] = field(default_factory=dict)
     classes: dict[str, Symbol] = field(default_factory=dict)
+    predeclared_symbols: dict[int, Symbol | None] = field(default_factory=dict)
     expressions: ExpressionActions = field(init=False)
 
     def __post_init__(self) -> None:
@@ -197,7 +198,19 @@ class SemanticEvaluator:
                         produced = self.invoke(action, node)
                         if produced is not None:
                             result = produced
-            child_results = self.visit_children(node)
+            child_results_list: list[object] = []
+            for index, child in enumerate(node.children):
+                child_results_list.append(self.visit(child))
+                if binding is not None:
+                    for action in binding.actions:
+                        if (
+                            action.phase == "after_child"
+                            and action.after_child == index
+                        ):
+                            produced = self.invoke(action, node)
+                            if produced is not None:
+                                result = produced
+            child_results = tuple(child_results_list)
             if result is None and len(child_results) == 1:
                 result = child_results[0]
             if binding is not None:

@@ -20,11 +20,36 @@ def declare_class(
     context: SemanticContext,
     node: ParseTreeNode,
     name: Any,
+    superclass: Any | None = None,
 ) -> SemanticValue:
     """Declare a class and initialize its grammar-neutral member directory."""
+    if id(node) in context.predeclared_symbols:
+        predeclared = context.predeclared_symbols[id(node)]
+        if predeclared is None:
+            return SemanticValue(ERROR, location=context.location_of(node))
+        return SemanticValue(
+            predeclared.type,
+            symbol=predeclared,
+            location=context.location_of(node),
+        )
     identifier = context.text_of(name)
     location = context.location_of(node)
-    class_type = ClassType(identifier)
+    superclass_type: ClassType | None = None
+    if superclass is not None:
+        superclass_symbol = context.symbol_of(superclass)
+        if (
+            superclass_symbol is None
+            or superclass_symbol.kind is not SymbolKind.CLASS
+            or not isinstance(superclass_symbol.type, ClassType)
+        ):
+            context.diagnostics.add(
+                DiagnosticCategory.CLASS,
+                f"unknown superclass '{context.text_of(superclass)}'",
+                location,
+            )
+        else:
+            superclass_type = superclass_symbol.type
+    class_type = ClassType(identifier, superclass_type)
     members: dict[str, Symbol] = {}
     symbol = Symbol(
         identifier,
@@ -51,7 +76,13 @@ def enter_class(
     class_: SemanticValue | Symbol | Any,
 ) -> None:
     """Enter a class environment used by fields, methods and ``this``."""
-    symbol = context.symbol_of(class_)
+    if id(node) in context.predeclared_symbols:
+        symbol = context.predeclared_symbols[id(node)]
+        if symbol is None:
+            context.class_stack.append(None)
+            return
+    else:
+        symbol = context.symbol_of(class_)
     if symbol is None or symbol.kind is not SymbolKind.CLASS:
         context.diagnostics.add(
             DiagnosticCategory.CLASS,
@@ -82,8 +113,26 @@ def declare_field(
     name: Any,
     type_: Type | str | None = None,
     mutable: bool = True,
+    initializer: SemanticValue | None = None,
 ) -> SemanticValue:
-    """Register one field in both the class scope and member directory."""
+    """Declare and type-check a field in the active class.
+
+    Args:
+        context: Mutable state for the current semantic analysis.
+        node: Syntax node that owns the declaration and its location.
+        name: Field identifier or a value exposing source text.
+        type_: Optional declared type. When omitted, a provided initializer
+            determines the field type.
+        mutable: Whether later assignments to the field are permitted.
+        initializer: Optional initial value checked against ``type_``.
+
+    Returns:
+        The declared field value, or an ``ERROR`` value after a duplicate,
+        invalid context, missing constant initializer, or type mismatch.
+
+    Raises:
+        ValueError: If ``name`` cannot be converted to source text.
+    """
     location = context.location_of(node)
     if not context.class_stack or context.class_stack[-1] is None:
         context.diagnostics.add(
@@ -93,10 +142,28 @@ def declare_field(
         )
         return SemanticValue(ERROR, location=location)
     identifier = context.text_of(name)
+    declared_type = context.resolve_type(type_)
+    if type_ is None and initializer is not None:
+        declared_type = initializer.type
+    if not mutable and initializer is None:
+        context.diagnostics.add(
+            DiagnosticCategory.TYPE,
+            f"constant field '{identifier}' must be initialized when declared",
+            location,
+        )
+        declared_type = ERROR
+    elif initializer is not None and declared_type != UNKNOWN:
+        validation = context.expressions.assignment(
+            SemanticValue(declared_type, assignable=True, mutable=True),
+            initializer,
+            location,
+        )
+        if validation.type == ERROR:
+            declared_type = ERROR
     symbol = Symbol(
         identifier,
         SymbolKind.FIELD,
-        context.resolve_type(type_),
+        declared_type,
         mutable,
         location,
     )
@@ -124,7 +191,7 @@ def declare_method(
     context: SemanticContext,
     node: ParseTreeNode,
     name: Any,
-    parameter_types: Iterable[Type | str] = (),
+    parameter_types: Iterable[Type | str | None] = (),
     return_type: Type | str | None = VOID,
     parameter_names: Iterable[str] = (),
     constructor: bool = False,
@@ -147,6 +214,9 @@ def declare_method(
         context.resolve_type(return_type),
         parameter_names,
         kind="method",
+    )
+    context.predeclared_symbols[id(node)] = (
+        value.symbol if isinstance(value.symbol, Symbol) else None
     )
     if value.symbol is not None and value.type != ERROR:
         class_symbol = context.class_stack[-1]
@@ -174,7 +244,7 @@ def access_member(
         )
         return SemanticValue(ERROR, location=location)
     class_symbol = context.classes.get(instance.type.name)
-    if class_symbol is not None:
+    while class_symbol is not None:
         member = class_symbol.metadata["members"].get(identifier)
         if member is not None:
             return SemanticValue(
@@ -184,6 +254,12 @@ def access_member(
                 symbol=member,
                 location=location,
             )
+        superclass = class_symbol.type.superclass
+        class_symbol = (
+            context.classes.get(superclass.name)
+            if isinstance(superclass, ClassType)
+            else None
+        )
     context.diagnostics.add(
         DiagnosticCategory.CLASS,
         f"class '{instance.type.name}' has no member '{identifier}'",
@@ -200,6 +276,7 @@ def construct(
 ) -> SemanticValue:
     """Validate a constructor invocation and return an instance value."""
     location = context.location_of(node)
+    arguments = tuple(arguments)
     symbol = context.symbol_of(class_)
     if symbol is None or symbol.kind is not SymbolKind.CLASS:
         context.diagnostics.add(
@@ -210,12 +287,14 @@ def construct(
         return SemanticValue(ERROR, location=location)
     constructor_symbol = symbol.metadata["members"].get("constructor")
     if constructor_symbol is None:
-        context.diagnostics.add(
-            DiagnosticCategory.CLASS,
-            f"class '{symbol.name}' has no constructor",
-            location,
-        )
-        return SemanticValue(ERROR, location=location)
+        if arguments:
+            context.diagnostics.add(
+                DiagnosticCategory.FUNCTION,
+                f"expected 0 arguments, got {len(arguments)}",
+                location,
+            )
+            return SemanticValue(ERROR, location=location)
+        return SemanticValue(symbol.type, location=location)
     result = call_function(context, node, constructor_symbol, arguments)
     if result.type == ERROR:
         return result

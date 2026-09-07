@@ -168,12 +168,13 @@ class ExpressionActions:
     ) -> SemanticValue:
         """Validate a binary arithmetic, logical, or comparison expression.
 
-        The confirmed arithmetic operators are ``+``, ``-``, ``*`` and ``/``.
-        They accept only integer or float operands, and use their common
-        numeric type. Consequently integer division remains typed as integer;
-        runtime division semantics are outside this static core. ``&&`` and
-        ``||`` require two boolean operands. Comparisons require assignment
-        compatibility in at least one direction and return ``boolean``.
+        The arithmetic operators are ``+``, ``-``, ``*``, ``/`` and ``%``.
+        They accept integer or float operands and use their common numeric
+        type. The ``+`` operator also concatenates two strings. Consequently
+        integer division remains typed as integer; runtime division semantics
+        are outside this static core. ``&&`` and ``||`` require two boolean
+        operands. Comparisons require assignment compatibility in at least one
+        direction and return ``boolean``.
 
         Args:
             operator: Binary operator spelling.
@@ -189,7 +190,7 @@ class ExpressionActions:
             No exceptions during normal semantic analysis; invalid operations
             are reported through the diagnostic bag.
         """
-        arithmetic_operators = {"+", "-", "*", "/"}
+        arithmetic_operators = {"+", "-", "*", "/", "%"}
         logical_operators = {"&&", "||"}
         comparison_operators = {"==", "!=", "<", "<=", ">", ">="}
         if operator not in (
@@ -205,6 +206,8 @@ class ExpressionActions:
             return SemanticValue(ERROR, location=location)
         if left.type == UNKNOWN or right.type == UNKNOWN:
             return SemanticValue(UNKNOWN, location=location)
+        if operator == "+" and left.type == STRING and right.type == STRING:
+            return SemanticValue(STRING, location=location)
         if (
             operator in arithmetic_operators
             and is_numeric(left.type)

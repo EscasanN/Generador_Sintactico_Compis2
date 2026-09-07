@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
@@ -45,17 +46,31 @@ class ChildSelector:
 
 @dataclass(frozen=True, slots=True)
 class ActionInvocation:
-    """Invoke one allow-listed action during node entry or exit."""
+    """Invoke one allow-listed action during entry, exit or after one child."""
 
     name: str
     arguments: Mapping[str, Any] = field(default_factory=dict)
     phase: str = "exit"
+    after_child: int | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
             raise ProfileError("action name cannot be empty")
-        if self.phase not in {"enter", "exit"}:
-            raise ProfileError("action phase must be 'enter' or 'exit'")
+        if self.phase not in {"enter", "exit", "after_child"}:
+            raise ProfileError(
+                "action phase must be 'enter', 'exit' or 'after_child'"
+            )
+        if self.phase == "after_child":
+            if (
+                not isinstance(self.after_child, int)
+                or isinstance(self.after_child, bool)
+                or self.after_child < 0
+            ):
+                raise ProfileError(
+                    "after_child phase requires a non-negative child index"
+                )
+        elif self.after_child is not None:
+            raise ProfileError("after_child index requires the after_child phase")
         object.__setattr__(self, "arguments", MappingProxyType(dict(self.arguments)))
 
 
@@ -82,12 +97,27 @@ class SemanticProfile:
     name: str
     bindings: tuple[RuleBinding, ...]
     version: int = 1
+    grammar_name: str | None = None
+    grammar_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
             raise ProfileError("profile name cannot be empty")
         if self.version != 1:
             raise ProfileError(f"unsupported semantic profile version: {self.version}")
+        if (self.grammar_name is None) != (self.grammar_sha256 is None):
+            raise ProfileError(
+                "profile grammar identity requires both name and sha256"
+            )
+        if self.grammar_name is not None and not self.grammar_name:
+            raise ProfileError("profile grammar name cannot be empty")
+        if self.grammar_sha256 is not None and (
+            len(self.grammar_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in self.grammar_sha256)
+        ):
+            raise ProfileError(
+                "profile grammar sha256 must be 64 lowercase hexadecimal characters"
+            )
         object.__setattr__(self, "bindings", tuple(self.bindings))
         seen: set[tuple[str, str | None]] = set()
         for binding in self.bindings:
@@ -109,12 +139,13 @@ def load_profile(path: str | Path) -> SemanticProfile:
         raise ProfileError(f"could not load semantic profile: {exc}") from exc
     if not isinstance(raw, dict):
         raise ProfileError("profile root must be a JSON object")
-    allowed_root = {"name", "version", "bindings"}
+    allowed_root = {"name", "version", "grammar", "bindings"}
     unknown = set(raw) - allowed_root
     if unknown:
         raise ProfileError(f"unknown profile fields: {', '.join(sorted(unknown))}")
     name = raw.get("name")
     version = raw.get("version", 1)
+    grammar_name, grammar_sha256 = _parse_grammar_identity(raw.get("grammar"))
     bindings_data = raw.get("bindings")
     if not isinstance(name, str) or not name:
         raise ProfileError("profile field 'name' must be a non-empty string")
@@ -125,8 +156,42 @@ def load_profile(path: str | Path) -> SemanticProfile:
     return SemanticProfile(
         name=name,
         version=version,
+        grammar_name=grammar_name,
+        grammar_sha256=grammar_sha256,
         bindings=tuple(_parse_binding(item) for item in bindings_data),
     )
+
+
+def grammar_source_sha256(path: str | Path) -> str:
+    """Hash UTF-8 grammar text after normalizing platform line endings."""
+    grammar_path = Path(path)
+    try:
+        source = grammar_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ProfileError(f"could not fingerprint grammar: {exc}") from exc
+    normalized = source.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def validate_profile_identity(
+    profile: SemanticProfile,
+    grammar_name: str,
+    grammar_path: str | Path,
+) -> None:
+    """Reject a profile explicitly bound to a different grammar source."""
+    if profile.grammar_name is None:
+        return
+    if profile.grammar_name != grammar_name:
+        raise ProfileError(
+            "profile grammar name mismatch: "
+            f"expected {profile.grammar_name!r}, got {grammar_name!r}"
+        )
+    actual_sha256 = grammar_source_sha256(grammar_path)
+    if profile.grammar_sha256 != actual_sha256:
+        raise ProfileError(
+            "profile grammar fingerprint mismatch: "
+            f"expected {profile.grammar_sha256}, got {actual_sha256}"
+        )
 
 
 def validate_profile(
@@ -180,16 +245,36 @@ def _parse_binding(raw: Any) -> RuleBinding:
     )
 
 
+def _parse_grammar_identity(raw: Any) -> tuple[str | None, str | None]:
+    if raw is None:
+        return None, None
+    if not isinstance(raw, dict):
+        raise ProfileError("profile field 'grammar' must be an object")
+    unknown = set(raw) - {"name", "sha256"}
+    if unknown:
+        raise ProfileError(
+            "unknown grammar identity fields: " + ", ".join(sorted(unknown))
+        )
+    name = raw.get("name")
+    sha256 = raw.get("sha256")
+    if not isinstance(name, str) or not name:
+        raise ProfileError("profile grammar name must be a non-empty string")
+    if not isinstance(sha256, str):
+        raise ProfileError("profile grammar sha256 must be a string")
+    return name, sha256
+
+
 def _parse_action(raw: Any) -> ActionInvocation:
     if isinstance(raw, str):
         return ActionInvocation(raw)
     if not isinstance(raw, dict):
         raise ProfileError("each action must be a name or object")
-    unknown = set(raw) - {"name", "phase", "arguments"}
+    unknown = set(raw) - {"name", "phase", "after_child", "arguments"}
     if unknown:
         raise ProfileError(f"unknown action fields: {', '.join(sorted(unknown))}")
     name = raw.get("name")
     phase = raw.get("phase", "exit")
+    after_child = raw.get("after_child")
     arguments = raw.get("arguments", {})
     if not isinstance(name, str) or not name:
         raise ProfileError("action field 'name' must be a non-empty string")
@@ -200,6 +285,7 @@ def _parse_action(raw: Any) -> ActionInvocation:
     return ActionInvocation(
         name=name,
         phase=phase,
+        after_child=after_child,
         arguments={key: _parse_argument(value) for key, value in arguments.items()},
     )
 

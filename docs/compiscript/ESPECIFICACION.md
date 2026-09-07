@@ -20,10 +20,10 @@ exige explícitamente:
 - listas, índices, código muerto y declaraciones duplicadas;
 - árbol sintáctico visual, Listener/Visitor de ANTLR y tabla de símbolos.
 
-`foreach`, `try/catch`, herencia y `new` permanecen como capacidades del
-ejemplo, pero solo pasan a ser requisitos semánticos obligatorios si aparecen en
-la gramática oficial o el profesor los confirma. La evidencia exacta se controla
-en la [matriz de cumplimiento](../phase3/MATRIZ_CUMPLIMIENTO.md).
+`foreach`, `try/catch`, herencia y `new` permanecen fuera del mínimo explícito
+del PDF, pero están implementados defensivamente para aceptar una gramática o
+batería de evaluación que los utilice. La evidencia exacta se controla en la
+[matriz de cumplimiento](../phase3/MATRIZ_CUMPLIMIENTO.md).
 
 ## 📋 Descripción General
 
@@ -37,15 +37,17 @@ Compiscript soporta los siguientes conceptos fundamentales:
 
 ```cps
 let a: integer = 10;
-let b: string = "hola";
-let c: boolean = true;
-let d = null;
+let b: float = 1.5;
+let c: string = "hola";
+let d: boolean = true;
+let e = null;
 ```
 
 ### ✅ Literales
 
 ```cps
 123          // integer
+1.5          // float
 "texto"      // string
 true, false  // boolean
 null         // nulo
@@ -57,6 +59,9 @@ null         // nulo
 let x = 5 + 3 * 2;
 let y = !(x < 10 || x > 20);
 ```
+
+`+` acepta operandos numéricos y también concatena dos cadenas. `%` acepta
+operandos `integer` o `float`; mezclar cadenas con números sigue siendo error.
 
 ### ✅ Precedencia y Agrupamiento
 
@@ -81,7 +86,7 @@ const PI: integer = 314;
 
 ```cps
 function saludar(nombre: string): string {
-  return "Hola " + nombre;
+  return nombre;
 }
 ```
 
@@ -133,17 +138,17 @@ class Animal {
   }
 
   function hablar(): string {
-    return this.nombre + " hace ruido.";
+    return this.nombre;
   }
 }
 ```
 
-### ✅ Herencia
+### ⚠️ Herencia (solo sintaxis en la gramática de entrega)
 
 ```cps
 class Perro : Animal {
   function hablar(): string {
-    return this.nombre + " ladra.";
+    return this.nombre;
   }
 }
 ```
@@ -217,8 +222,8 @@ foreach (item in lista) {
 
 ```cps
 foreach (n in notas) {
-  if (n < 60) continue;
-  if (n == 100) break;
+  if (n < 60) { continue; }
+  if (n == 100) { break; }
   print(n);
 }
 ```
@@ -226,11 +231,11 @@ foreach (n in notas) {
 ### ✅ `switch / case`
 
 ```cps
-switch (x) {
-  case 1:
-    print("uno");
-  case 2:
-    print("dos");
+switch (x > 0) {
+  case true:
+    print("positivo");
+  case false:
+    print("no positivo");
   default:
     print("otro");
 }
@@ -258,7 +263,7 @@ function suma(a: integer, b: integer): integer {
 
 ```cps
 function factorial(n: integer): integer {
-  if (n <= 1) return 1;
+  if (n <= 1) { return 1; }
   return n * factorial(n - 1);
 }
 ```

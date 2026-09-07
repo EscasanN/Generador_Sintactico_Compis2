@@ -48,12 +48,12 @@ se reportan mediante `SemanticAdapterError`. La GUI no necesita acceder al
 
 | Requisito | Evidencia |
 |---|---|
-| `ANT-01` | `test_compiscript_g4_accepts_valid_complete_program` genera y ejecuta la gramática oficial. |
+| `ANT-01` | `test_compiscript_g4_accepts_valid_complete_program` genera y ejecuta la gramática de entrega disponible. |
 | `ANT-02` | `test_minicalc_semantics_accepts_arithmetic_with_native_walker` recorre el árbol nativo mediante el adaptador. |
 | `ANT-03` | `test_compiscript_g4_accepts_valid_complete_program` verifica regla, token y coordenadas del árbol común. |
 | `ANT-04` | `test_main_window_exposes_both_modes_and_g4_rules` renderiza el árbol; la presentación final queda en el bloque 4. |
 | `ANT-05` | `test_reports_input_left_after_selected_start_rule` rechaza tokens sobrantes. |
-| `ANT-06` | `test_official_compiscript_grammar_walks_with_generic_listener` genera y recorre la gramática oficial con un perfil de humo exclusivo de pruebas. |
+| `ANT-06` | `test_delivery_compiscript_grammar_walks_with_generic_listener` genera y recorre la gramática de entrega con un perfil de humo exclusivo de pruebas. La confirmación de procedencia oficial es externa al repositorio. |
 | Generalidad | `test_same_adapter_handles_two_unrelated_grammars_consecutively` ejecuta MiniCalc y TinyNumber sin cambiar Python. |
 
 También se cubren la reutilización de caché, regla inicial inexistente, perfil

@@ -1,7 +1,10 @@
+import json
 from pathlib import Path
 
+import pytest
+
 from src.antlr_mode.grammar_info import inspect_g4
-from src.semantic.antlr_adapter import analyze_semantics_with_g4
+from src.semantic.antlr_adapter import SemanticAdapterError, analyze_semantics_with_g4
 from src.semantic.evaluator import SemanticEvaluator
 from src.semantic.profile import load_profile, validate_profile
 from src.semantic.types import INTEGER
@@ -70,6 +73,66 @@ def test_minicalc_semantics_accepts_arithmetic_with_native_walker() -> None:
     assert result.semantic_result.statistics["actions_executed"] == 5
 
 
+def test_adapter_rejects_a_profile_bound_to_different_grammar_source(tmp_path) -> None:
+    profile_data = json.loads(MINICALC_PROFILE.read_text(encoding="utf-8"))
+    profile_data["grammar"] = {
+        "name": "MiniCalc",
+        "sha256": "0" * 64,
+    }
+    incompatible_profile = tmp_path / "minicalc-incompatible.semantic.json"
+    incompatible_profile.write_text(json.dumps(profile_data), encoding="utf-8")
+
+    with pytest.raises(SemanticAdapterError, match="fingerprint"):
+        analyze_semantics_with_g4(
+            MINICALC_GRAMMAR,
+            "1 + 2",
+            incompatible_profile,
+            "root",
+        )
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"kind": "not-a-scope"},
+        {"unexpected": True},
+    ],
+)
+def test_adapter_wraps_invalid_semantic_action_arguments(
+    tmp_path, arguments
+) -> None:
+    invalid_profile = tmp_path / "invalid-action.semantic.json"
+    invalid_profile.write_text(
+        json.dumps(
+            {
+                "name": "InvalidAction",
+                "version": 1,
+                "bindings": [
+                    {
+                        "rule": "root",
+                        "actions": [
+                            {
+                                "name": "scope.enter",
+                                "phase": "enter",
+                                "arguments": arguments,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SemanticAdapterError, match="semantic traversal failed"):
+        analyze_semantics_with_g4(
+            MINICALC_GRAMMAR,
+            "1 + 2",
+            invalid_profile,
+            "root",
+        )
+
+
 def test_minicalc_reports_semantic_error_with_source_identity() -> None:
     result = analyze_semantics_with_g4(
         MINICALC_GRAMMAR,
@@ -115,13 +178,13 @@ def test_same_adapter_handles_two_unrelated_grammars_consecutively() -> None:
     assert tiny_number.semantic_result.value.constant_value == 42
 
 
-def test_official_compiscript_grammar_walks_with_generic_listener() -> None:
+def test_delivery_compiscript_grammar_walks_with_generic_listener() -> None:
     result = analyze_semantics_with_g4(
         COMPISCRIPT_GRAMMAR,
         "let value: integer = 7; print(value);",
         COMPISCRIPT_SMOKE_PROFILE,
         "program",
-        "examples/official.cps",
+        "examples/delivery.cps",
     )
 
     assert result.accepted

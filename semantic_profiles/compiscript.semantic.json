@@ -1,12 +1,32 @@
 {
   "name": "Compiscript",
   "version": 1,
+  "grammar": {
+    "name": "Compiscript",
+    "sha256": "73ae3243b6a72cb2d411e3c54b15084e6a70296d3b889f0f1b9f7fc1f96ef016"
+  },
   "bindings": [
     {
       "rule": "program",
       "actions": [
         {
-          "name": "x.sequence",
+          "name": "program.predeclare",
+          "phase": "enter",
+          "arguments": {
+            "function_rule": "functionDeclaration",
+            "class_rule": "classDeclaration",
+            "identifier_token": "Identifier",
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters",
+            "type_rule": "type",
+            "member_rule": "classMember",
+            "field_rule": "classField",
+            "constant_rule": "classConstant",
+            "method_rule": "classMethod"
+          }
+        },
+        {
+          "name": "control.sequence_trimmed",
           "arguments": {
             "statements": {
               "$select": "children"
@@ -28,7 +48,7 @@
           }
         },
         {
-          "name": "x.sequence",
+          "name": "control.sequence_trimmed",
           "arguments": {
             "statements": {
               "$select": "children"
@@ -165,7 +185,7 @@
       "alternative": "SimpleAssignment",
       "actions": [
         {
-          "name": "x.assign_identifier",
+          "name": "assignment.identifier",
           "arguments": {
             "name": {
               "$select": "token",
@@ -184,7 +204,7 @@
       "alternative": "PropertyAssignment",
       "actions": [
         {
-          "name": "x.assign_member",
+          "name": "assignment.member",
           "arguments": {
             "instance": {
               "$select": "child",
@@ -362,18 +382,23 @@
           }
         },
         {
-          "name": "declare.variable",
-          "phase": "enter",
+          "name": "loop.enter",
+          "phase": "enter"
+        },
+        {
+          "name": "loop.bind_iterator",
+          "phase": "after_child",
+          "after_child": 4,
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
+            },
+            "iterable": {
+              "$select": "child",
+              "index": 4
             }
           }
-        },
-        {
-          "name": "loop.enter",
-          "phase": "enter"
         },
         {
           "name": "loop.exit"
@@ -390,6 +415,35 @@
         {
           "name": "function.return",
           "arguments": {}
+        }
+      ]
+    },
+    {
+      "rule": "tryCatchStatement",
+      "actions": [
+        {
+          "name": "scope.enter",
+          "phase": "after_child",
+          "after_child": 5,
+          "arguments": {
+            "kind": "block",
+            "name": "catch"
+          }
+        },
+        {
+          "name": "declare.variable",
+          "phase": "after_child",
+          "after_child": 5,
+          "arguments": {
+            "name": {
+              "$select": "token",
+              "token": "Identifier"
+            },
+            "type_": "string"
+          }
+        },
+        {
+          "name": "scope.exit"
         }
       ]
     },
@@ -445,7 +499,7 @@
       "rule": "switchCase",
       "actions": [
         {
-          "name": "x.sequence",
+          "name": "control.sequence_trimmed",
           "arguments": {
             "statements": {
               "$select": "children"
@@ -460,7 +514,7 @@
       "rule": "defaultCase",
       "actions": [
         {
-          "name": "x.sequence",
+          "name": "control.sequence_trimmed",
           "arguments": {
             "statements": {
               "$select": "children"
@@ -476,7 +530,7 @@
       "alternative": "FunctionNoParamsNoReturn",
       "actions": [
         {
-          "name": "x.declare_function",
+          "name": "function.declare_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
@@ -505,13 +559,17 @@
       "alternative": "FunctionWithParamsNoReturn",
       "actions": [
         {
-          "name": "x.declare_function",
+          "name": "function.declare_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters",
+            "identifier_token": "Identifier",
+            "type_rule": "type"
           }
         },
         {
@@ -534,13 +592,14 @@
       "alternative": "FunctionNoParamsWithReturn",
       "actions": [
         {
-          "name": "x.declare_function",
+          "name": "function.declare_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "type_rule": "type"
           }
         },
         {
@@ -563,13 +622,17 @@
       "alternative": "FunctionWithParamsWithReturn",
       "actions": [
         {
-          "name": "x.declare_function",
+          "name": "function.declare_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters",
+            "identifier_token": "Identifier",
+            "type_rule": "type"
           }
         },
         {
@@ -612,6 +675,20 @@
           }
         },
         {
+          "name": "class.predeclare_members",
+          "phase": "enter",
+          "arguments": {
+            "member_rule": "classMember",
+            "field_rule": "classField",
+            "constant_rule": "classConstant",
+            "method_rule": "classMethod",
+            "identifier_token": "Identifier",
+            "type_rule": "type",
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters"
+          }
+        },
+        {
           "name": "class.exit"
         }
       ]
@@ -641,6 +718,20 @@
           }
         },
         {
+          "name": "class.predeclare_members",
+          "phase": "enter",
+          "arguments": {
+            "member_rule": "classMember",
+            "field_rule": "classField",
+            "constant_rule": "classConstant",
+            "method_rule": "classMethod",
+            "identifier_token": "Identifier",
+            "type_rule": "type",
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters"
+          }
+        },
+        {
           "name": "class.exit"
         }
       ]
@@ -650,7 +741,7 @@
       "alternative": "MethodNoParamsNoReturn",
       "actions": [
         {
-          "name": "x.declare_method",
+          "name": "class.method_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
@@ -679,13 +770,17 @@
       "alternative": "MethodWithParamsNoReturn",
       "actions": [
         {
-          "name": "x.declare_method",
+          "name": "class.method_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters",
+            "identifier_token": "Identifier",
+            "type_rule": "type"
           }
         },
         {
@@ -708,13 +803,14 @@
       "alternative": "MethodNoParamsWithReturn",
       "actions": [
         {
-          "name": "x.declare_method",
+          "name": "class.method_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "type_rule": "type"
           }
         },
         {
@@ -737,13 +833,17 @@
       "alternative": "MethodWithParamsWithReturn",
       "actions": [
         {
-          "name": "x.declare_method",
+          "name": "class.method_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "parameters_rule": "parameters",
+            "recursive_parameters_alternative": "MoreParameters",
+            "identifier_token": "Identifier",
+            "type_rule": "type"
           }
         },
         {
@@ -805,6 +905,10 @@
             "name": {
               "$select": "token",
               "token": "Identifier"
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 2
             }
           }
         }
@@ -824,6 +928,10 @@
             "type_": {
               "$select": "child",
               "index": 2
+            },
+            "initializer": {
+              "$select": "child",
+              "index": 3
             }
           }
         }
@@ -840,7 +948,11 @@
               "$select": "token",
               "token": "Identifier"
             },
-            "mutable": false
+            "mutable": false,
+            "initializer": {
+              "$select": "child",
+              "index": 3
+            }
           }
         }
       ]
@@ -860,7 +972,11 @@
               "$select": "child",
               "index": 2
             },
-            "mutable": false
+            "mutable": false,
+            "initializer": {
+              "$select": "child",
+              "index": 4
+            }
           }
         }
       ]
@@ -1201,6 +1317,21 @@
     },
     {
       "rule": "literalExpr",
+      "alternative": "FloatLiteralExpr",
+      "actions": [
+        {
+          "name": "expression.literal",
+          "arguments": {
+            "kind": "float",
+            "text": {
+              "$select": "text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rule": "literalExpr",
       "alternative": "IntegerLiteralExpr",
       "actions": [
         {
@@ -1279,7 +1410,7 @@
       "alternative": "EmptyArrayLiteral",
       "actions": [
         {
-          "name": "x.array",
+          "name": "expression.array_collected",
           "arguments": {}
         }
       ]
@@ -1289,7 +1420,7 @@
       "alternative": "NonEmptyArrayLiteral",
       "actions": [
         {
-          "name": "x.array",
+          "name": "expression.array_collected",
           "arguments": {
             "elements": {
               "$select": "child",
@@ -1304,7 +1435,7 @@
       "alternative": "FirstElement",
       "actions": [
         {
-          "name": "x.list_start",
+          "name": "collection.start",
           "arguments": {
             "first": {
               "$select": "child",
@@ -1319,7 +1450,7 @@
       "alternative": "MoreElements",
       "actions": [
         {
-          "name": "x.list_append",
+          "name": "collection.append",
           "arguments": {
             "previous": {
               "$select": "child",
@@ -1469,7 +1600,7 @@
       "alternative": "FirstArgument",
       "actions": [
         {
-          "name": "x.list_start",
+          "name": "collection.start",
           "arguments": {
             "first": {
               "$select": "child",
@@ -1484,7 +1615,7 @@
       "alternative": "MoreArguments",
       "actions": [
         {
-          "name": "x.list_append",
+          "name": "collection.append",
           "arguments": {
             "previous": {
               "$select": "child",
@@ -1502,7 +1633,7 @@
       "rule": "type",
       "actions": [
         {
-          "name": "x.text",
+          "name": "node.text",
           "arguments": {}
         }
       ]

@@ -204,7 +204,8 @@ primaryExpr
   ;
 
 literalExpr
-  : IntegerLiteral                                     # IntegerLiteralExpr
+  : FloatLiteral                                       # FloatLiteralExpr
+  | IntegerLiteral                                     # IntegerLiteralExpr
   | StringLiteral                                      # StringLiteralExpr
   | arrayLiteral                                       # ArrayLiteralExpr
   | 'null'                                             # NullLiteral
@@ -247,12 +248,17 @@ elementList
 // ------------------
 
 type: baseType ('[' ']')*;
-baseType: 'boolean' | 'integer' | 'string' | Identifier;
+baseType: 'boolean' | 'integer' | 'float' | 'string' | Identifier;
 
 // ------------------
 // Lexer Rules
 // ------------------
 
+FloatLiteral
+  : [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)?
+  | '.' [0-9]+ ([eE] [+-]? [0-9]+)?
+  | [0-9]+ [eE] [+-]? [0-9]+
+  ;
 IntegerLiteral: [0-9]+;
 StringLiteral: '"' (~["\r\n])* '"';
 

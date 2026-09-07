@@ -112,7 +112,7 @@ negativos, responsables y evidencia es
 ## 2026-09-05 — Bloque 4 (Nelson): reestructuración de `Compiscript.g4`
 
 Al construir `semantic_profiles/compiscript.semantic.json` contra la gramática
-oficial de ejemplo con el JAR real de ANTLR, se confirmó empíricamente que el
+de ejemplo disponible con el JAR real de ANTLR, se confirmó empíricamente que el
 selector de perfiles (`src/semantic/profile.py`, congelado en el bloque 2) solo
 puede leer un hijo por índice fijo, un terminal directo por tipo de token, el
 texto concatenado del nodo actual, o todos los hijos a la vez. No existe forma
@@ -157,69 +157,72 @@ tests/semantic/test_generic_grammar.py -q` (19 passed) y la suite completa (195
 passed) antes y después de cada cambio, y con volcados de árbol ad hoc contra
 el JAR real para confirmar la aridad exacta de cada alternativa.
 
-### Extensiones de acciones fuera del motor congelado
+### Composiciones genéricas incorporadas al registro público
 
-El conjunto de acciones publicado (bloques 1 y 2) no incluye una acción
-genérica para "construir una tupla limpia a partir de una lista separada por
-comas" ni para "componer dos acciones ya publicadas sobre el mismo nodo". Se
-confirmó que ningún selector ni acción existente cubre, de forma segura, listas
-de llamada/arreglo de aridad arbitraria ni la asignación de nivel superior
-(`x = expr;`, `x.y = expr;`, que no pasan por `leftHandSide`). En vez de pedir
-que un bloque anterior regrese, se añadió `src/gui/semantic_bridge.py` (archivo
-propio de Nelson, no modifica ningún archivo de Daniel, Nadissa o Dulce) con
-un puñado de acciones adicionales, neutras respecto a Compiscript, registradas
-bajo el prefijo `x.` para que sean auditables a simple vista en el perfil:
-acumulación de listas (`x.list_start`/`x.list_append`), extracción de texto de
-subárbol (`x.text`), construcción de arreglo con valor por defecto seguro
-(`x.array`), composición resolución+asignación (`x.assign_identifier`/
-`x.assign_member`), declaración de función/método a partir del árbol crudo de
-parámetros (`x.declare_function`/`x.declare_method`, ver docstring del módulo
-para la razón de leer el árbol sintáctico en vez de un selector) y recorte de
-terminales estructurales antes de la detección de código muerto
-(`x.sequence`). Cada función solo compone o delega en las funciones reales ya
-publicadas (`ExpressionActions`, `resolve_identifier`, `access_member`,
-`declare_function`, `declare_method`, `validate_sequence`); ninguna reimplementa
-su lógica. `analyze_semantics_with_extensions` (mismo módulo) reutiliza sin
-cambios `analyze_with_g4`, `load_profile`, `validate_profile`,
-`SemanticTreeListener` y `SemanticEvaluator(registry=...)` — este último ya
-aceptaba un registro personalizado como punto de extensión documentado — para
-inyectar el registro extendido; el IDE y las pruebas de Compiscript deben usar
-esta función en vez de `analyze_semantics_with_g4` directamente, porque el
-perfil de Compiscript referencia acciones `x.*` que el registro por defecto no
-tiene.
+El selector declarativo no puede aplanar por sí solo listas recursivas ni
+encadenar el resultado de dos acciones hermanas. Las composiciones necesarias
+se ubican en `src/semantic/actions/composition.py` y se registran mediante
+`register_builtin_actions`. Incluyen acumulación de listas, extracción de texto
+de subárbol, arreglos, asignaciones, firmas obtenidas del árbol y recorte de
+terminales para detección de código muerto.
+
+Estas acciones no contienen nombres de reglas ni tokens de Compiscript. Cada
+identificador de gramática requerido se pasa como argumento escalar desde
+`semantic_profiles/compiscript.semantic.json`. La GUI no registra ni ejecuta
+lógica semántica propia y usa el adaptador público
+`analyze_semantics_with_g4`, igual que MiniCalc y cualquier otro perfil.
+
+Para que el orden textual no altere la validez de una clase, la acción
+`class.predeclare_members` publica firmas de métodos y tipos declarados de
+campos al entrar al entorno de clase. Las acciones normales recorren después
+cada declaración, validan inicializadores y detectan duplicados.
 
 ### Respuestas a preguntas pendientes (a partir de esta implementación)
 
 | Pregunta | Respuesta adoptada |
 |---|---|
-| ¿La concatenación `string + string` está permitida? | No: `ExpressionActions.binary` (congelado) solo acepta operandos numéricos para `+`. Se documenta como limitación conocida. |
-| ¿Se exige herencia? | No. `declare_class`/`construct` (congelados) no aceptan superclase. `class X : Y` se acepta sintácticamente pero el vínculo de herencia se ignora semánticamente; queda documentado. |
+| ¿La gramática final incluirá literales `float`? | La gramática de entrega acepta literales decimales y exponenciales; el perfil los convierte con `expression.literal`. La procedencia oficial de la gramática aún requiere confirmación externa. |
+| ¿La concatenación `string + string` está permitida? | Sí para dos operandos `string`; mezclar cadena y número se rechaza. |
+| ¿Se exige herencia? | Se implementa preventivamente: vínculo de superclase, asignación a ancestros y búsqueda heredada de miembros. |
 | ¿Se permite omitir el tipo de un parámetro? | Sí, se representa como tipo `UNKNOWN` (`resolve_type(None)`). |
 | ¿Una función sin anotación de retorno es `void`? | Sí, `return_type` por defecto es `VOID`. |
 | ¿El cuerpo de un `if`/`while`/`for` requiere llaves? | Sí, la gramática solo acepta `block` (con llaves) como cuerpo. |
-| ¿`new Tipo()` requiere un método `constructor` explícito? | Sí: `construct` (congelado) exige un miembro llamado literalmente `constructor`; una clase sin ese método no puede instanciarse con `new`. |
+| ¿`new Tipo()` requiere un método `constructor` explícito? | No para cero argumentos: toda clase sin constructor explícito dispone de uno implícito de aridad cero. |
 
-### Limitaciones documentadas (no mínimas o fuera del alcance de las acciones congeladas)
+### Limitaciones documentadas
 
-- `foreach`/`try-catch`: implementados de forma mínima (no bloquean, no
-  crashean) pero sin inferencia de tipo de elemento (`foreach`) ni declaración
-  del parámetro de `catch` dentro de su propio bloque — ambas son
-  explícitamente "no mínimas" según `MATRIZ_CUMPLIMIENTO.md`.
-- Inicializador de un campo de clase (`let x: integer = ...;` dentro de una
-  clase): `declare_field` (congelado) no tiene parámetro `initializer`, por lo
-  que el valor se visita y valida por sí mismo pero no se compara contra el
-  tipo declarado del campo.
 - `PropertyAssignExpr` (alternativa de `assignmentExpr`) queda sin enlazar: es
   código muerto confirmado — cualquier entrada que la alcanzaría ya es
   consumida antes por la alternativa `PropertyAssignment` de la sentencia
   `assignment`, que aparece primero en `statement`.
-- El operador `%` se enlaza a `expression.binary` aunque esa acción no lo
-  soporta; produce un diagnóstico `GENERAL` de "operador no soportado" en vez
-  de aritmética real. No está en la matriz mínima.
+- Las funciones globales se predeclaran; las funciones anidadas conservan
+  declaración secuencial y autorrecursión, pero no un prepass mutuo propio.
+- Una `.g4` distinta puede analizarse sintácticamente de inmediato, pero su
+  semántica requiere un perfil compatible con sus reglas y forma de árbol.
 
 ## Alcance no mínimo
 
 `foreach`, `try/catch`, herencia y `new` aparecen en la especificación de
 ejemplo, pero no están enumerados como reglas semánticas mínimas en el PDF. Se
-implementan después de completar la matriz oficial, salvo que la gramática final
-o una instrucción del profesor los vuelva obligatorios.
+implementaron después de completar la matriz oficial para endurecer la entrega.
+
+## 2026-09-06 — Endurecimiento para entradas externas
+
+- `program.predeclare` registra primero clases, interfaces y funciones globales;
+  soporta referencias adelantadas, recursión mutua y superclases posteriores.
+- `ClassType.superclass` participa en compatibilidad y la búsqueda de miembros
+  recorre la cadena de herencia con prioridad para el miembro más cercano.
+- `null` puede asignarse a clases y arreglos, y participa en el tipo común de
+  expresiones de referencia.
+- `%` usa las mismas reglas numéricas que los demás operadores aritméticos y
+  `string + string` produce `string`.
+- Una clase sin constructor explícito acepta `new Tipo()` pero rechaza
+  argumentos.
+- La fase de perfil `after_child` permite declarar el iterador de `foreach` con
+  el tipo del arreglo antes del bloque. Un iterable no arreglo se rechaza.
+- El parámetro de `catch` se declara como `string` en un scope que no escapa del
+  manejador.
+- `python -m src.main --cps` ejecuta el flujo completo incluido. Con una `.g4`
+  externa sin perfil compatible, informa y ejecuta solamente sintaxis.
+- Los perfiles incluidos guardan nombre y SHA-256 normalizado de la gramática;
+  el adaptador rechaza una sustitución distinta antes de ejecutar acciones.

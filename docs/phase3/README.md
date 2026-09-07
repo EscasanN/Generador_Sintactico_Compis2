@@ -2,9 +2,9 @@
 
 ## Estado actual
 
-La rama base es `feature/fase3-compiscript`, creada desde
-`origin/feature/gui-enhancement`. El profesor autorizó un equipo de cuatro
-integrantes.
+La integración se completó en `feature/fase3-04-compiscript-profile` y la
+revisión de cumplimiento se realiza en `fix/fase3-final-compliance`. El
+profesor autorizó un equipo de cuatro integrantes.
 
 El IDE conserva el flujo YALex + YAPar e incorpora un segundo modo que:
 
@@ -16,24 +16,28 @@ El IDE conserva el flujo YALex + YAPar e incorpora un segundo modo que:
 - analiza una entrada completa;
 - muestra tokens, árbol y diagnósticos.
 
-El análisis semántico y la tabla de símbolos de esta fase todavía están
-pendientes.
+El análisis semántico, la tabla de símbolos y el flujo `.cps` están
+implementados. La GUI consume el adaptador público
+`src.semantic.antlr_adapter.analyze_semantics_with_g4`; el perfil no necesita
+acciones privadas de la interfaz.
 
-`Compiscript.g4` es una gramática de ejemplo. Debe funcionar como entrada, pero
-el motor no puede depender de sus nombres ni requerir cambios Python cuando se
-cargue otra gramática.
+`Compiscript.g4` es la gramática de entrega disponible en el repositorio, pero
+la documentación recibida todavía la identifica como ejemplo y no existe aquí
+evidencia de confirmación del profesor como versión oficial final. El motor no
+depende de sus nombres: esos identificadores viven en el perfil JSON.
 
 ## Modos del IDE
 
 | Modo | Entradas | Resultados |
 |---|---|---|
 | YALex + YAPar | `.yal`, `.yapar`, entrada | NFA, DFA, LR(0), SLR, LALR, LL(1), pasos y árboles |
-| ANTLR | `.g4`, regla inicial, entrada | tokens, árbol y diagnósticos ANTLR |
+| ANTLR | `.g4`, regla inicial, entrada y perfil opcional | tokens, árbol, diagnósticos y símbolos |
 
 Los resultados propios de YAPar no se atribuyen a ANTLR ni se eliminan.
 
 ## Documentos
 
+- [Guía completa de la entrega y defensa](GUIA_COMPLETA_ENTREGA_Y_DEFENSA.md)
 - [Enunciado oficial del Proyecto 2](../../Generador_de_Analizadores_Semánticos.pdf)
 - [Gramática ANTLR de ejemplo](../../src/compiscript/grammar/Compiscript.g4)
 - [Especificación de referencia](../compiscript/ESPECIFICACION.md)
@@ -42,7 +46,9 @@ Los resultados propios de YAPar no se atribuyen a ANTLR ni se eliminan.
 - [Arquitectura](ARQUITECTURA.md)
 - [División resumida](DIVISION_TRABAJO.md)
 - [Guía detallada por integrante](GUIA_IMPLEMENTACION_POR_INTEGRANTE.md)
-- [Reglas y decisiones pendientes](REGLAS_Y_DECISIONES.md)
+- [Reglas y decisiones](REGLAS_Y_DECISIONES.md)
+- [Revisión final de cumplimiento](revision-final-daniel.md)
+- [Guía de pruebas y presentación](GUIA_PRUEBAS_PRESENTACION.md)
 
 ## Fuentes de verdad
 
@@ -92,7 +98,7 @@ sintácticos ni semánticos.
 
 La [matriz de cumplimiento](MATRIZ_CUMPLIMIENTO.md) traduce cada requisito del
 PDF a una prueba localizable. MiniCalc demuestra generalidad, pero la evaluación
-se realiza sobre Compiscript y la gramática oficial disponible.
+se realiza sobre Compiscript y la gramática de entrega disponible.
 
 ## Regla de documentación
 

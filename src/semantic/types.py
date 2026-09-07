@@ -241,10 +241,9 @@ def is_assignable(source: Type, target: Type) -> bool:
 
     Compatibility is exact except for ``integer`` to ``float`` promotion and
     assigning a subclass to one of its ancestors. Arrays and functions are
-    invariant. ``ERROR`` is accepted on either side to suppress cascaded
-    diagnostics. ``UNKNOWN`` is compatible only with itself. ``null`` is
-    compatible only with ``null`` until the language specification confirms a
-    nullable reference rule.
+    invariant. ``null`` may initialize class and array references. ``ERROR`` is
+    accepted on either side to suppress cascaded diagnostics, while ``UNKNOWN``
+    is compatible only with itself.
 
     Args:
         source: Type of the produced value.
@@ -263,6 +262,8 @@ def is_assignable(source: Type, target: Type) -> bool:
     if source == UNKNOWN or target == UNKNOWN:
         return False
     if source == INTEGER and target == FLOAT:
+        return True
+    if source == NULL and isinstance(target, (ArrayType, ClassType)):
         return True
     if isinstance(source, ClassType) and isinstance(target, ClassType):
         superclass = source.superclass
@@ -303,6 +304,13 @@ def common_type(types: Iterable[Type]) -> Type:
             return UNKNOWN
         known_common = common_type(known_members)
         return ERROR if known_common == ERROR else UNKNOWN
+
+    non_null_members = tuple(type_ for type_ in members if type_ != NULL)
+    if len(non_null_members) != len(members) and non_null_members:
+        reference_common = common_type(non_null_members)
+        if isinstance(reference_common, (ArrayType, ClassType)):
+            return reference_common
+        return ERROR
 
     first = members[0]
     if all(type_ == first for type_ in members[1:]):

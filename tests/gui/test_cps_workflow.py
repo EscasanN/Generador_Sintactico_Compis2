@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import QApplication
 
 from src.antlr_mode.runner import analyze_with_g4
 from src.gui.app import MainWindow, SemanticAnalysisWorker
-from src.gui.semantic_bridge import analyze_semantics_with_extensions
+from src.semantic.antlr_adapter import analyze_semantics_with_g4
 from src.utils.visualizer import render_parse_tree
 
 
@@ -101,11 +101,62 @@ def test_ide_03_new_and_save_as_keep_the_cps_extension(tmp_path, monkeypatch):
         application.processEvents()
 
 
+def test_ide_03_save_as_adds_cps_extension_when_omitted(tmp_path, monkeypatch):
+    """IDE-03: Save As must preserve the Compiscript file identity."""
+    application, window = _make_window()
+    try:
+        window._active_file = str(tmp_path / "original.cps")
+        window._editor.setPlainText(VALID_PROGRAM)
+        requested_path = tmp_path / "guardado"
+        monkeypatch.setattr(
+            "src.gui.app.QFileDialog.getSaveFileName",
+            lambda *a, **k: (str(requested_path), "Compiscript (*.cps)"),
+        )
+
+        window._save_file_as()
+
+        saved_path = requested_path.with_suffix(".cps")
+        assert window._active_file == str(saved_path)
+        assert saved_path.read_text(encoding="utf-8") == VALID_PROGRAM
+        assert not requested_path.exists()
+    finally:
+        window.close()
+        application.processEvents()
+
+
+def test_ide_02_and_04_compile_uses_unsaved_editor_contents(
+    tmp_path, monkeypatch
+):
+    """IDE-02 / IDE-04: Analyze must compile the current editor buffer."""
+    application, window = _make_window()
+    try:
+        cps_path = tmp_path / "programa.cps"
+        cps_path.write_text(VALID_PROGRAM, encoding="utf-8")
+        edited_program = "let value: integer = 9; print(value);"
+
+        window._g4_path = str(GRAMMAR)
+        window._profile_path = str(PROFILE)
+        window._input_path = str(cps_path)
+        window._active_file = str(cps_path)
+        window._start_rule_combo.addItem("program")
+        window._editor.setPlainText(edited_program)
+        monkeypatch.setattr(SemanticAnalysisWorker, "start", lambda worker: None)
+
+        window._run_semantic_analysis()
+
+        assert isinstance(window._worker, SemanticAnalysisWorker)
+        assert window._worker.input_text == edited_program
+        assert cps_path.read_text(encoding="utf-8") == VALID_PROGRAM
+    finally:
+        window.close()
+        application.processEvents()
+
+
 def test_ide_04_and_05_compile_reports_categorized_diagnostics_with_location():
     """IDE-04 / IDE-05: compiling runs syntax+semantics and reports location."""
     application, window = _make_window()
     try:
-        result = analyze_semantics_with_extensions(
+        result = analyze_semantics_with_g4(
             GRAMMAR, INVALID_PROGRAM, PROFILE, "program", "programa.cps"
         )
         assert result.syntax_result.accepted
@@ -154,7 +205,7 @@ def test_ide_06_symbol_table_shows_every_environment_kind():
         }
         { let blockVar: integer = 1; }
         """
-        result = analyze_semantics_with_extensions(
+        result = analyze_semantics_with_g4(
             GRAMMAR, source, PROFILE, "program", "programa.cps"
         )
         assert result.accepted
@@ -254,7 +305,7 @@ def test_regression_antlr_and_compiscript_modes_run_consecutively():
         })
         assert window._tree_tabs.count() == 1
 
-        full = analyze_semantics_with_extensions(
+        full = analyze_semantics_with_g4(
             GRAMMAR, VALID_PROGRAM, PROFILE, "program", "programa.cps"
         )
         window._profile_path = str(PROFILE)

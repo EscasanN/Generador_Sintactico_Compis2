@@ -6,8 +6,9 @@ from enum import Enum
 from typing import TYPE_CHECKING, Iterable
 
 from src.semantic.action_registry import ActionRegistry
+from src.semantic.actions.declarations import declare_variable
 from src.semantic.diagnostics import DiagnosticCategory, DiagnosticSeverity
-from src.semantic.types import ERROR, UNKNOWN, BOOLEAN
+from src.semantic.types import ERROR, UNKNOWN, BOOLEAN, ArrayType
 from src.semantic.values import SemanticValue
 
 if TYPE_CHECKING:
@@ -57,6 +58,28 @@ def exit_loop(context: SemanticContext, node: ParseTreeNode) -> None:
     del node
     if context.loop_stack:
         context.loop_stack.pop()
+
+
+def bind_foreach_iterator(
+    context: SemanticContext,
+    node: ParseTreeNode,
+    name: object,
+    iterable: SemanticValue,
+) -> SemanticValue:
+    """Validate an array iterable and bind its element type in the loop scope."""
+    value = context.value_of(iterable)
+    if isinstance(value.type, ArrayType):
+        iterator_type = value.type.element_type
+    elif value.type in {ERROR, UNKNOWN}:
+        iterator_type = value.type
+    else:
+        context.diagnostics.add(
+            DiagnosticCategory.ARRAY,
+            f"foreach requires an array iterable, got {value.type}",
+            value.location or context.location_of(node),
+        )
+        iterator_type = ERROR
+    return declare_variable(context, node, name, iterator_type)
 
 
 def break_loop(context: SemanticContext, node: ParseTreeNode) -> FlowSignal | None:
@@ -111,6 +134,7 @@ def register_control_flow_actions(registry: ActionRegistry) -> None:
     registry.register("control.condition", require_boolean_condition)
     registry.register("loop.enter", enter_loop)
     registry.register("loop.exit", exit_loop)
+    registry.register("loop.bind_iterator", bind_foreach_iterator)
     registry.register("control.break", break_loop)
     registry.register("control.continue", continue_loop)
     registry.register("control.sequence", validate_sequence)

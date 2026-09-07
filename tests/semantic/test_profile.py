@@ -10,9 +10,11 @@ from src.semantic.profile import (
     ProfileError,
     RuleBinding,
     SemanticProfile,
+    grammar_source_sha256,
     load_profile,
     resolve_binding,
     validate_profile,
+    validate_profile_identity,
 )
 
 
@@ -23,6 +25,10 @@ def test_load_profile_accepts_only_declarative_actions_and_selectors(tmp_path):
             {
                 "name": "safe",
                 "version": 1,
+                "grammar": {
+                    "name": "SafeGrammar",
+                    "sha256": "0" * 64,
+                },
                 "bindings": [
                     {
                         "rule": "atom",
@@ -43,6 +49,8 @@ def test_load_profile_accepts_only_declarative_actions_and_selectors(tmp_path):
     )
     profile = load_profile(path)
     assert profile.name == "safe"
+    assert profile.grammar_name == "SafeGrammar"
+    assert profile.grammar_sha256 == "0" * 64
     assert profile.bindings[0].actions[0].arguments["text"] == ChildSelector("text")
 
 
@@ -95,3 +103,40 @@ def test_action_registry_rejects_duplicate_and_unknown_names():
 def test_child_selector_rejects_unsafe_or_malformed_forms(selector):
     with pytest.raises(ProfileError):
         selector()
+
+
+def test_after_child_phase_requires_a_non_negative_child_index():
+    """A mid-rule action must identify exactly which completed child triggers it."""
+    action = ActionInvocation("bind", phase="after_child", after_child=2)
+
+    assert action.after_child == 2
+    with pytest.raises(ProfileError, match="after_child"):
+        ActionInvocation("bind", phase="after_child")
+    with pytest.raises(ProfileError, match="after_child"):
+        ActionInvocation("bind", phase="exit", after_child=0)
+
+
+def test_profile_identity_checks_grammar_name_and_normalized_source(tmp_path):
+    grammar = tmp_path / "Example.g4"
+    grammar.write_text("grammar Example;\r\nroot: EOF;\r\n", encoding="utf-8")
+    digest = grammar_source_sha256(grammar)
+    binding = RuleBinding("root", (ActionInvocation("noop"),))
+    compatible = SemanticProfile(
+        "example",
+        (binding,),
+        grammar_name="Example",
+        grammar_sha256=digest,
+    )
+
+    validate_profile_identity(compatible, "Example", grammar)
+
+    with pytest.raises(ProfileError, match="name"):
+        validate_profile_identity(compatible, "Other", grammar)
+    incompatible = SemanticProfile(
+        "example",
+        (binding,),
+        grammar_name="Example",
+        grammar_sha256="0" * 64,
+    )
+    with pytest.raises(ProfileError, match="fingerprint"):
+        validate_profile_identity(incompatible, "Example", grammar)

@@ -20,7 +20,7 @@ def declare_function(
     context: SemanticContext,
     node: ParseTreeNode,
     name: Any,
-    parameter_types: Iterable[Type | str] = (),
+    parameter_types: Iterable[Type | str | None] = (),
     return_type: Type | str | None = VOID,
     parameter_names: Iterable[str] = (),
     kind: str = "function",
@@ -61,7 +61,13 @@ def enter_function(
     function: SemanticValue | Symbol | Any,
 ) -> None:
     """Enter a function environment and make its declared parameters visible."""
-    symbol = context.symbol_of(function)
+    if id(node) in context.predeclared_symbols:
+        symbol = context.predeclared_symbols[id(node)]
+        if symbol is None:
+            context.function_stack.append(None)
+            return
+    else:
+        symbol = context.symbol_of(function)
     location = context.location_of(node)
     if symbol is None or not isinstance(symbol.type, FunctionType):
         context.diagnostics.add(

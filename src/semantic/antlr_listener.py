@@ -117,12 +117,14 @@ class SemanticTreeListener(ParseTreeListener):
                 self._root_result = frame.result
         finally:
             self._restore_context(frame)
+        self._run_parent_after_child(frame.common_node)
 
     def visitTerminal(self, node: object) -> None:  # noqa: N802 - ANTLR API
         """Retain the terminal's precomputed common-tree metadata."""
         common_node = self._common_node(node)
         self.evaluator.context.results[id(common_node)] = None
         self._statistics["terminals_visited"] += 1
+        self._run_parent_after_child(common_node)
 
     def visitErrorNode(self, node: object) -> None:  # noqa: N802 - ANTLR API
         """Convert an unexpected ANTLR error node into a semantic diagnostic."""
@@ -135,6 +137,7 @@ class SemanticTreeListener(ParseTreeListener):
         )
         self.evaluator.context.results[id(common_node)] = None
         self._statistics["terminals_visited"] += 1
+        self._run_parent_after_child(common_node)
 
     @property
     def result(self) -> SemanticAnalysisResult:
@@ -175,6 +178,28 @@ class SemanticTreeListener(ParseTreeListener):
             raise SemanticListenerError(
                 "ANTLR walker produced a node absent from the common tree"
             ) from exc
+
+    def _run_parent_after_child(self, child: ParseTreeNode) -> None:
+        if not self._frames:
+            return
+        parent = self._frames[-1]
+        try:
+            child_index = next(
+                index
+                for index, candidate in enumerate(parent.common_node.children)
+                if candidate is child
+            )
+        except StopIteration as exc:
+            raise SemanticListenerError(
+                "completed node is not a direct child of the active rule"
+            ) from exc
+        if parent.binding is None:
+            return
+        for action in parent.binding.actions:
+            if action.phase == "after_child" and action.after_child == child_index:
+                produced = self._invoke(action, parent.common_node)
+                if produced is not None:
+                    parent.result = produced
 
     def _index_tree(self, native_node: object, common_node: ParseTreeNode) -> None:
         self._common_by_native_id[id(native_node)] = common_node

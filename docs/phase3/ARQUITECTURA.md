@@ -132,12 +132,27 @@ registradas:
             ├── TypeSystem
             ├── SymbolTable
             ├── ExpressionActions
-            ├── acciones de función/control/clase
+            ├── acciones de función/control/clase/composición
             └── DiagnosticBag
 ```
 
 El perfil no ejecuta Python arbitrario. No se permite `eval`, `exec` ni
 imports configurables.
+
+Cada perfil de entrega puede declarar el nombre y la huella SHA-256 normalizada
+de su `.g4`. El adaptador verifica esa identidad antes de recorrer el árbol para
+evitar que reglas homónimas, pero estructuralmente distintas, lleguen a
+selectores de índices incompatibles.
+
+Las acciones pueden ejecutarse al entrar a una regla, al salir o justo después
+de un hijo indicado (`after_child`). Esta tercera fase permite enlazar, por
+ejemplo, el tipo de un iterable antes de recorrer el bloque de `foreach`, sin
+introducir nombres de Compiscript en el Listener genérico.
+
+Al entrar a `program`, el perfil activa un prepass declarativo que publica las
+clases, sus interfaces y las firmas de funciones globales. Después se recorren
+los cuerpos normalmente. Así, el orden textual no rompe referencias de clase,
+herencia, llamadas adelantadas ni recursión mutua.
 
 La capa se divide de esta forma:
 
@@ -172,6 +187,11 @@ no ejecuta semántica. La GUI recibe un paquete completo y se limita a
 presentarlo. El resultado integrado se acepta solo si sintaxis y semántica están
 aceptadas; la ruta `.cps` opcional se conserva en todos los diagnósticos.
 
+La ruta de consola `python -m src.main --cps` usa por defecto la gramática y el
+perfil de Compiscript. Si recibe una `.g4` externa sin perfil, se limita a
+sintaxis; solo ejecuta semántica externa cuando también se entrega un perfil
+compatible.
+
 ## Límites
 
 - `src/antlr_mode/` no contiene semántica Compiscript.
@@ -185,7 +205,8 @@ aceptadas; la ruta `.cps` opcional se conserva en todos los diagnósticos.
 - Daniel no importa módulos propiedad de Nadissa, Dulce o Nelson.
 - Nadissa no importa `src/antlr_mode/` ni `src/gui/`.
 - Dulce no modifica los algoritmos semánticos ya aceptados.
-- Nelson no agrega acciones al motor para completar un perfil.
+- el perfil Compiscript utiliza únicamente acciones del registro público del
+  motor; la GUI no inyecta extensiones.
 
 ## Representación visual del árbol
 
@@ -242,5 +263,7 @@ por `MATRIZ_CUMPLIMIENTO.md`.
 3. Dulce entrega el adaptador probado con gramáticas reales.
 4. Nelson entrega la integración visual y las regresiones finales.
 
-Cada paso se integra y congela antes de comenzar el siguiente. No existe una
-segunda ronda de implementación para ninguno de los cuatro integrantes.
+Cada paso se integró antes de comenzar el siguiente. Después de los cuatro
+handoffs, Daniel realizó una auditoría de cumplimiento autorizada en
+`fix/fase3-final-compliance`; sus correcciones quedan separadas de los commits
+originales para conservar la trazabilidad individual.

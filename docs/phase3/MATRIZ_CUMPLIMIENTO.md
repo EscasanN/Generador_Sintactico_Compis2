@@ -113,7 +113,7 @@ indica el enunciado, aunque otros lenguajes usen un discriminante no booleano.
 | ID | Regla | Caso exitoso | Caso fallido | Responsable |
 |---|---|---|---|---|
 | `CLS-01` | Los atributos y métodos accedidos con `.` existen. | Acceso a miembro declarado. | Acceso a miembro inexistente. | Nadissa |
-| `CLS-02` | El constructor se invoca correctamente. | Cantidad y tipos correctos. | Constructor inexistente o argumentos incorrectos. | Nadissa |
+| `CLS-02` | El constructor se invoca correctamente. | Firma explícita correcta o constructor implícito sin argumentos. | Cantidad o tipos de argumentos incorrectos. | Nadissa |
 | `CLS-03` | `this` solo se usa en el ámbito de clase permitido. | `this` dentro de método o constructor. | `this` fuera de una clase. | Nadissa |
 
 ### Listas y reglas generales
@@ -175,7 +175,7 @@ Comandos de verificación esperados:
 python -m pytest tests/antlr_mode -q
 python -m pytest tests/semantic -q
 python -m pytest tests/gui -q
-python -m pytest -q
+python -m pytest tests -q
 ```
 
 Si una carpeta todavía no existe durante un bloque temprano, se ejecutan las
@@ -188,12 +188,17 @@ autorización. La excepción no elimina el requisito de commits individuales.
 ## Funcionalidades no mínimas
 
 La especificación de ejemplo menciona `foreach`, `try/catch`, herencia y `new`,
-pero el listado mínimo de reglas semánticas del PDF no las exige de forma
-explícita. Se implementan solamente si aparecen en la gramática oficial, el
-profesor las confirma o el equipo termina primero todos los criterios de esta
-matriz.
+aunque el listado mínimo de reglas semánticas del PDF no las exige de forma
+explícita. La versión reforzada ya implementa esas construcciones y conserva
+pruebas positivas y negativas para reducir el riesgo de una batería externa.
 
 ## Cierre de evaluación
+
+> Estado de procedencia: `src/compiscript/grammar/Compiscript.g4` es la
+> gramática de entrega probada por esta suite. La confirmación externa de que
+> coincide con la última gramática oficial del profesor sigue siendo un paso
+> manual previo a la presentación; ninguna prueba local puede demostrar esa
+> procedencia.
 
 El proyecto está listo únicamente cuando:
 

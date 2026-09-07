@@ -5,9 +5,13 @@ Uso:
     python src/main.py                               # GUI
     python src/main.py --cli <yal> <yapar> <input>   # CLI
     python src/main.py --lex <archivo.yal>           # Solo pipeline léxico (modo anterior)
+    python src/main.py --cps <programa.cps>           # Compiscript completo
 """
-import sys
+import argparse
 import os
+import sys
+from collections.abc import Sequence
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -17,6 +21,8 @@ def main() -> None:
         _run_lex()
     elif len(sys.argv) > 1 and sys.argv[1] == '--cli':
         _run_cli()
+    elif len(sys.argv) > 1 and sys.argv[1] == '--cps':
+        sys.exit(_run_cps_cli(sys.argv[2:]))
     else:
         from src.gui.app import launch_gui
         launch_gui()
@@ -122,6 +128,110 @@ def _run_cli() -> None:
         except Exception:
             slr = lalr = "LEX ERR"
         print(f"{line!r:<50} {slr:<8} {lalr}")
+
+
+def _run_cps_cli(arguments: Sequence[str]) -> int:
+    """Analyze one source with bundled defaults or an explicitly supplied G4."""
+    from src.antlr_mode.grammar_info import GrammarInfoError
+    from src.antlr_mode.runner import AntlrModeError, analyze_with_g4
+    from src.semantic.antlr_adapter import (
+        SemanticAdapterError,
+        analyze_semantics_with_g4,
+    )
+
+    parser = argparse.ArgumentParser(
+        prog="python -m src.main --cps",
+        description="Analiza un archivo con ANTLR y, si hay perfil, semántica.",
+    )
+    parser.add_argument("source", help="archivo fuente, normalmente .cps")
+    parser.add_argument("--grammar", help="gramática combinada .g4")
+    parser.add_argument("--profile", help="perfil semántico .semantic.json")
+    parser.add_argument("--start", help="regla inicial de la gramática")
+    parser.add_argument(
+        "--syntax-only",
+        action="store_true",
+        help="ejecuta únicamente lexer y parser",
+    )
+    options = parser.parse_args(list(arguments))
+    if options.syntax_only and options.profile:
+        parser.error("--syntax-only y --profile no pueden usarse juntos")
+
+    repository_root = Path(__file__).resolve().parents[1]
+    source_path = Path(options.source)
+    grammar_path = Path(options.grammar) if options.grammar else (
+        repository_root / "src" / "compiscript" / "grammar" / "Compiscript.g4"
+    )
+    if options.syntax_only:
+        profile_path: Path | None = None
+    elif options.profile:
+        profile_path = Path(options.profile)
+    elif options.grammar:
+        profile_path = None
+    else:
+        profile_path = (
+            repository_root
+            / "semantic_profiles"
+            / "compiscript.semantic.json"
+        )
+
+    try:
+        source = source_path.read_text(encoding="utf-8")
+        if profile_path is None:
+            syntax_result = analyze_with_g4(
+                grammar_path,
+                source,
+                options.start,
+            )
+            _print_syntax_diagnostics(syntax_result.diagnostics)
+            status = "ACCEPT" if syntax_result.accepted else "REJECT"
+            print(f"{status} — solo sintaxis (sin perfil semántico)")
+            return 0 if syntax_result.accepted else 1
+
+        run = analyze_semantics_with_g4(
+            grammar_path,
+            source,
+            profile_path,
+            options.start,
+            source_path,
+        )
+        _print_syntax_diagnostics(run.syntax_result.diagnostics)
+        if run.semantic_result is not None:
+            _print_semantic_diagnostics(run.semantic_result.diagnostics)
+            _print_symbol_table(run.semantic_result.symbol_table)
+        status = "ACCEPT" if run.accepted else "REJECT"
+        print(f"{status} — análisis sintáctico y semántico")
+        return 0 if run.accepted else 1
+    except (OSError, UnicodeError) as exc:
+        print(f"ERROR — no se pudo leer un archivo: {exc}", file=sys.stderr)
+        return 2
+    except (AntlrModeError, GrammarInfoError, SemanticAdapterError) as exc:
+        print(f"ERROR — {exc}", file=sys.stderr)
+        return 2
+
+
+def _print_syntax_diagnostics(diagnostics: Sequence[object]) -> None:
+    for diagnostic in diagnostics:
+        print(
+            f"[{diagnostic.severity}][{diagnostic.stage}] "
+            f"{diagnostic.line}:{diagnostic.column} {diagnostic.message}"
+        )
+
+
+def _print_semantic_diagnostics(diagnostics: Sequence[object]) -> None:
+    for diagnostic in diagnostics:
+        print(
+            f"[{diagnostic.severity.value.upper()}][{diagnostic.category.value}] "
+            f"{diagnostic.location.line}:{diagnostic.location.column} "
+            f"{diagnostic.message}"
+        )
+
+
+def _print_symbol_table(symbol_table: object) -> None:
+    print("Tabla de símbolos:")
+    for scope in symbol_table.iter_scopes():
+        print(f"  [{scope.kind.value}] {scope.name}")
+        for symbol in scope.symbols:
+            print(f"    {symbol.kind.value} {symbol.name}: {symbol.type}")
 
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ def test_cls_02_success_constructor_accepts_matching_arguments():
     assert result.type == class_value.type
 
 
-def test_cls_02_failure_constructor_missing_or_arguments_wrong():
+def test_cls_02_failure_constructor_arguments_have_wrong_types():
     context = SemanticContext()
     with_constructor, _, _ = build_class(context)
     exit_class(context, node())
@@ -70,8 +70,28 @@ def test_cls_02_failure_constructor_missing_or_arguments_wrong():
         context, node(), with_constructor, (SemanticValue(STRING),)
     ).type == ERROR
 
-    other = declare_class(context, node(), "Empty")
-    assert construct(context, node(), other, ()).type == ERROR
+
+
+def test_cls_02_success_implicit_constructor_accepts_no_arguments():
+    """A class without an explicit constructor still has a zero-arity one."""
+    context = SemanticContext()
+    empty = declare_class(context, node(), "Empty")
+
+    result = construct(context, node(), empty, ())
+
+    assert result.type == empty.type
+    assert not context.diagnostics.has_errors
+
+
+def test_cls_02_failure_implicit_constructor_rejects_arguments():
+    """Arguments must not be silently discarded by an implicit constructor."""
+    context = SemanticContext()
+    empty = declare_class(context, node(), "Empty")
+
+    result = construct(context, node(), empty, (SemanticValue(INTEGER),))
+
+    assert result.type == ERROR
+    assert context.diagnostics.has_errors
 
 
 def test_cls_03_success_this_inside_class():

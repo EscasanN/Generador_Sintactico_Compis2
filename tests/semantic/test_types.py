@@ -95,6 +95,8 @@ def test_type_from_name_rejects_an_invalid_class_lookup_contract() -> None:
         pytest.param(INTEGER, FLOAT, True, id="integer-promotes-to-float"),
         pytest.param(FLOAT, INTEGER, False, id="float-does-not-narrow"),
         pytest.param(NULL, NULL, True, id="null-to-null"),
+        pytest.param(NULL, ClassType("Node"), True, id="null-to-class-reference"),
+        pytest.param(NULL, ArrayType(INTEGER), True, id="null-to-array-reference"),
         pytest.param(NULL, STRING, False, id="null-to-string-is-conservative"),
         pytest.param(UNKNOWN, UNKNOWN, True, id="unknown-to-unknown"),
         pytest.param(UNKNOWN, INTEGER, False, id="unknown-does-not-guess"),
@@ -158,6 +160,16 @@ def test_class_assignability_follows_declared_superclasses_only() -> None:
         ),
         pytest.param([ERROR, INTEGER], ERROR, id="error-propagation"),
         pytest.param([STRING, INTEGER], ERROR, id="incompatible-primitives"),
+        pytest.param(
+            [ClassType("Node"), NULL],
+            ClassType("Node"),
+            id="nullable-class-reference",
+        ),
+        pytest.param(
+            [ArrayType(INTEGER), NULL],
+            ArrayType(INTEGER),
+            id="nullable-array-reference",
+        ),
         pytest.param(
             [ArrayType(INTEGER), ArrayType(FLOAT)],
             ArrayType(FLOAT),

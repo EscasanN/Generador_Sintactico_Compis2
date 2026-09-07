@@ -5,6 +5,10 @@ trabaja una sola vez: recibe una base aceptada, implementa todos los archivos de
 su bloque, ejecuta sus pruebas y entrega una API estable al siguiente
 integrante.
 
+Este documento conserva la división original. La auditoría integral posterior,
+solicitada a Daniel, se realiza aparte en `fix/fase3-final-compliance` y no
+reescribe la autoría de los commits de cada bloque.
+
 La descripción de archivos, clases, funciones y pruebas está en la
 [guía detallada](GUIA_IMPLEMENTACION_POR_INTEGRANTE.md).
 
@@ -52,7 +56,7 @@ bloques. Sus contratos públicos se congelan antes de que Daniel comience.
 | 1 | Daniel Chet | Diagnósticos, tipos, valores y expresiones | `feature/fase3-01-semantic-core` |
 | 2 | Nadissa Vela | Símbolos, perfiles y evaluador genérico | `feature/fase3-02-semantic-engine` |
 | 3 | Dulce Ambrosio | Listener ANTLR, adaptador semántico y árbol común | `feature/fase3-03-antlr-semantic` |
-| 4 | Nelson Escalante | Flujo `.cps`, IDE, perfil Compiscript y entrega | `feature/fase3-04-ide-delivery` |
+| 4 | Nelson Escalante | Flujo `.cps`, IDE, perfil Compiscript y entrega | `feature/fase3-04-compiscript-profile` |
 
 Cada rama se crea después de integrar la anterior. No son cuatro ramas
 paralelas creadas desde el mismo punto.
@@ -161,6 +165,7 @@ src/gui/app.py
 src/gui/antlr_results.py
 src/gui/semantic_results.py
 src/gui/parse_tree_view.py
+src/semantic/actions/composition.py
 semantic_profiles/compiscript.semantic.json
 tests/semantic/test_end_to_end.py
 tests/gui/test_cps_workflow.py

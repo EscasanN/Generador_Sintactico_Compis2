@@ -18,6 +18,12 @@ Cada bloque comienza después de integrar y aceptar el anterior. Su responsable
 termina implementación, pruebas y documentación de API antes de entregar. Un
 integrante no vuelve a programar en bloques posteriores.
 
+Después de completar los cuatro bloques, Daniel abrió
+`fix/fase3-final-compliance` por solicitud expresa para una auditoría integral.
+Las correcciones de esa rama son posteriores a los handoffs y se conservan en
+un commit separado, de modo que la autoría histórica de cada bloque permanece
+visible.
+
 ## Criterios del producto
 
 - IDE multimodo.
@@ -52,34 +58,34 @@ Antes de iniciar el bloque 1 se congelan las APIs de `GrammarInfo`,
 
 ## Bloque 1 — Daniel: núcleo semántico
 
-- [ ] Implementar `SourceLocation`, `Diagnostic` y `DiagnosticBag`.
-- [ ] Implementar la jerarquía `Type`.
-- [ ] Definir compatibilidad, promoción y tipo común.
-- [ ] Implementar `SemanticValue`.
-- [ ] Implementar acciones de literales y expresiones.
-- [ ] Probar diagnósticos, tipos, operadores, asignaciones, arreglos e índices.
-- [ ] Cubrir `TYP-*`, `LST-*` y `GEN-02` asignados en la matriz.
-- [ ] Documentar y congelar las APIs públicas.
+- [x] Implementar `SourceLocation`, `Diagnostic` y `DiagnosticBag`.
+- [x] Implementar la jerarquía `Type`.
+- [x] Definir compatibilidad, promoción y tipo común.
+- [x] Implementar `SemanticValue`.
+- [x] Implementar acciones de literales y expresiones.
+- [x] Probar diagnósticos, tipos, operadores, asignaciones, arreglos e índices.
+- [x] Cubrir `TYP-*`, `LST-*` y `GEN-02` asignados en la matriz.
+- [x] Documentar y congelar las APIs públicas.
 
 Puerta de salida: las pruebas usan valores directos, no ANTLR, árboles, perfiles
 o GUI. Nadissa puede construir el motor sin solicitar cambios a Daniel.
 
 ## Bloque 2 — Nadissa: motor semántico
 
-- [ ] Implementar `Symbol`, `Scope` y `SymbolTable`.
-- [ ] Conservar scopes cerrados para el IDE.
-- [ ] Definir y validar el esquema de perfiles JSON.
-- [ ] Implementar `ActionRegistry` seguro.
-- [ ] Implementar `SemanticContext` y `SemanticEvaluator`.
-- [ ] Implementar acciones de declaraciones, funciones, control y clases.
-- [ ] Implementar recursión, funciones anidadas y closures.
-- [ ] Implementar control contextual de `break`, `continue` y `return`.
-- [ ] Implementar acceso a miembros, constructor y `this`.
-- [ ] Detectar código muerto y duplicación de variables o parámetros.
-- [ ] Definir `SemanticAnalysisResult`.
-- [ ] Probar el motor con árboles construidos manualmente.
-- [ ] Cubrir `SCP-*`, `FUN-*`, `CTL-*`, `CLS-*`, `GEN-01` y `GEN-03`.
-- [ ] Documentar nombres de acciones y selectores disponibles.
+- [x] Implementar `Symbol`, `Scope` y `SymbolTable`.
+- [x] Conservar scopes cerrados para el IDE.
+- [x] Definir y validar el esquema de perfiles JSON.
+- [x] Implementar `ActionRegistry` seguro.
+- [x] Implementar `SemanticContext` y `SemanticEvaluator`.
+- [x] Implementar acciones de declaraciones, funciones, control y clases.
+- [x] Implementar recursión, funciones anidadas y closures.
+- [x] Implementar control contextual de `break`, `continue` y `return`.
+- [x] Implementar acceso a miembros, constructor y `this`.
+- [x] Detectar código muerto y duplicación de variables o parámetros.
+- [x] Definir `SemanticAnalysisResult`.
+- [x] Probar el motor con árboles construidos manualmente.
+- [x] Cubrir `SCP-*`, `FUN-*`, `CTL-*`, `CLS-*`, `GEN-01` y `GEN-03`.
+- [x] Documentar nombres de acciones y selectores disponibles.
 
 Puerta de salida: dos árboles con nombres distintos pueden usar perfiles
 distintos y las mismas acciones sin cambiar Python. Dulce puede conectar ANTLR
@@ -87,20 +93,20 @@ sin solicitar cambios a Nadissa.
 
 ## Bloque 3 — Dulce: conexión ANTLR-semántica
 
-- [ ] Completar casos de error y regresión del frontend ANTLR.
-- [ ] Confirmar metadatos suficientes en `ParseTreeNode`.
-- [ ] Exponer de forma controlada el árbol nativo de la sesión ANTLR.
-- [ ] Implementar `SemanticTreeListener` y recorrerlo con
+- [x] Completar casos de error y regresión del frontend ANTLR.
+- [x] Confirmar metadatos suficientes en `ParseTreeNode`.
+- [x] Exponer de forma controlada el árbol nativo de la sesión ANTLR.
+- [x] Implementar `SemanticTreeListener` y recorrerlo con
   `ParseTreeWalker.DEFAULT.walk` o usar un Visitor equivalente.
-- [ ] Implementar `analyze_semantics_with_g4`.
-- [ ] Evitar semántica cuando la sintaxis no fue aceptada.
-- [ ] Validar perfiles contra la colección de reglas de `GrammarInfo`.
-- [ ] Crear un perfil semántico pequeño para MiniCalc.
-- [ ] Probar dos gramáticas consecutivamente sin cambiar el motor.
-- [ ] Cubrir `ANT-01` a `ANT-06`.
+- [x] Implementar `analyze_semantics_with_g4`.
+- [x] Evitar semántica cuando la sintaxis no fue aceptada.
+- [x] Validar perfiles contra la colección de reglas de `GrammarInfo`.
+- [x] Crear un perfil semántico pequeño para MiniCalc.
+- [x] Probar dos gramáticas consecutivamente sin cambiar el motor.
+- [x] Cubrir `ANT-01` a `ANT-05`; `ANT-06` queda sujeto a confirmación externa.
 - [ ] Validar la gramática oficial o confirmar antes del cierre que usa una
   forma ANTLR ya soportada.
-- [ ] Documentar la API que consumirá el IDE.
+- [x] Documentar la API que consumirá el IDE.
 
 Puerta de salida: desde Python se obtienen sintaxis, diagnósticos semánticos y
 símbolos para una gramática y perfil elegidos en tiempo de ejecución. Nelson no
@@ -108,38 +114,38 @@ necesita modificar el adaptador.
 
 ## Bloque 4 — Nelson: IDE y entrega
 
-- [ ] Crear el perfil semántico de Compiscript.
-- [ ] Crear, abrir, editar y guardar archivos `.cps` desde el IDE.
-- [ ] Compilar el contenido completo del `.cps` actual.
-- [ ] Permitir elegir o resolver el perfil desde el IDE.
-- [ ] Ejecutar sintaxis y semántica fuera del hilo principal.
-- [ ] Mostrar diagnósticos sintácticos y semánticos.
-- [ ] Mostrar scopes y símbolos.
-- [ ] Mostrar el árbol como nodos y aristas mediante Graphviz o vista
+- [x] Crear el perfil semántico de Compiscript.
+- [x] Crear, abrir, editar y guardar archivos `.cps` desde el IDE.
+- [x] Compilar el contenido completo del `.cps` actual.
+- [x] Permitir elegir o resolver el perfil desde el IDE.
+- [x] Ejecutar sintaxis y semántica fuera del hilo principal.
+- [x] Mostrar diagnósticos sintácticos y semánticos.
+- [x] Mostrar scopes y símbolos.
+- [x] Mostrar el árbol como nodos y aristas mediante Graphviz o vista
   jerárquica equivalente.
-- [ ] Distinguir warnings y errores.
-- [ ] Conservar resultados ANTLR y YAPar.
-- [ ] Crear pruebas end-to-end.
-- [ ] Actualizar README y procedimiento de prueba manual.
-- [ ] Ejecutar la matriz completa de regresión.
-- [ ] Cubrir `IDE-01` a `IDE-08`.
+- [x] Distinguir warnings y errores.
+- [x] Conservar resultados ANTLR y YAPar.
+- [x] Crear pruebas end-to-end.
+- [x] Actualizar README y procedimiento de prueba manual.
+- [x] Ejecutar la matriz completa de regresión.
+- [x] Cubrir `IDE-01` a `IDE-08`.
 
 Puerta de salida: una sola ventana ejecuta ambos modos y no existen tareas de
 implementación pendientes para Daniel, Nadissa o Dulce.
 
 ## Verificación de entrega
 
-- [ ] Ejecutar `python -m pytest tests/antlr_mode -q`.
-- [ ] Ejecutar `python -m pytest tests/semantic -q`.
-- [ ] Probar 75 entradas válidas anteriores.
-- [ ] Probar 8 entradas negativas anteriores.
-- [ ] Probar Compiscript y MiniCalc sin cambios Python.
-- [ ] Confirmar que cada ID de `MATRIZ_CUMPLIMIENTO.md` tiene evidencia.
-- [ ] Ejecutar una demostración desde `.cps` hasta árbol, errores y símbolos.
-- [ ] Verificar Java, Graphviz y modo sin red con caché.
-- [ ] Confirmar que `output/` está limpio en Git.
-- [ ] Revisar commits individuales.
-- [ ] Confirmar que la documentación coincide con el código entregado.
+- [x] Ejecutar `python -m pytest tests/antlr_mode -q`.
+- [x] Ejecutar `python -m pytest tests/semantic -q`.
+- [x] Probar 75 entradas válidas anteriores.
+- [x] Probar 8 entradas negativas anteriores.
+- [x] Probar Compiscript y MiniCalc sin cambios Python.
+- [x] Confirmar que cada ID de `MATRIZ_CUMPLIMIENTO.md` tiene evidencia.
+- [x] Ejecutar una demostración automatizada desde `.cps` hasta árbol, errores y símbolos.
+- [x] Verificar Java, Graphviz y modo sin red con caché.
+- [x] Confirmar que `output/` está limpio en Git.
+- [x] Revisar commits individuales.
+- [x] Confirmar que la documentación coincide con el código entregado.
 - [ ] Confirmar que se usa la gramática oficial más reciente y actualizar el
   perfil si cambió.
 

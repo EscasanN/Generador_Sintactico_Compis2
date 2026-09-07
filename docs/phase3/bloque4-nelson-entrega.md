@@ -2,8 +2,7 @@
 
 ## Alcance implementado
 
-El bloque entrega el perfil semántico oficial de Compiscript, las extensiones
-mínimas necesarias para poder expresarlo con el motor genérico congelado, y el
+El bloque entrega el perfil semántico de la gramática Compiscript disponible y el
 IDE que abre, edita, guarda y compila archivos `.cps` mostrando árbol,
 diagnósticos y tabla de símbolos.
 
@@ -11,29 +10,25 @@ diagnósticos y tabla de símbolos.
   etiquetadas de aridad fija y recursión a la izquierda (mismo lenguaje
   aceptado, árbol de derivación regular). Justificación completa, con fecha,
   en `docs/phase3/REGLAS_Y_DECISIONES.md`.
-- `semantic_profiles/compiscript.semantic.json`: perfil declarativo con 79
+- `semantic_profiles/compiscript.semantic.json`: perfil declarativo con
   bindings que cubren declaraciones, control de flujo, funciones, clases,
-  arreglos y toda la cadena de expresiones de la gramática oficial.
-- `src/gui/semantic_bridge.py`: módulo propio de Nelson con un pequeño
-  conjunto de acciones adicionales (`x.*`), neutras respecto a Compiscript,
-  que solo componen o delegan en las funciones ya publicadas por Daniel y
-  Nadissa. No modifica ningún archivo de un bloque anterior.
+  arreglos y toda la cadena de expresiones de la gramática de entrega.
+- `src/semantic/actions/composition.py`: composiciones genéricas registradas
+  por el motor. Todos los nombres de reglas y tokens se reciben desde el
+  perfil; la GUI no contiene acciones semánticas.
 - `src/gui/parse_tree_view.py` y `src/gui/semantic_results.py`: vista de árbol
   navegable y panel de diagnósticos + tabla de símbolos por entorno.
 - `src/gui/app.py`: extendido (sin romper la API existente) con el flujo
   `.cps` completo: nuevo archivo, abrir, editar, guardar, "Guardar como",
   cargar un perfil semántico opcional y compilar (sintaxis + semántica) en un
   hilo de trabajo (`SemanticAnalysisWorker`) separado del hilo de Qt.
-- `tests/semantic/test_end_to_end.py`: 68 pruebas, una exitosa y una fallida
+- `tests/semantic/test_end_to_end.py`: pruebas positivas y negativas
   por cada ID obligatorio de `MATRIZ_CUMPLIMIENTO.md` (TYP, SCP, FUN, CTL,
   CLS, LST, GEN) más dos de integración ANTLR (ANT-06), todas ejecutando la
   gramática y el perfil reales, nunca un árbol manual.
-- `tests/gui/test_cps_workflow.py`: 9 pruebas cubriendo IDE-01 a IDE-08 sobre
-  la ventana real, más dos de regresión (modo YAPar intacto, ANTLR y
+- `tests/gui/test_cps_workflow.py`: pruebas cubriendo IDE-01 a IDE-08 sobre
+  la ventana real, además de regresiones (modo YAPar intacto, ANTLR y
   Compiscript ejecutados consecutivamente en la misma ventana).
-
-No se modificó ningún archivo de `src/semantic/` fuera de lectura, ni
-`src/antlr_mode/`, ni `src/parser/`.
 
 ## Por qué la gramática de ejemplo tuvo que ajustarse
 
@@ -50,7 +45,7 @@ aridad fija y forma recursiva a la izquierda — la misma técnica que ya usa
 `MiniCalc.g4`. El detalle regla por regla, con fecha, está en
 `docs/phase3/REGLAS_Y_DECISIONES.md`.
 
-## Extensiones de acciones (`x.*`)
+## Composiciones de acciones del registro público
 
 Durante la construcción del perfil aparecieron dos huecos genuinos, no
 específicos de Compiscript, en el conjunto de acciones publicado:
@@ -65,26 +60,24 @@ específicos de Compiscript, en el conjunto de acciones publicado:
    selector solo lee el resultado ya calculado de un hijo, nunca el resultado
    de una acción hermana sobre el mismo nodo.
 
-`src/gui/semantic_bridge.py` resuelve ambos con funciones de unas pocas
-líneas que **delegan** en `ExpressionActions`, `resolve_identifier`,
+`src/semantic/actions/composition.py` resuelve ambos con funciones pequeñas
+que **delegan** en `ExpressionActions`, `resolve_identifier`,
 `access_member`, `declare_function`, `declare_method` y `validate_sequence`
-reales — ninguna reimplementa su lógica. Se registran bajo el prefijo `x.`
-para que cualquiera pueda auditar, con un `grep "x\."` sobre el perfil, cuáles
-bindings dependen de esta extensión y cuáles usan exclusivamente el motor
-congelado. `analyze_semantics_with_extensions` reutiliza sin cambios
-`analyze_with_g4`, `load_profile`, `validate_profile`, `SemanticTreeListener`
-y el parámetro `registry=` ya existente de `SemanticEvaluator` — un punto de
-extensión que Nadissa ya había dejado disponible — para inyectar el registro
-extendido. El IDE y las pruebas de Compiscript siempre pasan por esta función,
-no por `analyze_semantics_with_g4` directamente, porque el perfil de
-Compiscript referencia acciones `x.*` que el registro por defecto no tiene.
+reales; ninguna reimplementa su lógica. Se registran con
+`register_builtin_actions`, mientras los detalles sintácticos se reciben como
+argumentos del perfil. Por ello el IDE y las pruebas usan directamente
+`analyze_semantics_with_g4`, sin un adaptador duplicado en `src/gui`.
+
+La revisión posterior de cumplimiento también agregó predeclaración de miembros
+para eliminar falsos errores por orden textual, validación de inicializadores
+de campos y constantes de clase, y literales `float` exigidos por el PDF.
 
 ## API para ejecutar Compiscript
 
 ```python
-from src.gui.semantic_bridge import analyze_semantics_with_extensions
+from src.semantic.antlr_adapter import analyze_semantics_with_g4
 
-run = analyze_semantics_with_extensions(
+run = analyze_semantics_with_g4(
     grammar_path="src/compiscript/grammar/Compiscript.g4",
     source=source_text,
     profile_path="semantic_profiles/compiscript.semantic.json",
@@ -114,35 +107,25 @@ run.semantic_result.symbol_table   # entornos global/función/clase/bloque
 
 Cada fila de la matriz tiene exactamente un caso exitoso y uno fallido
 nombrado con su identificador, ejecutando siempre la gramática y el perfil
-reales (`analyze_semantics_with_extensions`), nunca una acción aislada con un
+reales (`analyze_semantics_with_g4`), nunca una acción aislada con un
 árbol manual.
 
-## Limitaciones documentadas
+## Compatibilidad reforzada
 
-Ver la sección fechada 2026-09-05 de `docs/phase3/REGLAS_Y_DECISIONES.md`
-para el detalle completo; en resumen:
-
-- No hay concatenación `string + string` (`ExpressionActions.binary`,
-  congelada, solo acepta operandos numéricos para `+`).
-- No hay herencia real: `class B : A` se acepta sintácticamente pero el
-  vínculo se ignora (`declare_class`/`construct` no aceptan superclase).
-- `new Tipo()` exige que la clase declare un método llamado literalmente
-  `constructor` (comportamiento de `construct`, congelado).
-- `foreach` y `try/catch` funcionan de forma mínima (no bloquean el análisis)
-  pero sin inferencia de tipo de elemento ni scope propio para el parámetro
-  de `catch` — ambos marcados "no mínimos" en `MATRIZ_CUMPLIMIENTO.md`.
-- El inicializador de un campo de clase no se compara contra su tipo
-  declarado (`declare_field` congelada no tiene parámetro `initializer`).
-- El operador `%` se acepta sintácticamente pero produce un diagnóstico de
-  "operador no soportado" (no está en la matriz mínima).
+Ver la sección fechada 2026-09-06 de `docs/phase3/REGLAS_Y_DECISIONES.md` para
+el detalle completo. La versión reforzada incluye `%`, concatenación de dos
+cadenas, referencias anulables, constructor implícito sin argumentos,
+predeclaración global, herencia, inferencia de `foreach` y parámetro de `catch`
+con scope propio. Una `.g4` externa continúa necesitando su perfil para análisis
+semántico; sin él, la nueva CLI ejecuta solo sintaxis.
 
 ## Verificación
 
 ```bash
 QT_QPA_PLATFORM=offscreen python -m pytest tests/antlr_mode -q   # 12 passed
-QT_QPA_PLATFORM=offscreen python -m pytest tests/semantic -q     # 251 passed
-QT_QPA_PLATFORM=offscreen python -m pytest tests/gui -q          # 9 passed
-QT_QPA_PLATFORM=offscreen python -m pytest -q                    # 272 passed
+QT_QPA_PLATFORM=offscreen python -m pytest tests/semantic -q     # 259 passed
+QT_QPA_PLATFORM=offscreen python -m pytest tests/gui -q          # 11 passed
+QT_QPA_PLATFORM=offscreen python -m pytest -q                    # 282 passed
 python -m compileall -q src tests                                # sin errores
 ```
 
