@@ -1,4 +1,4 @@
-"""Immutable, parser-independent semantic types and compatibility rules."""
+"""Tipos semánticos inmutables independientes del analizador sintáctico."""
 
 from __future__ import annotations
 
@@ -8,169 +8,169 @@ from dataclasses import dataclass
 
 
 class Type(ABC):
-    """Base class for every semantic type.
+    """Clase base para todos los tipos semánticos.
 
-    Args:
-        None. Concrete subclasses carry all type-specific data.
+    Argumentos:
+        Ninguno. Las subclases concretas contienen los datos específicos.
 
-    Returns:
-        A comparable semantic type through a concrete subclass.
+    Retorna:
+        Un tipo semántico comparable mediante una subclase concreta.
 
-    Raises:
-        TypeError: If this abstract base is instantiated directly.
+    Lanza:
+        TypeError: Si esta clase base abstracta se instancia directamente.
     """
 
     @abstractmethod
     def __str__(self) -> str:
-        """Return the stable source-like representation of this type."""
+        """Devuelve la representación estable del tipo similar al código fuente."""
 
     def __repr__(self) -> str:
-        """Return the stable diagnostic representation of this type."""
+        """Devuelve la representación estable del tipo para diagnósticos."""
         return str(self)
 
 
 @dataclass(frozen=True, slots=True, repr=False)
 class PrimitiveType(Type):
-    """Represent a primitive type by its canonical name.
+    """Representa un tipo primitivo mediante su nombre canónico.
 
-    Args:
-        name: Canonical type name.
+    Argumentos:
+        name: Nombre canónico del tipo.
 
-    Returns:
-        An immutable primitive type.
+    Retorna:
+        Un tipo primitivo inmutable.
 
-    Raises:
-        TypeError: If the required name is omitted.
+    Lanza:
+        TypeError: Si se omite el nombre obligatorio.
     """
 
     name: str
 
     def __str__(self) -> str:
-        """Return the primitive's canonical name."""
+        """Devuelve el nombre canónico del tipo primitivo."""
         return self.name
 
 
 @dataclass(frozen=True, slots=True, repr=False)
 class ArrayType(Type):
-    """Represent one array dimension around an element type.
+    """Representa una dimensión de arreglo alrededor de un tipo de elemento.
 
-    Args:
-        element_type: Type stored in each array position.
+    Argumentos:
+        element_type: Tipo almacenado en cada posición del arreglo.
 
-    Returns:
-        An immutable array type. Nest instances for multiple dimensions.
+    Retorna:
+        Un tipo de arreglo inmutable. Se anidan instancias para varias dimensiones.
 
-    Raises:
-        TypeError: If the required element type is omitted.
+    Lanza:
+        TypeError: Si se omite el tipo de elemento obligatorio.
     """
 
     element_type: Type
 
     def __str__(self) -> str:
-        """Return the element representation followed by ``[]``."""
+        """Devuelve la representación del elemento seguida de ``[]``."""
         return f"{self.element_type}[]"
 
 
 @dataclass(frozen=True, slots=True, repr=False, init=False)
 class FunctionType(Type):
-    """Represent an immutable positional function signature.
+    """Representa una firma posicional e inmutable de función.
 
-    Args:
-        parameter_types: Ordered iterable of parameter types. It is copied to
-            a tuple so a caller cannot mutate the signature later.
-        return_type: Declared return type.
+    Argumentos:
+        parameter_types: Iterable ordenado de tipos de parámetros. Se copia a
+            una tupla para que el llamador no pueda modificar después la firma.
+        return_type: Tipo de retorno declarado.
 
-    Returns:
-        An immutable function type.
+    Retorna:
+        Un tipo de función inmutable.
 
-    Raises:
-        TypeError: If either required argument is omitted or the parameter
-            collection is not iterable.
+    Lanza:
+        TypeError: Si se omite algún argumento obligatorio o la colección de
+            parámetros no es iterable.
     """
 
     parameter_types: tuple[Type, ...]
     return_type: Type
 
     def __init__(self, parameter_types: Iterable[Type], return_type: Type) -> None:
-        """Copy the signature into immutable fields.
+        """Copia la firma en campos inmutables.
 
-        Args:
-            parameter_types: Ordered iterable of parameter types.
-            return_type: Declared return type.
+        Argumentos:
+            parameter_types: Iterable ordenado de tipos de parámetros.
+            return_type: Tipo de retorno declarado.
 
-        Returns:
-            None.
+        Retorna:
+            ``None``.
 
-        Raises:
-            TypeError: If ``parameter_types`` is not iterable.
+        Lanza:
+            TypeError: Si ``parameter_types`` no es iterable.
         """
         object.__setattr__(self, "parameter_types", tuple(parameter_types))
         object.__setattr__(self, "return_type", return_type)
 
     def __str__(self) -> str:
-        """Return a compact positional signature."""
+        """Devuelve una firma posicional compacta."""
         parameters = ", ".join(str(type_) for type_ in self.parameter_types)
         return f"({parameters}) -> {self.return_type}"
 
 
 @dataclass(frozen=True, slots=True, repr=False)
 class ClassType(Type):
-    """Represent a named class and its optional direct superclass.
+    """Representa una clase con nombre y su superclase directa opcional.
 
-    Args:
-        name: Class name as declared by the language frontend.
-        superclass: Optional direct superclass.
+    Argumentos:
+        name: Nombre de clase declarado por la etapa frontal del lenguaje.
+        superclass: Superclase directa opcional.
 
-    Returns:
-        An immutable class type.
+    Retorna:
+        Un tipo de clase inmutable.
 
-    Raises:
-        TypeError: If the required name is omitted.
+    Lanza:
+        TypeError: Si se omite el nombre obligatorio.
     """
 
     name: str
     superclass: ClassType | None = None
 
     def __str__(self) -> str:
-        """Return the declared class name."""
+        """Devuelve el nombre declarado de la clase."""
         return self.name
 
 
 @dataclass(frozen=True, slots=True, repr=False)
 class ErrorType(Type):
-    """Mark a type already invalidated by an earlier diagnostic.
+    """Marca un tipo invalidado previamente por otro diagnóstico.
 
-    Args:
-        None.
+    Argumentos:
+        Ninguno.
 
-    Returns:
-        An immutable error marker.
+    Retorna:
+        Un marcador de error inmutable.
 
-    Raises:
-        No exceptions.
+    Lanza:
+        No lanza excepciones.
     """
 
     def __str__(self) -> str:
-        """Return an unmistakable diagnostic marker."""
+        """Devuelve un marcador inequívoco para diagnósticos."""
         return "<error>"
 
 
 @dataclass(frozen=True, slots=True, repr=False)
 class UnknownType(Type):
-    """Mark a type for which the frontend has insufficient information.
+    """Marca un tipo para el cual la etapa frontal no tiene información suficiente.
 
-    Args:
-        None.
+    Argumentos:
+        Ninguno.
 
-    Returns:
-        An immutable unknown marker.
+    Retorna:
+        Un marcador desconocido e inmutable.
 
-    Raises:
-        No exceptions.
+    Lanza:
+        No lanza excepciones.
     """
 
     def __str__(self) -> str:
-        """Return an unmistakable unknown marker."""
+        """Devuelve un marcador inequívoco de tipo desconocido."""
         return "<unknown>"
 
 
@@ -196,23 +196,23 @@ def type_from_name(
     array_depth: int = 0,
     class_lookup: ClassLookup | None = None,
 ) -> Type:
-    """Resolve a primitive or declared class name and apply array dimensions.
+    """Resuelve un nombre primitivo o de clase y aplica dimensiones de arreglo.
 
-    Unknown names deliberately produce :data:`UNKNOWN`; this function never
-    guesses that an undeclared name denotes a class.
+    Los nombres desconocidos producen deliberadamente :data:`UNKNOWN`; esta
+    función nunca supone que un nombre no declarado representa una clase.
 
-    Args:
-        name: Primitive or class name. Surrounding whitespace is ignored.
-        array_depth: Number of array wrappers to apply, zero by default.
-        class_lookup: Optional mapping or callable that resolves class names.
+    Argumentos:
+        name: Nombre primitivo o de clase. Se ignoran los espacios alrededor.
+        array_depth: Cantidad de niveles de arreglo; cero por defecto.
+        class_lookup: Mapping o callable opcional que resuelve nombres de clases.
 
-    Returns:
-        The resolved singleton or class type, wrapped to the requested depth.
+    Retorna:
+        El singleton o tipo de clase resuelto, con la profundidad solicitada.
 
-    Raises:
-        ValueError: If ``array_depth`` is negative.
-        TypeError: If a provided lookup is neither mapping-like nor callable,
-            or if it returns a non-class value.
+    Lanza:
+        ValueError: Si ``array_depth`` es negativo.
+        TypeError: Si el mecanismo de búsqueda no es similar a un mapping ni
+            callable, o si devuelve un valor que no representa una clase.
     """
     if array_depth < 0:
         raise ValueError("array_depth cannot be negative")
@@ -237,23 +237,23 @@ def type_from_name(
 
 
 def is_assignable(source: Type, target: Type) -> bool:
-    """Check whether a source value may be assigned to a target declaration.
+    """Comprueba si un valor fuente puede asignarse a una declaración destino.
 
-    Compatibility is exact except for ``integer`` to ``float`` promotion and
-    assigning a subclass to one of its ancestors. Arrays and functions are
-    invariant. ``null`` may initialize class and array references. ``ERROR`` is
-    accepted on either side to suppress cascaded diagnostics, while ``UNKNOWN``
-    is compatible only with itself.
+    La compatibilidad es exacta salvo la promoción de ``integer`` a ``float`` y
+    la asignación de una subclase a uno de sus ancestros. Los arreglos y las
+    funciones son invariantes. ``null`` puede inicializar referencias de clase
+    y arreglo. ``ERROR`` se acepta en ambos lados para evitar diagnósticos en
+    cascada, mientras que ``UNKNOWN`` solo es compatible consigo mismo.
 
-    Args:
-        source: Type of the produced value.
-        target: Declared destination type.
+    Argumentos:
+        source: Tipo del valor producido.
+        target: Tipo declarado del destino.
 
-    Returns:
-        ``True`` when the assignment is permitted; otherwise ``False``.
+    Retorna:
+        ``True`` si la asignación está permitida; de lo contrario, ``False``.
 
-    Raises:
-        No exceptions for valid :class:`Type` instances.
+    Lanza:
+        No lanza excepciones para instancias válidas de :class:`Type`.
     """
     if _contains_error(source) or _contains_error(target):
         return True
@@ -275,23 +275,24 @@ def is_assignable(source: Type, target: Type) -> bool:
 
 
 def common_type(types: Iterable[Type]) -> Type:
-    """Return the least common type supported by the confirmed rules.
+    """Devuelve el tipo común mínimo permitido por las reglas confirmadas.
 
-    Numeric types promote to ``float``. Equally deep arrays join their element
-    types recursively, and classes join at their nearest shared ancestor.
-    Exact function signatures join; different signatures do not. An empty
-    collection produces ``UNKNOWN``. Unresolved members propagate ``UNKNOWN``
-    only when all known constraints could still agree. A prior ``ERROR`` or a
-    known incompatibility produces ``ERROR``.
+    Los tipos numéricos se promueven a ``float``. Los arreglos con la misma
+    profundidad combinan recursivamente sus tipos de elemento, y las clases se
+    combinan en su ancestro común más cercano. Las firmas de función idénticas
+    se combinan; las diferentes no. Una colección vacía produce ``UNKNOWN``.
+    Los miembros no resueltos propagan ``UNKNOWN`` solo si todas las
+    restricciones conocidas aún podrían coincidir. Un ``ERROR`` previo o una
+    incompatibilidad conocida produce ``ERROR``.
 
-    Args:
-        types: Types whose common representation is needed.
+    Argumentos:
+        types: Tipos cuya representación común se necesita.
 
-    Returns:
-        A concrete common type, :data:`UNKNOWN`, or :data:`ERROR`.
+    Retorna:
+        Un tipo común concreto, :data:`UNKNOWN` o :data:`ERROR`.
 
-    Raises:
-        Any exception raised while consuming the supplied iterable.
+    Lanza:
+        Cualquier excepción producida al consumir el iterable recibido.
     """
     members = tuple(types)
     if not members:
@@ -337,37 +338,37 @@ def common_type(types: Iterable[Type]) -> Type:
 
 
 def is_numeric(type_: Type) -> bool:
-    """Report whether a type is the integer or float singleton.
+    """Indica si un tipo es el singleton de entero o flotante.
 
-    Args:
-        type_: Type to inspect.
+    Argumentos:
+        type_: Tipo que se inspeccionará.
 
-    Returns:
-        ``True`` only for :data:`INTEGER` and :data:`FLOAT`.
+    Retorna:
+        ``True`` únicamente para :data:`INTEGER` y :data:`FLOAT`.
 
-    Raises:
-        No exceptions.
+    Lanza:
+        No lanza excepciones.
     """
     return type_ == INTEGER or type_ == FLOAT
 
 
 def is_boolean(type_: Type) -> bool:
-    """Report whether a type is the boolean singleton.
+    """Indica si un tipo es el singleton booleano.
 
-    Args:
-        type_: Type to inspect.
+    Argumentos:
+        type_: Tipo que se inspeccionará.
 
-    Returns:
-        ``True`` only for :data:`BOOLEAN`.
+    Retorna:
+        ``True`` únicamente para :data:`BOOLEAN`.
 
-    Raises:
-        No exceptions.
+    Lanza:
+        No lanza excepciones.
     """
     return type_ == BOOLEAN
 
 
 def _contains_error(type_: Type) -> bool:
-    """Return whether a composite type contains the error marker."""
+    """Indica si un tipo compuesto contiene el marcador de error."""
     if type_ == ERROR:
         return True
     if isinstance(type_, ArrayType):
@@ -380,7 +381,7 @@ def _contains_error(type_: Type) -> bool:
 
 
 def _contains_unknown(type_: Type) -> bool:
-    """Return whether a composite type contains the unknown marker."""
+    """Indica si un tipo compuesto contiene el marcador desconocido."""
     if type_ == UNKNOWN:
         return True
     if isinstance(type_, ArrayType):
@@ -393,13 +394,13 @@ def _contains_unknown(type_: Type) -> bool:
 
 
 def _compatibility_is_unknown(source: Type, target: Type) -> bool:
-    """Return whether matching compatible shapes depends on unknown content."""
+    """Indica si comparar formas compatibles depende de contenido desconocido."""
     has_unknown = _contains_unknown(source) or _contains_unknown(target)
     return has_unknown and _could_match_with_unknown(source, target)
 
 
 def _could_match_with_unknown(left: Type, right: Type) -> bool:
-    """Check whether replacing unknown markers could make two types equal."""
+    """Comprueba si sustituir marcadores desconocidos igualaría dos tipos."""
     if left == UNKNOWN or right == UNKNOWN:
         return True
     if isinstance(left, ArrayType) and isinstance(right, ArrayType):
@@ -417,7 +418,7 @@ def _could_match_with_unknown(left: Type, right: Type) -> bool:
 
 
 def _common_class_type(types: tuple[ClassType, ...]) -> Type:
-    """Find the nearest ancestor shared by all supplied classes."""
+    """Encuentra el ancestro más cercano compartido por todas las clases."""
     candidate: ClassType | None = types[0]
     while candidate is not None:
         if all(is_assignable(type_, candidate) for type_ in types[1:]):

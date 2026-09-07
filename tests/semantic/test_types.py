@@ -1,4 +1,4 @@
-"""Tests for immutable semantic types and compatibility rules."""
+"""Pruebas de tipos semánticos inmutables y reglas de compatibilidad."""
 
 from dataclasses import FrozenInstanceError
 
@@ -28,7 +28,7 @@ from src.semantic.types import (
 
 
 def test_types_have_structural_equality_stable_representation_and_immutability() -> None:
-    """Changing fields or exposing constructor syntax would break the type contract."""
+    """Cambiar campos o exponer el constructor rompería el contrato de tipos."""
     function = FunctionType([INTEGER, FLOAT], BOOLEAN)
     dog = ClassType("Dog", ClassType("Animal"))
 
@@ -46,7 +46,7 @@ def test_types_have_structural_equality_stable_representation_and_immutability()
 
 
 def test_required_type_singletons_have_their_public_meaning() -> None:
-    """Replacing a required singleton with the wrong semantic kind must fail."""
+    """Sustituir un singleton obligatorio por otro tipo semántico debe fallar."""
     assert (INTEGER.name, FLOAT.name, STRING.name) == ("integer", "float", "string")
     assert (BOOLEAN.name, NULL.name, VOID.name) == ("boolean", "null", "void")
     assert isinstance(ERROR, ErrorType)
@@ -59,7 +59,10 @@ def test_required_type_singletons_have_their_public_meaning() -> None:
 
 
 def test_helpers_honor_structurally_equal_public_type_instances() -> None:
-    """Comparable instances must not change meaning merely because identity differs."""
+    """Las instancias comparables conservan su significado.
+
+    La identidad concreta de cada instancia no debe modificarlo.
+    """
     assert is_numeric(PrimitiveType("integer")) is True
     assert is_boolean(PrimitiveType("boolean")) is True
     assert is_assignable(ErrorType(), INTEGER) is True
@@ -67,7 +70,7 @@ def test_helpers_honor_structurally_equal_public_type_instances() -> None:
 
 
 def test_type_from_name_resolves_primitives_arrays_classes_and_unknown_names() -> None:
-    """Losing depth or guessing an undeclared class would corrupt annotations."""
+    """Perder profundidad o suponer una clase no declarada dañaría las anotaciones."""
     animal = ClassType("Animal")
     dog = ClassType("Dog", animal)
     classes = {"Animal": animal, "Dog": dog}
@@ -83,7 +86,7 @@ def test_type_from_name_resolves_primitives_arrays_classes_and_unknown_names() -
 
 
 def test_type_from_name_rejects_an_invalid_class_lookup_contract() -> None:
-    """A malformed collaborator must fail with the API's documented error type."""
+    """Un colaborador inválido debe fallar con el tipo de error documentado."""
     with pytest.raises(TypeError, match="class_lookup"):
         type_from_name("Missing", class_lookup=object())  # type: ignore[arg-type]
 
@@ -130,12 +133,15 @@ def test_is_assignable_handles_exact_promotion_structures_error_and_unknown(
     target: object,
     expected: bool,
 ) -> None:
-    """An incorrect compatibility branch must be visible by its named case."""
+    """Una rama de compatibilidad incorrecta debe detectarse por su caso nombrado."""
     assert is_assignable(source, target) is expected  # type: ignore[arg-type]
 
 
 def test_class_assignability_follows_declared_superclasses_only() -> None:
-    """A subclass may widen to an ancestor but unrelated classes must not mix."""
+    """Una subclase puede ampliarse a un ancestro.
+
+    Las clases no relacionadas no deben mezclarse.
+    """
     animal = ClassType("Animal")
     dog = ClassType("Dog", animal)
     poodle = ClassType("Poodle", dog)
@@ -191,12 +197,12 @@ def test_common_type_is_safe_for_empty_numeric_array_error_and_unknown_inputs(
     members: list[object],
     expected: object,
 ) -> None:
-    """A bad join must not silently assign an incompatible aggregate type."""
+    """Una combinación inválida no debe asignar en silencio un tipo incompatible."""
     assert common_type(members) == expected  # type: ignore[arg-type]
 
 
 def test_common_type_uses_nearest_shared_class_and_exact_function_signatures() -> None:
-    """Class joins use ancestry while distinct function signatures stay incompatible."""
+    """Las clases usan ancestros; las firmas de función distintas son incompatibles."""
     animal = ClassType("Animal")
     dog = ClassType("Dog", animal)
     poodle = ClassType("Poodle", dog)
@@ -226,12 +232,12 @@ def test_common_type_uses_nearest_shared_class_and_exact_function_signatures() -
     ],
 )
 def test_common_type_collapses_compound_error_to_canonical_error(compound_error: object) -> None:
-    """A recovery marker inside a composite must invalidate the whole join."""
+    """Un marcador de recuperación dentro de un compuesto invalida la combinación."""
     assert common_type((compound_error,)) is ERROR  # type: ignore[arg-type]
 
 
 def test_common_type_checks_all_known_function_constraints_around_unknown() -> None:
-    """A wildcard signature cannot hide incompatible known parameter types."""
+    """Una firma comodín no oculta tipos conocidos de parámetros incompatibles."""
     unknown_signature = FunctionType((UNKNOWN,), INTEGER)
     integer_signature = FunctionType((INTEGER,), INTEGER)
     boolean_signature = FunctionType((BOOLEAN,), INTEGER)

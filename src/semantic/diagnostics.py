@@ -1,4 +1,4 @@
-"""Framework-neutral semantic diagnostics and source coordinates."""
+"""Diagnósticos semánticos y coordenadas independientes del entorno de trabajo."""
 
 from __future__ import annotations
 
@@ -8,19 +8,19 @@ from enum import Enum
 
 
 class DiagnosticSeverity(Enum):
-    """Severity levels understood by semantic consumers.
+    """Niveles de severidad que entienden los consumidores semánticos.
 
-    ``ERROR`` rejects semantic acceptance, while ``WARNING`` remains
-    reportable without rejecting a result.
+    ``ERROR`` rechaza la aceptación semántica, mientras que ``WARNING`` se
+    puede reportar sin rechazar el resultado.
 
-    Args:
-        value: Serialized value used when resolving an enum member.
+    Argumentos:
+        value: Valor serializado usado para resolver un miembro del enum.
 
-    Returns:
-        The matching severity member.
+    Retorna:
+        El miembro de severidad correspondiente.
 
-    Raises:
-        ValueError: If ``value`` does not identify a member.
+    Lanza:
+        ValueError: Si ``value`` no identifica ningún miembro.
     """
 
     ERROR = "error"
@@ -28,18 +28,18 @@ class DiagnosticSeverity(Enum):
 
 
 class DiagnosticCategory(Enum):
-    """Stable categories used to group semantic diagnostics.
+    """Categorías estables utilizadas para agrupar diagnósticos semánticos.
 
-    The enum is independent of parsers and presentation frameworks.
+    El enum es independiente de analizadores y entornos de presentación.
 
-    Args:
-        value: Serialized value used when resolving an enum member.
+    Argumentos:
+        value: Valor serializado usado para resolver un miembro del enum.
 
-    Returns:
-        The matching category member.
+    Retorna:
+        El miembro de categoría correspondiente.
 
-    Raises:
-        ValueError: If ``value`` does not identify a member.
+    Lanza:
+        ValueError: Si ``value`` no identifica ningún miembro.
     """
 
     TYPE = "type"
@@ -53,20 +53,20 @@ class DiagnosticCategory(Enum):
 
 @dataclass(frozen=True, slots=True)
 class SourceLocation:
-    """Identify a one-based interval in an optional source file.
+    """Identifica un intervalo basado en uno dentro de un archivo fuente opcional.
 
-    Args:
-        line: One-based starting line.
-        column: One-based starting column.
-        end_line: Optional one-based ending line.
-        end_column: Optional one-based ending column.
-        source_path: Optional source identity or filesystem path.
+    Argumentos:
+        line: Línea inicial basada en uno.
+        column: Columna inicial basada en uno.
+        end_line: Línea final opcional basada en uno.
+        end_column: Columna final opcional basada en uno.
+        source_path: Identidad de la fuente o ruta de archivo opcional.
 
-    Returns:
-        An immutable source location.
+    Retorna:
+        Una ubicación inmutable en el código fuente.
 
-    Raises:
-        ValueError: If any supplied coordinate is less than one.
+    Lanza:
+        ValueError: Si alguna coordenada proporcionada es menor que uno.
     """
 
     line: int
@@ -76,13 +76,13 @@ class SourceLocation:
     source_path: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate that every present public coordinate is one-based.
+        """Valida que cada coordenada pública presente esté basada en uno.
 
-        Returns:
-            None.
+        Retorna:
+            ``None``.
 
-        Raises:
-            ValueError: If a coordinate is less than one.
+        Lanza:
+            ValueError: Si una coordenada es menor que uno.
         """
         coordinates = (self.line, self.column, self.end_line, self.end_column)
         if any(coordinate is not None and coordinate < 1 for coordinate in coordinates):
@@ -91,19 +91,19 @@ class SourceLocation:
 
 @dataclass(frozen=True, slots=True)
 class Diagnostic:
-    """Describe one semantic issue without causing a side effect.
+    """Describe un problema semántico sin provocar efectos secundarios.
 
-    Args:
-        category: Semantic domain that detected the issue.
-        severity: Whether the issue is an error or warning.
-        message: Human-readable explanation.
-        location: One-based source location associated with the issue.
+    Argumentos:
+        category: Dominio semántico que detectó el problema.
+        severity: Indica si el problema es un error o una advertencia.
+        message: Explicación legible para una persona.
+        location: Ubicación basada en uno asociada con el problema.
 
-    Returns:
-        An immutable diagnostic record.
+    Retorna:
+        Un registro de diagnóstico inmutable.
 
-    Raises:
-        TypeError: If construction is attempted without required arguments.
+    Lanza:
+        TypeError: Si se intenta construir sin los argumentos obligatorios.
     """
 
     category: DiagnosticCategory
@@ -113,26 +113,26 @@ class Diagnostic:
 
 
 class DiagnosticBag:
-    """Accumulate diagnostics silently while preserving insertion order.
+    """Acumula diagnósticos sin imprimir y conserva el orden de inserción.
 
-    Args:
-        None.
+    Argumentos:
+        Ninguno.
 
-    Returns:
-        A mutable accumulator whose public views are immutable snapshots.
+    Retorna:
+        Un acumulador mutable cuyas vistas públicas son copias inmutables.
 
-    Raises:
-        No exceptions during normal accumulation.
+    Lanza:
+        No lanza excepciones durante la acumulación normal.
     """
 
     def __init__(self) -> None:
-        """Create an empty diagnostic collection.
+        """Crea una colección vacía de diagnósticos.
 
-        Returns:
-            None.
+        Retorna:
+            ``None``.
 
-        Raises:
-            No exceptions.
+        Lanza:
+            No lanza excepciones.
         """
         self._items: list[Diagnostic] = []
 
@@ -143,66 +143,66 @@ class DiagnosticBag:
         location: SourceLocation,
         severity: DiagnosticSeverity = DiagnosticSeverity.ERROR,
     ) -> Diagnostic:
-        """Append one diagnostic without printing or raising it.
+        """Agrega un diagnóstico sin imprimirlo ni lanzarlo como excepción.
 
-        Args:
-            category: Semantic domain that detected the issue.
-            message: Human-readable explanation.
-            location: One-based source location for the issue.
-            severity: Error by default; callers may explicitly use warning.
+        Argumentos:
+            category: Dominio semántico que detectó el problema.
+            message: Explicación legible para una persona.
+            location: Ubicación basada en uno para el problema.
+            severity: Error por defecto; se puede indicar una advertencia.
 
-        Returns:
-            The diagnostic that was appended.
+        Retorna:
+            El diagnóstico que se agregó.
 
-        Raises:
-            No exceptions during normal accumulation.
+        Lanza:
+            No lanza excepciones durante la acumulación normal.
         """
         diagnostic = Diagnostic(category, severity, message, location)
         self._items.append(diagnostic)
         return diagnostic
 
     def extend(self, diagnostics: Iterable[Diagnostic]) -> None:
-        """Append diagnostics from any iterable in iteration order.
+        """Agrega diagnósticos de un iterable respetando su orden.
 
-        Args:
-            diagnostics: Diagnostic records to append.
+        Argumentos:
+            diagnostics: Registros de diagnóstico que se agregarán.
 
-        Returns:
-            None.
+        Retorna:
+            ``None``.
 
-        Raises:
-            Any exception raised while consuming the supplied iterable.
+        Lanza:
+            Cualquier excepción producida al consumir el iterable recibido.
         """
         self._items.extend(diagnostics)
 
     @property
     def items(self) -> tuple[Diagnostic, ...]:
-        """Return an immutable snapshot of accumulated diagnostics.
+        """Devuelve una copia inmutable de los diagnósticos acumulados.
 
-        Returns:
-            A tuple in insertion order.
+        Retorna:
+            Una tupla en orden de inserción.
 
-        Raises:
-            No exceptions.
+        Lanza:
+            No lanza excepciones.
         """
         return tuple(self._items)
 
     @property
     def has_errors(self) -> bool:
-        """Report whether at least one accumulated item is an error.
+        """Indica si al menos un elemento acumulado es un error.
 
-        Returns:
-            ``True`` when an error exists; otherwise ``False``.
+        Retorna:
+            ``True`` si existe un error; de lo contrario, ``False``.
 
-        Raises:
-            No exceptions.
+        Lanza:
+            No lanza excepciones.
         """
         return any(item.severity is DiagnosticSeverity.ERROR for item in self._items)
 
     def __iter__(self) -> Iterator[Diagnostic]:
-        """Iterate over a stable snapshot in insertion order."""
+        """Itera sobre una copia estable en orden de inserción."""
         return iter(self.items)
 
     def __len__(self) -> int:
-        """Return the number of accumulated diagnostics."""
+        """Devuelve la cantidad de diagnósticos acumulados."""
         return len(self._items)

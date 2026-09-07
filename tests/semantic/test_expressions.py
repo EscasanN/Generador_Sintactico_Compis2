@@ -1,4 +1,4 @@
-"""Tests for framework-neutral semantic values and expression actions."""
+"""Pruebas de valores semánticos neutrales y acciones de expresiones."""
 
 from dataclasses import FrozenInstanceError, dataclass
 
@@ -25,13 +25,13 @@ from src.semantic.values import SemanticValue
 
 @dataclass(frozen=True)
 class ExampleSymbol:
-    """Minimal structural symbol used to verify the neutral protocol."""
+    """Símbolo estructural mínimo usado para verificar el protocolo neutral."""
 
     name: str
 
 
 def value(type_, *, assignable: bool = False, mutable: bool = False) -> SemanticValue:
-    """Build a semantic value at a stable test location."""
+    """Construye un valor semántico en una ubicación estable de prueba."""
     return SemanticValue(
         type=type_,
         assignable=assignable,
@@ -41,7 +41,7 @@ def value(type_, *, assignable: bool = False, mutable: bool = False) -> Semantic
 
 
 def test_semantic_value_is_immutable_and_keeps_only_neutral_data() -> None:
-    """Losing symbol or source metadata would break the next block's API."""
+    """Perder el símbolo o la ubicación rompería la API del siguiente bloque."""
     symbol = ExampleSymbol("counter")
     location = SourceLocation(4, 7, source_path="values.cps")
     semantic_value = SemanticValue(
@@ -77,7 +77,7 @@ def test_literal_builds_valid_typed_constants(
     expected_type: object,
     expected_constant: object,
 ) -> None:
-    """A wrong literal parser must fail on its independently known value."""
+    """Un analizador de literales incorrecto debe fallar ante un valor conocido."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(1, 1, source_path="literal.cps")
@@ -93,7 +93,7 @@ def test_literal_builds_valid_typed_constants(
 
 
 def test_invalid_literals_accumulate_diagnostics_and_return_error_values() -> None:
-    """A malformed token must not raise, print, or stop later literal checks."""
+    """Un token inválido no debe lanzar, imprimir ni detener otras validaciones."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(1, 1)
@@ -128,7 +128,7 @@ def test_typ_01_success_arithmetic_accepts_only_numeric_operands(
     right_type: object,
     expected_type: object,
 ) -> None:
-    """Removing numeric promotion or one arithmetic operator must fail."""
+    """Eliminar la promoción numérica o un operador aritmético debe fallar."""
     diagnostics = DiagnosticBag()
     result = ExpressionActions(diagnostics).binary(
         operator,
@@ -142,7 +142,7 @@ def test_typ_01_success_arithmetic_accepts_only_numeric_operands(
 
 
 def test_string_concatenation_accepts_two_strings() -> None:
-    """Removing the string-specific ``+`` branch must reject concatenation."""
+    """Eliminar la rama de ``+`` para cadenas debe rechazar la concatenación."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -164,7 +164,7 @@ def test_string_concatenation_accepts_two_strings() -> None:
     ],
 )
 def test_typ_01_failure_arithmetic_rejects_non_numeric_primitives(invalid_type: object) -> None:
-    """Allowing a known nonnumeric primitive in arithmetic must fail."""
+    """Permitir un primitivo no numérico conocido en aritmética debe fallar."""
     diagnostics = DiagnosticBag()
     result = ExpressionActions(diagnostics).binary(
         "+",
@@ -179,7 +179,7 @@ def test_typ_01_failure_arithmetic_rejects_non_numeric_primitives(invalid_type: 
 
 
 def test_gen_02_success_numeric_multiplication_has_semantic_meaning() -> None:
-    """GEN-02 success: compatible values must retain a useful result type."""
+    """Éxito GEN-02: los valores compatibles conservan un tipo de resultado útil."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -201,7 +201,7 @@ def test_gen_02_success_numeric_multiplication_has_semantic_meaning() -> None:
 def test_gen_02_failure_numeric_operations_reject_semantically_meaningless_values(
     invalid_type: object,
 ) -> None:
-    """GEN-02 failure: multiplying a function, class, or array must fail."""
+    """Fallo GEN-02: multiplicar una función, clase o arreglo debe fallar."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -216,7 +216,7 @@ def test_gen_02_failure_numeric_operations_reject_semantically_meaningless_value
 
 
 def test_error_and_unknown_operands_propagate_without_duplicate_diagnostics() -> None:
-    """An earlier error must stay singular, while unresolved types remain unresolved."""
+    """Un error previo no se duplica y los tipos no resueltos siguen sin resolverse."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
 
@@ -231,7 +231,7 @@ def test_error_and_unknown_operands_propagate_without_duplicate_diagnostics() ->
 
 
 def test_structurally_equal_recovery_types_propagate_like_singletons() -> None:
-    """Public recovery type instances must not create identity-dependent errors."""
+    """Los tipos públicos de recuperación no deben depender de la identidad."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(2, 1)
@@ -249,7 +249,7 @@ def test_structurally_equal_recovery_types_propagate_like_singletons() -> None:
 
 
 def test_compound_error_propagates_through_assignment_comparison_and_ternary() -> None:
-    """A nested prior error must never become a valid assignment or comparison."""
+    """Un error previo anidado nunca se convierte en asignación o comparación válida."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(2, 1)
@@ -273,7 +273,7 @@ def test_compound_error_propagates_through_assignment_comparison_and_ternary() -
 
 
 def test_compound_unknown_propagates_only_when_compatibility_depends_on_it() -> None:
-    """Unknown elements defer matching arrays but cannot hide an outer mismatch."""
+    """Los elementos desconocidos aplazan la comparación sin ocultar otros errores."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(2, 1)
@@ -292,7 +292,7 @@ def test_compound_unknown_propagates_only_when_compatibility_depends_on_it() -> 
 
 
 def test_typ_02_success_logical_operators_accept_boolean_operands() -> None:
-    """TYP-02 success: ``true && !false`` and boolean OR remain boolean."""
+    """Éxito TYP-02: ``true && !false`` y el OR booleano conservan tipo booleano."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(5, 2)
@@ -319,7 +319,7 @@ def test_typ_02_failure_logical_binary_rejects_non_boolean_operands(
     left_type: object,
     right_type: object,
 ) -> None:
-    """TYP-02 failure: allowing either known nonboolean operand must fail."""
+    """Fallo TYP-02: permitir un operando no booleano conocido debe fallar."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -335,7 +335,7 @@ def test_typ_02_failure_logical_binary_rejects_non_boolean_operands(
 
 
 def test_typ_02_failure_logical_not_rejects_non_boolean_operand() -> None:
-    """TYP-02 failure: logical negation of an integer must report one error."""
+    """Fallo TYP-02: negar lógicamente un entero debe reportar un error."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).unary(
@@ -347,7 +347,7 @@ def test_typ_02_failure_logical_not_rejects_non_boolean_operand() -> None:
 
 
 def test_numeric_unary_operators_preserve_numeric_type_and_reject_string() -> None:
-    """Unary sign accepts numeric values without widening and rejects strings."""
+    """El signo unario acepta números sin ampliarlos y rechaza cadenas."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(6, 1)
@@ -363,7 +363,7 @@ def test_numeric_unary_operators_preserve_numeric_type_and_reject_string() -> No
 
 
 def test_unary_error_and_unknown_propagate_and_unknown_operator_is_reported() -> None:
-    """Unary recovery must avoid cascades but still reject an unsupported operator."""
+    """La recuperación unaria evita cascadas y rechaza operadores no admitidos."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(6, 1)
@@ -396,7 +396,7 @@ def test_typ_03_success_comparisons_accept_compatible_types(
     left_type: object,
     right_type: object,
 ) -> None:
-    """TYP-03 success: each comparison must return boolean for compatible types."""
+    """Éxito TYP-03: cada comparación compatible debe devolver booleano."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -425,7 +425,7 @@ def test_typ_03_failure_comparisons_reject_incompatible_types(
     left_type: object,
     right_type: object,
 ) -> None:
-    """TYP-03 failure: a known incompatibility must report one type error."""
+    """Fallo TYP-03: una incompatibilidad conocida reporta un error de tipo."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).binary(
@@ -441,7 +441,7 @@ def test_typ_03_failure_comparisons_reject_incompatible_types(
 
 
 def test_comparison_propagates_error_and_unknown_without_cascades() -> None:
-    """A comparison cannot validate unresolved values or repeat a prior error."""
+    """Una comparación no valida valores sin resolver ni repite un error previo."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(7, 4)
@@ -466,7 +466,7 @@ def test_typ_04_success_assignment_accepts_compatible_mutable_targets(
     target_type: object,
     source_type: object,
 ) -> None:
-    """TYP-04 success: valid assignment must preserve the declared target type."""
+    """Éxito TYP-04: una asignación válida conserva el tipo declarado del destino."""
     diagnostics = DiagnosticBag()
     location = SourceLocation(8, 3)
 
@@ -493,7 +493,7 @@ def test_typ_04_failure_assignment_rejects_incompatible_values(
     target_type: object,
     source_type: object,
 ) -> None:
-    """TYP-04 failure: incompatible assignment must report one type error."""
+    """Fallo TYP-04: una asignación incompatible reporta un error de tipo."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).assignment(
@@ -508,7 +508,7 @@ def test_typ_04_failure_assignment_rejects_incompatible_values(
 
 
 def test_assignment_to_constant_and_nonassignable_value_reports_one_error_each() -> None:
-    """A constant and a temporary are distinct invalid assignment targets."""
+    """Una constante y un temporal son destinos inválidos de asignación distintos."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(9, 1)
@@ -526,7 +526,7 @@ def test_assignment_to_constant_and_nonassignable_value_reports_one_error_each()
 
 
 def test_assignment_propagates_error_and_unknown_without_duplicate_diagnostics() -> None:
-    """Recovery types must not create a second assignment diagnostic."""
+    """Los tipos de recuperación no deben crear otro diagnóstico de asignación."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(9, 1)
@@ -553,7 +553,7 @@ def test_valid_ternary_requires_boolean_condition_and_joins_branch_types(
     false_type: object,
     expected_type: object,
 ) -> None:
-    """A valid ternary must expose the independently known common branch type."""
+    """Un ternario válido debe exponer el tipo común conocido de sus ramas."""
     diagnostics = DiagnosticBag()
     location = SourceLocation(10, 2)
 
@@ -570,7 +570,7 @@ def test_valid_ternary_requires_boolean_condition_and_joins_branch_types(
 
 
 def test_invalid_ternary_accumulates_condition_and_branch_errors() -> None:
-    """Independent condition and branch failures must both remain visible."""
+    """Los fallos independientes de condición y ramas deben permanecer visibles."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).ternary(
@@ -586,7 +586,7 @@ def test_invalid_ternary_accumulates_condition_and_branch_errors() -> None:
 
 
 def test_ternary_propagates_existing_error_and_unknown_without_cascades() -> None:
-    """Recovery branches must not duplicate errors or claim a concrete type."""
+    """Las ramas de recuperación no duplican errores ni afirman un tipo concreto."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(10, 2)
@@ -607,7 +607,7 @@ def test_ternary_propagates_existing_error_and_unknown_without_cascades() -> Non
 
 
 def test_typ_06_success_list_structure_uses_a_valid_promoted_type() -> None:
-    """TYP-06 success: compatible numeric elements must produce ``float[]``."""
+    """Éxito TYP-06: elementos numéricos compatibles producen ``float[]``."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).array_literal(
@@ -619,7 +619,7 @@ def test_typ_06_success_list_structure_uses_a_valid_promoted_type() -> None:
 
 
 def test_typ_06_failure_list_structure_rejects_incompatible_depth() -> None:
-    """TYP-06 failure: mixing an element and an array element must be rejected."""
+    """Fallo TYP-06: mezclar un elemento y un arreglo debe rechazarse."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).array_literal(
@@ -632,7 +632,7 @@ def test_typ_06_failure_list_structure_rejects_incompatible_depth() -> None:
 
 
 def test_lst_01_success_homogeneous_list_preserves_element_type() -> None:
-    """LST-01 success: same-type elements must produce one array dimension."""
+    """Éxito LST-01: elementos del mismo tipo producen una dimensión de arreglo."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).array_literal(
@@ -644,7 +644,7 @@ def test_lst_01_success_homogeneous_list_preserves_element_type() -> None:
 
 
 def test_lst_01_failure_heterogeneous_list_reports_array_diagnostic() -> None:
-    """LST-01 failure: incompatible primitive elements must report one error."""
+    """Fallo LST-01: elementos primitivos incompatibles reportan un error."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).array_literal(
@@ -657,7 +657,10 @@ def test_lst_01_failure_heterogeneous_list_reports_array_diagnostic() -> None:
 
 
 def test_empty_and_nested_array_literals_preserve_depth() -> None:
-    """An empty list is unresolved, while nested homogeneous lists retain depth."""
+    """Una lista vacía queda sin resolver.
+
+    Las listas homogéneas anidadas conservan su profundidad.
+    """
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(13, 1)
@@ -673,7 +676,7 @@ def test_empty_and_nested_array_literals_preserve_depth() -> None:
 
 
 def test_array_literal_propagates_error_and_unknown_without_duplicate_diagnostics() -> None:
-    """An invalid inner expression stays singular and unknown elements stay safe."""
+    """Una expresión interna inválida no se duplica y los desconocidos son seguros."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(13, 1)
@@ -688,7 +691,7 @@ def test_array_literal_propagates_error_and_unknown_without_duplicate_diagnostic
 
 
 def test_nested_array_literal_collapses_compound_error_but_preserves_unknown_depth() -> None:
-    """Nested recovery retains known shape only for unresolved, not invalid, types."""
+    """La recuperación conserva la forma para tipos no resueltos, no para inválidos."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(13, 1)
@@ -721,7 +724,7 @@ def test_nested_array_literal_collapses_compound_error_but_preserves_unknown_dep
 def test_array_unknown_does_not_hide_incompatible_known_elements(
     elements: list[SemanticValue],
 ) -> None:
-    """A list remains invalid when its known elements already contradict."""
+    """Una lista sigue inválida si sus elementos conocidos ya se contradicen."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).array_literal(
@@ -734,7 +737,7 @@ def test_array_unknown_does_not_hide_incompatible_known_elements(
 
 
 def test_lst_02_success_integer_index_returns_assignable_element_type() -> None:
-    """LST-02 success: an integer index must expose the array's element contract."""
+    """Éxito LST-02: un índice entero expone el contrato del elemento del arreglo."""
     diagnostics = DiagnosticBag()
     location = SourceLocation(14, 5)
     symbol = ExampleSymbol("numbers")
@@ -757,7 +760,7 @@ def test_lst_02_success_integer_index_returns_assignable_element_type() -> None:
 
 
 def test_lst_02_success_nested_array_index_removes_exactly_one_dimension() -> None:
-    """LST-02 success: indexing a matrix once must leave an array row."""
+    """Éxito LST-02: indexar una matriz una vez debe dejar una fila de arreglo."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).index(
@@ -779,7 +782,7 @@ def test_lst_02_success_nested_array_index_removes_exactly_one_dimension() -> No
     ],
 )
 def test_lst_02_failure_rejects_every_known_noninteger_index(index_type: object) -> None:
-    """LST-02 failure: a noninteger index must report one array diagnostic."""
+    """Fallo LST-02: un índice no entero reporta un diagnóstico de arreglo."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).index(
@@ -794,7 +797,7 @@ def test_lst_02_failure_rejects_every_known_noninteger_index(index_type: object)
 
 
 def test_index_rejects_nonarray_container_and_accumulates_independent_errors() -> None:
-    """Bad container and bad index must both be visible from one expression."""
+    """Un contenedor y un índice inválidos deben verse desde una sola expresión."""
     diagnostics = DiagnosticBag()
 
     result = ExpressionActions(diagnostics).index(
@@ -807,7 +810,7 @@ def test_index_rejects_nonarray_container_and_accumulates_independent_errors() -
 
 
 def test_index_propagates_error_and_unknown_without_duplicate_diagnostics() -> None:
-    """Previously invalid or unresolved operands must remain recoverable."""
+    """Los operandos inválidos o no resueltos deben seguir siendo recuperables."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(15, 1)
@@ -824,7 +827,7 @@ def test_index_propagates_error_and_unknown_without_duplicate_diagnostics() -> N
 
 
 def test_index_collapses_compound_error_and_preserves_known_unknown_shape() -> None:
-    """Index recovery must distinguish invalid nested content from unresolved content."""
+    """La recuperación distingue contenido inválido de contenido no resuelto."""
     diagnostics = DiagnosticBag()
     actions = ExpressionActions(diagnostics)
     location = SourceLocation(15, 1)

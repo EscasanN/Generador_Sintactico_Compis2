@@ -4,15 +4,6 @@ grammar Compiscript;
 // Parser Rules
 // ------------------
 //
-// NOTA DE DISEÑO (bloque 4 -- Nelson, ver docs/phase3/REGLAS_Y_DECISIONES.md):
-// El perfil semantico (semantic_profiles/compiscript.semantic.json) solo puede
-// seleccionar hijos de un nodo por indice fijo, por tipo de token directo, o por
-// texto concatenado del nodo actual. No existe un selector que aplane listas de
-// aridad variable ni que dependa de que alternativa opcional se uso. Por eso,
-// toda regla que en el ejemplo original combinaba varias partes opcionales
-// (X? Y?) se dividio aqui en alternativas etiquetadas de aridad fija -- misma
-// gramatica superficial, mismo lenguaje aceptado, arbol de derivacion mas
-// regular. Los cambios estan documentados con fecha en REGLAS_Y_DECISIONES.md.
 
 program: statement* EOF;
 

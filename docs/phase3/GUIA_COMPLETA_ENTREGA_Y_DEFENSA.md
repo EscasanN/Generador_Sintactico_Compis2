@@ -1,5 +1,9 @@
 # Guía completa de la entrega y defensa
 
+Para presentar específicamente la autoría y los aportes de Daniel, Nadissa,
+Dulce y Nelson, consulte también la
+[guía de defensa por bloques e integrante](GUIA_DEFENSA_POR_INTEGRANTE.md).
+
 > Estado verificado: 7 de septiembre de 2026. La batería completa termina con
 > **385 pruebas aprobadas** y la evidencia ejecutable de Compiscript contiene
 > **69 programas `.cps`**.

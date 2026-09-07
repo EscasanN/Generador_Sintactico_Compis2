@@ -1,4 +1,4 @@
-"""Parser-independent actions for typing and validating expressions."""
+"""Acciones independientes del analizador para tipar y validar expresiones."""
 
 from __future__ import annotations
 
@@ -36,29 +36,29 @@ _FLOAT_LITERAL = re.compile(
 
 
 class ExpressionActions:
-    """Validate expressions while accumulating recoverable diagnostics.
+    """Valida expresiones mientras acumula diagnósticos recuperables.
 
-    Args:
-        diagnostics: Destination bag for every semantic issue.
+    Argumentos:
+        diagnostics: Acumulador de destino para cada problema semántico.
 
-    Returns:
-        An action service bound to the supplied bag.
+    Retorna:
+        Un servicio de acciones asociado con el acumulador recibido.
 
-    Raises:
-        TypeError: If the required diagnostic bag is omitted.
+    Lanza:
+        TypeError: Si se omite el acumulador de diagnósticos obligatorio.
     """
 
     def __init__(self, diagnostics: DiagnosticBag) -> None:
-        """Bind all actions to a shared diagnostic accumulator.
+        """Asocia todas las acciones con un acumulador de diagnósticos compartido.
 
-        Args:
-            diagnostics: Destination bag for semantic issues.
+        Argumentos:
+            diagnostics: Acumulador de destino para problemas semánticos.
 
-        Returns:
-            None.
+        Retorna:
+            ``None``.
 
-        Raises:
-            TypeError: If ``diagnostics`` is omitted.
+        Lanza:
+            TypeError: Si se omite ``diagnostics``.
         """
         self._diagnostics = diagnostics
 
@@ -68,24 +68,24 @@ class ExpressionActions:
         text: str,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Parse a supported literal into a typed semantic value.
+        """Interpreta un literal compatible como un valor semántico tipado.
 
-        Supported kinds are ``integer``, ``float``, ``string``, ``boolean``
-        and ``null``. Signs remain unary operators rather than part of numeric
-        literal text.
+        Los tipos admitidos son ``integer``, ``float``, ``string``, ``boolean``
+        y ``null``. Los signos se mantienen como operadores unarios y no como
+        parte del texto del literal numérico.
 
-        Args:
-            kind: Stable literal kind supplied by the caller.
-            text: Original literal spelling.
-            location: One-based source location for the literal.
+        Argumentos:
+            kind: Tipo estable de literal proporcionado por el llamador.
+            text: Escritura original del literal.
+            location: Ubicación del literal basada en uno.
 
-        Returns:
-            A non-assignable constant, or a value of type ``ERROR`` when the
-            kind or spelling is invalid.
+        Retorna:
+            Una constante no asignable o un valor de tipo ``ERROR`` si el tipo
+            de literal o su escritura no son válidos.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid input is
-            reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; la
+            entrada inválida se informa mediante el acumulador de diagnósticos.
         """
         normalized_kind = kind.strip().lower()
         try:
@@ -119,21 +119,21 @@ class ExpressionActions:
         operand: SemanticValue,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Validate numeric sign or boolean negation.
+        """Valida un signo numérico o una negación booleana.
 
-        Args:
-            operator: ``+``, ``-`` or ``!``.
-            operand: Value to validate.
-            location: One-based location of the complete expression.
+        Argumentos:
+            operator: ``+``, ``-`` o ``!``.
+            operand: Valor que se validará.
+            location: Ubicación basada en uno de la expresión completa.
 
-        Returns:
-            A result preserving the numeric type for sign operators or
-            ``boolean`` for negation. Existing ``ERROR`` and ``UNKNOWN`` types
-            propagate without extra diagnostics.
+        Retorna:
+            Un resultado que conserva el tipo numérico para operadores de signo
+            o ``boolean`` para la negación. Los tipos ``ERROR`` y ``UNKNOWN``
+            existentes se propagan sin diagnósticos adicionales.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid operations
-            are reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; las
+            operaciones inválidas se informan mediante los diagnósticos.
         """
         if operator not in {"+", "-", "!"}:
             self._diagnostics.add(
@@ -166,29 +166,31 @@ class ExpressionActions:
         right: SemanticValue,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Validate a binary arithmetic, logical, or comparison expression.
+        """Valida una expresión binaria aritmética, lógica o de comparación.
 
-        The arithmetic operators are ``+``, ``-``, ``*``, ``/`` and ``%``.
-        They accept integer or float operands and use their common numeric
-        type. The ``+`` operator also concatenates two strings. Consequently
-        integer division remains typed as integer; runtime division semantics
-        are outside this static core. ``&&`` and ``||`` require two boolean
-        operands. Comparisons require assignment compatibility in at least one
-        direction and return ``boolean``.
+        Los operadores aritméticos son ``+``, ``-``, ``*``, ``/`` y ``%``.
+        Aceptan operandos enteros o flotantes y utilizan su tipo numérico común.
+        El operador ``+`` también concatena dos cadenas. Por lo tanto, la
+        división de enteros conserva el tipo entero; la semántica de ejecución
+        de la división queda fuera de este núcleo estático. ``&&`` y ``||``
+        requieren dos operandos booleanos. Las comparaciones requieren
+        compatibilidad de asignación en al menos una dirección y retornan
+        ``boolean``.
 
-        Args:
-            operator: Binary operator spelling.
-            left: Left operand value.
-            right: Right operand value.
-            location: One-based location of the complete expression.
+        Argumentos:
+            operator: Escritura del operador binario.
+            left: Valor del operando izquierdo.
+            right: Valor del operando derecho.
+            location: Ubicación basada en uno de la expresión completa.
 
-        Returns:
-            A non-assignable typed result. ``ERROR`` propagates silently, and
-            ``UNKNOWN`` propagates conservatively without inventing an error.
+        Retorna:
+            Un resultado tipado no asignable. ``ERROR`` se propaga sin agregar
+            diagnósticos y ``UNKNOWN`` lo hace de forma conservadora sin
+            inventar un error.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid operations
-            are reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; las
+            operaciones inválidas se informan mediante los diagnósticos.
         """
         arithmetic_operators = {"+", "-", "*", "/", "%"}
         logical_operators = {"&&", "||"}
@@ -260,22 +262,22 @@ class ExpressionActions:
         value: SemanticValue,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Validate assignment target capabilities and type compatibility.
+        """Valida el destino de una asignación y la compatibilidad de tipos.
 
-        Args:
-            target: Destination value, normally produced by name or index
-                resolution in a later semantic layer.
-            value: Source expression value.
-            location: One-based location of the complete assignment.
+        Argumentos:
+            target: Valor de destino, normalmente producido al resolver un
+                nombre o índice en una capa semántica posterior.
+            value: Valor de la expresión fuente.
+            location: Ubicación basada en uno de la asignación completa.
 
-        Returns:
-            A non-assignable result with the target's declared type when valid.
-            Existing ``ERROR`` and unresolved ``UNKNOWN`` types propagate
-            without extra type diagnostics.
+        Retorna:
+            Un resultado no asignable con el tipo declarado del destino cuando
+            es válido. Los tipos ``ERROR`` existentes y los ``UNKNOWN`` no
+            resueltos se propagan sin diagnósticos de tipo adicionales.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid targets or
-            types are reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; los
+            destinos o tipos inválidos se informan mediante los diagnósticos.
         """
         if _contains_error(target.type) or _contains_error(value.type):
             return SemanticValue(ERROR, location=location)
@@ -314,22 +316,23 @@ class ExpressionActions:
         false_value: SemanticValue,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Validate a boolean condition and join both ternary branches.
+        """Valida una condición booleana y combina las ramas del ternario.
 
-        Args:
-            condition: Expression before the question mark.
-            true_value: Value selected by a true condition.
-            false_value: Value selected by a false condition.
-            location: One-based location of the complete ternary expression.
+        Argumentos:
+            condition: Expresión situada antes del signo de interrogación.
+            true_value: Valor seleccionado si la condición es verdadera.
+            false_value: Valor seleccionado si la condición es falsa.
+            location: Ubicación basada en uno de la expresión ternaria completa.
 
-        Returns:
-            The common branch type, ``UNKNOWN`` when any relevant type is
-            unresolved, or ``ERROR`` after known invalid input. Independent
-            condition and branch errors are both accumulated.
+        Retorna:
+            El tipo común de las ramas, ``UNKNOWN`` si algún tipo relevante no
+            está resuelto o ``ERROR`` ante una entrada inválida conocida. Se
+            acumulan de manera independiente los errores de condición y ramas.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid conditions
-            or branch pairs are reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; las
+            condiciones o pares de ramas inválidos se informan mediante los
+            diagnósticos.
         """
         has_error = False
         unresolved = False
@@ -374,21 +377,21 @@ class ExpressionActions:
         elements: Iterable[SemanticValue],
         location: SourceLocation,
     ) -> SemanticValue:
-        """Infer a homogeneous or otherwise valid common array element type.
+        """Infiere un tipo de elemento común, homogéneo o compatible, para el arreglo.
 
-        Args:
-            elements: Expression values in source order. Any iterable is
-                accepted and consumed once.
-            location: One-based location of the complete array literal.
+        Argumentos:
+            elements: Valores de expresión en el orden de la fuente. Se acepta
+                cualquier iterable y se consume una sola vez.
+            location: Ubicación basada en uno del literal de arreglo completo.
 
-        Returns:
-            An array of the common element type. Empty or unresolved contents
-            produce ``UNKNOWN[]``. A prior element ``ERROR`` makes the whole
-            literal ``ERROR`` without adding a duplicate diagnostic.
+        Retorna:
+            Un arreglo del tipo de elemento común. El contenido vacío o no
+            resuelto produce ``UNKNOWN[]``. Un elemento ``ERROR`` previo hace
+            que todo el literal sea ``ERROR`` sin duplicar el diagnóstico.
 
-        Raises:
-            Any exception raised while consuming the supplied iterable.
-            Known semantic incompatibilities are accumulated instead.
+        Lanza:
+            Cualquier excepción producida al consumir el iterable. Las
+            incompatibilidades semánticas conocidas se acumulan en su lugar.
         """
         values = tuple(elements)
         element_type = common_type(value.type for value in values)
@@ -409,21 +412,22 @@ class ExpressionActions:
         index: SemanticValue,
         location: SourceLocation,
     ) -> SemanticValue:
-        """Validate array indexing and expose one element dimension.
+        """Valida la indexación de un arreglo y expone una dimensión del elemento.
 
-        Args:
-            container: Value expected to have an array type.
-            index: Value required to have exactly the integer type.
-            location: One-based location of the complete index expression.
+        Argumentos:
+            container: Valor que debe tener un tipo de arreglo.
+            index: Valor que debe tener exactamente el tipo entero.
+            location: Ubicación basada en uno de la indexación completa.
 
-        Returns:
-            The array element value. Its assignment and mutability capabilities
-            follow the container so later layers can validate ``array[i] =``.
-            Existing ``ERROR`` and ``UNKNOWN`` operands propagate safely.
+        Retorna:
+            El valor del elemento del arreglo. Sus capacidades de asignación y
+            mutabilidad siguen al contenedor para que capas posteriores validen
+            ``array[i] =``. Los operandos ``ERROR`` y ``UNKNOWN`` existentes se
+            propagan de forma segura.
 
-        Raises:
-            No exceptions during normal semantic analysis; invalid containers
-            or indices are reported through the diagnostic bag.
+        Lanza:
+            No lanza excepciones durante el análisis semántico normal; los
+            contenedores o índices inválidos se informan mediante diagnósticos.
         """
         container_has_error = _contains_error(container.type)
         index_has_error = _contains_error(index.type)
@@ -465,7 +469,7 @@ class ExpressionActions:
 
 
 def _parse_string_literal(text: str) -> str:
-    """Parse matching single or double quotes and common escapes."""
+    """Interpreta comillas simples o dobles coincidentes y escapes comunes."""
     if len(text) < 2 or text[0] not in {'"', "'"} or text[-1] != text[0]:
         raise ValueError("string literal must have matching quotes")
 

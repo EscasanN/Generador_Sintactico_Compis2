@@ -38,6 +38,7 @@ Los resultados propios de YAPar no se atribuyen a ANTLR ni se eliminan.
 ## Documentos
 
 - [Guía completa de la entrega y defensa](GUIA_COMPLETA_ENTREGA_Y_DEFENSA.md)
+- [Guía de defensa por bloques e integrante](GUIA_DEFENSA_POR_INTEGRANTE.md)
 - [Enunciado oficial del Proyecto 2](../../Generador_de_Analizadores_Semánticos.pdf)
 - [Gramática ANTLR de ejemplo](../../src/compiscript/grammar/Compiscript.g4)
 - [Especificación de referencia](../compiscript/ESPECIFICACION.md)

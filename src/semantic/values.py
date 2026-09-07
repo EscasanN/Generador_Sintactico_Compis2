@@ -1,4 +1,4 @@
-"""Framework-neutral values exchanged by semantic actions."""
+"""Valores independientes del entorno intercambiados por acciones semánticas."""
 
 from __future__ import annotations
 
@@ -10,49 +10,50 @@ from src.semantic.types import Type
 
 
 class SymbolReference(Protocol):
-    """Structural contract for an optional symbol attached to a value.
+    """Contrato estructural para un símbolo opcional asociado a un valor.
 
-    Args:
-        None. Implementations are supplied by later semantic layers.
+    Argumentos:
+        Ninguno. Las capas semánticas posteriores proporcionan implementaciones.
 
-    Returns:
-        Any object exposing a string ``name`` property satisfies the protocol.
+    Retorna:
+        Cualquier objeto con una propiedad ``name`` de tipo cadena satisface el
+        protocolo.
 
-    Raises:
-        No exceptions are introduced by this protocol.
+    Lanza:
+        Este protocolo no introduce excepciones.
     """
 
     @property
     def name(self) -> str:
-        """Return the source-level symbol name.
+        """Devuelve el nombre del símbolo en el código fuente.
 
-        Returns:
-            The identifier exposed by the later symbol implementation.
+        Retorna:
+            El identificador expuesto por la implementación posterior del símbolo.
 
-        Raises:
-            No exceptions are introduced by this protocol.
+        Lanza:
+            Este protocolo no introduce excepciones.
         """
         ...
 
 
 @dataclass(frozen=True, slots=True)
 class SemanticValue:
-    """Carry the type and neutral metadata produced for an expression.
+    """Conserva el tipo y los metadatos neutrales producidos para una expresión.
 
-    Args:
-        type: Static semantic type.
-        constant_value: Optional compile-time literal value. ``None`` also
-            represents the language's null literal.
-        assignable: Whether this value denotes a legal assignment target.
-        mutable: Whether that target may be changed after declaration.
-        symbol: Optional structural symbol reference from a later layer.
-        location: Optional one-based source location.
+    Argumentos:
+        type: Tipo semántico estático.
+        constant_value: Valor literal opcional conocido en compilación. ``None``
+            también representa el literal nulo del lenguaje.
+        assignable: Indica si el valor representa un destino válido de asignación.
+        mutable: Indica si ese destino puede cambiar después de su declaración.
+        symbol: Referencia estructural opcional a un símbolo de una capa posterior.
+        location: Ubicación opcional en la fuente basada en uno.
 
-    Returns:
-        An immutable value with no parser, grammar, profile, or GUI state.
+    Retorna:
+        Un valor inmutable sin estado del analizador, gramática, perfil ni GUI.
 
-    Raises:
-        TypeError: If the required ``type`` argument is omitted.
+    Lanza:
+        TypeError: Si se omite el argumento obligatorio ``type``.
     """
 
     type: Type
