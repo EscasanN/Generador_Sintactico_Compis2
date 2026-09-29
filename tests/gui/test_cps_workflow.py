@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import QApplication
 from src.antlr_mode.runner import analyze_with_g4
 from src.gui.app import MainWindow, SemanticAnalysisWorker
 from src.semantic.antlr_adapter import analyze_semantics_with_g4
-from src.utils.visualizer import render_parse_tree
+from src.antlr_mode.parse_tree_visualizer import render_parse_tree
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -62,7 +62,7 @@ def test_ide_01_file_list_slot_still_accepts_cps(tmp_path):
     """Loaded-files list keeps exactly its four slots (regression) and one is Input."""
     application, window = _make_window()
     try:
-        assert window._file_list.count() == 4
+        assert window._file_list.count() == 1
         cps_path = tmp_path / "programa.cps"
         cps_path.write_text(VALID_PROGRAM, encoding="utf-8")
         window._input_path = str(cps_path)
@@ -138,7 +138,6 @@ def test_ide_02_and_04_compile_uses_unsaved_editor_contents(
         window._profile_path = str(PROFILE)
         window._input_path = str(cps_path)
         window._active_file = str(cps_path)
-        window._start_rule_combo.addItem("program")
         window._editor.setPlainText(edited_program)
         monkeypatch.setattr(SemanticAnalysisWorker, "start", lambda worker: None)
 
@@ -247,7 +246,7 @@ def test_ide_07_parse_tree_has_both_image_and_navigable_views():
         })
         # One tab for the Graphviz image, one for the navigable QTreeWidget.
         assert window._tree_tabs.count() == 2
-        assert window._tree_tabs.tabText(1) == "Navigable"
+        assert window._tree_tabs.tabText(1) == "Navegable"
     finally:
         window.close()
         application.processEvents()
@@ -276,48 +275,35 @@ def test_ide_08_semantic_analysis_runs_on_a_worker_thread():
     assert captured["bundle"]["semantic_result"].accepted
 
 
-def test_regression_yapar_mode_round_trip_is_unaffected():
-    """The pre-existing YAPar mode keeps working after the .cps additions."""
+def test_two_compiscript_analyses_can_render_consecutively():
+    """La ventana reemplaza limpiamente los resultados entre compilaciones."""
     application, window = _make_window()
     try:
-        assert window._mode_combo.count() == 2
-        window._set_mode("yapar")
-        assert window._mode_combo.currentData() == "yapar"
-        assert not window._start_rule_combo.isEnabled()
-    finally:
-        window.close()
-        application.processEvents()
-
-
-def test_regression_antlr_and_compiscript_modes_run_consecutively():
-    """MiniCalc-style ANTLR runs and a Compiscript compile can share one window."""
-    application, window = _make_window()
-    try:
-        window._load_g4_rules(str(GRAMMAR))
-        window._set_mode("antlr")
-
-        syntax_only = analyze_with_g4(GRAMMAR, VALID_PROGRAM, "program")
-        window._render_bundle({
-            "mode": "antlr",
-            "result": syntax_only,
-            "tree_image": None,
-            "tree_error": None,
-        })
-        assert window._tree_tabs.count() == 1
-
-        full = analyze_semantics_with_g4(
-            GRAMMAR, VALID_PROGRAM, PROFILE, "program", "programa.cps"
+        first = analyze_semantics_with_g4(
+            GRAMMAR, VALID_PROGRAM, PROFILE, "program", "valido.cps"
         )
-        window._profile_path = str(PROFILE)
         window._render_bundle({
             "mode": "semantic",
-            "result": full.syntax_result,
-            "semantic_result": full.semantic_result,
+            "result": first.syntax_result,
+            "semantic_result": first.semantic_result,
             "tree_image": None,
             "tree_error": None,
         })
         assert window._tree_tabs.count() == 2
         assert window._semantic_panel._diagnostics_table.rowCount() == 0
+
+        second = analyze_semantics_with_g4(
+            GRAMMAR, INVALID_PROGRAM, PROFILE, "program", "invalido.cps"
+        )
+        window._render_bundle({
+            "mode": "semantic",
+            "result": second.syntax_result,
+            "semantic_result": second.semantic_result,
+            "tree_image": None,
+            "tree_error": None,
+        })
+        assert window._tree_tabs.count() == 2
+        assert window._semantic_panel._diagnostics_table.rowCount() >= 1
     finally:
         window.close()
         application.processEvents()

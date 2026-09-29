@@ -11,7 +11,7 @@ from src.semantic.types import ERROR, UNKNOWN, Type, is_assignable, type_from_na
 from src.semantic.values import SemanticValue
 
 if TYPE_CHECKING:
-    from src.parser.parse_tree import ParseTreeNode
+    from src.antlr_mode.parse_tree import ParseTreeNode
     from src.semantic.evaluator import SemanticContext
 
 

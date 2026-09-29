@@ -1,4 +1,4 @@
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.actions.callables import (
     call_function,
     declare_function,

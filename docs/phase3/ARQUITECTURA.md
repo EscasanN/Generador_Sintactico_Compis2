@@ -1,269 +1,66 @@
-# Arquitectura — Fase 3
+# Arquitectura vigente de Compiscript
 
-## Base estable
-
-El repositorio conserva:
-
-- `src/lexer/`: YALex, NFA, DFA y minimización;
-- `src/parser/`: YAPar, LR(0), SLR, LALR, LL(1) y árbol;
-- `src/gui/app.py`: IDE de las fases 1 y 2.
-
-El modo ANTLR se agrega como frontend paralelo y no reemplaza esos módulos.
-
-## Flujo multimodo
+## Flujo completo
 
 ```text
-                ┌── .yal + .yapar ──> motor propio YALex/YAPar ──┐
-IDE + entrada ──┤                                                ├──> vistas
-                └── .g4 + .cps + start rule ──> runtime ANTLR ───┘
-                                                         │
-                                      ┌──────────────────┴───────────────┐
-                                      v                                  v
-                             árbol visual común                 árbol nativo ANTLR
-                                                                         │
-                                                                         v
-                                                           ParseTreeWalker + Listener
-                                                                         │
-                                                                         v
-                                                           motor semántico configurable
+Fuente .cps
+   ↓
+src/antlr_mode/runner.py
+   ├── inspecciona Compiscript.g4
+   ├── genera o reutiliza Lexer/Parser de ANTLR
+   ├── ejecuta la regla program
+   └── convierte el árbol nativo a ParseTreeNode
+   ↓
+src/semantic/antlr_adapter.py
+   ├── valida identidad y esquema del perfil
+   ├── recorre el árbol con SemanticTreeListener
+   └── produce SemanticAnalysisResult
+   ↓
+diagnósticos + tabla de símbolos + resultado ACCEPT/REJECT
+   ↓
+CLI o GUI
 ```
 
-## Dirección de dependencias
+## Componentes
 
-La implementación se organiza en capas que solo dependen de las inferiores:
+### Frontend ANTLR
 
-```text
-GUI y perfil Compiscript                         [Nelson, bloque 4]
-                    │
-                    v
-adaptador ANTLR-semántica + perfil MiniCalc      [Dulce, bloque 3]
-                    │
-                    v
-evaluador + perfiles + símbolos + acciones       [Nadissa, bloque 2]
-                    │
-                    v
-diagnósticos + tipos + valores + expresiones     [Daniel, bloque 1]
-                    │
-                    v
-          contratos de la base multimodo
-```
+- `src/compiscript/grammar/Compiscript.g4`: sintaxis oficial.
+- `src/antlr_mode/grammar_info.py`: nombre y reglas de la gramática.
+- `src/antlr_mode/runner.py`: generación, caché, tokens y análisis.
+- `src/antlr_mode/parse_tree.py`: representación común del árbol.
+- `src/antlr_mode/parse_tree_visualizer.py`: renderizado Graphviz.
 
-Una capa puede importar únicamente la base y las capas ubicadas debajo. Ninguna
-capa inferior importa la GUI, el adaptador o una implementación posterior. Esta
-dirección permite que cada integrante cierre su bloque antes de que comience el
-siguiente.
+### Semántica
 
-## `src/antlr_mode/`
+- `semantic_profiles/compiscript.semantic.json`: bindings declarativos.
+- `src/semantic/profile.py`: carga y validación estricta del perfil.
+- `src/semantic/antlr_listener.py`: puente entre eventos ANTLR y acciones.
+- `src/semantic/evaluator.py`: contexto, selectores y ejecución segura.
+- `src/semantic/actions/`: declaraciones, funciones, flujo y clases.
+- `src/semantic/types.py`: sistema de tipos.
+- `src/semantic/symbol_table.py`: ámbitos y resolución léxica.
+- `src/semantic/diagnostics.py`: errores y warnings acumulables.
 
-### `grammar_info.py`
+### Consumidores
 
-Inspecciona la gramática sin generar código. Produce `GrammarInfo` con ruta,
-nombre, tipo y reglas de parser.
+- `src/main.py`: CLI con gramática y perfil oficiales.
+- `src/gui/app.py`: editor `.cps` y ejecución en segundo plano.
+- `src/gui/semantic_results.py`: diagnósticos y tabla de símbolos.
+- `src/gui/parse_tree_view.py`: árbol navegable.
 
-### `runner.py`
+## Decisiones
 
-1. valida la gramática y regla inicial;
-2. resuelve Java y ANTLR 4.13.2;
-3. descarga el JAR en el primer uso si es necesario;
-4. calcula hash de versión y contenido;
-5. genera Python en `output/antlr/generated/`;
-6. carga Lexer y Parser dinámicamente;
-7. recolecta errores;
-8. verifica consumo completo;
-9. conserva la sesión necesaria para recorrer el árbol nativo;
-10. convierte el árbol al modelo común para visualización.
+1. La sintaxis siempre se ejecuta antes que la semántica.
+2. Un error sintáctico evita recorrer un árbol inválido.
+3. El perfil no ejecuta código arbitrario: solo acciones registradas.
+4. El fingerprint impide combinar una gramática con un perfil incompatible.
+5. Los errores se acumulan para ofrecer más de un diagnóstico por ejecución.
+6. Los warnings conservan `ACCEPT`.
+7. La GUI usa un hilo de trabajo para no bloquear la interfaz.
 
-Los generados son caché reproducible, no código fuente del proyecto.
+## Extensión futura
 
-## Árbol común
-
-`ParseTreeNode` mantiene compatibilidad con YAPar y agrega metadatos opcionales:
-
-- regla;
-- alternativa etiquetada;
-- tipo y texto de token;
-- ubicación inicial y final.
-
-El modelo común sirve para pruebas unitarias, selectores declarativos y
-visualización. En la integración real, el Listener de Dulce recorre el árbol
-nativo de ANTLR y relaciona cada contexto con el nodo común correspondiente.
-
-Sus campos públicos se congelan antes del bloque de Daniel. Dulce puede corregir
-la producción de metadatos en su bloque, pero no cambia la forma pública que ya
-consumen Daniel y Nadissa.
-
-## GUI
-
-`MainWindow` conserva una sola aplicación. `AnalysisWorker` atiende YAPar y el
-worker ANTLR atiende la gramática `.g4` y el fuente `.cps`. Ambos trabajan fuera
-del hilo principal.
-
-El modo determina requisitos y renderizado:
-
-- YAPar: vistas históricas completas;
-- ANTLR: edición del `.cps`, tokens, árbol visual, diagnósticos y símbolos;
-- cambiar de modo no borra archivos cargados del otro flujo.
-
-El flujo evaluado permite crear, abrir, editar y guardar `.cps`. El botón
-**Compile** o **Analyze** usa todo el contenido del editor y marca **ACCEPT**
-solo cuando no existen errores léxicos, sintácticos ni semánticos.
-
-La ampliación semántica de la GUI pertenece únicamente al último bloque. Nelson
-consume `analyze_semantics_with_g4`; no llama directamente al generador, al
-registro de acciones ni a helpers privados del evaluador.
-
-## Semántica genérica
-
-Una gramática solo describe sintaxis. Para evitar código diferente por lenguaje,
-se propone un perfil declarativo que asocie reglas o alternativas con acciones
-registradas:
-
-```text
-árbol nativo + nombres de reglas + perfil
-                    │
-                    v
-       ParseTreeWalker.DEFAULT.walk(...)
-                    │
-                    v
-          SemanticTreeListener
-                    │
-                    v
-            SemanticEvaluator
-            ├── TypeSystem
-            ├── SymbolTable
-            ├── ExpressionActions
-            ├── acciones de función/control/clase/composición
-            └── DiagnosticBag
-```
-
-El perfil no ejecuta Python arbitrario. No se permite `eval`, `exec` ni
-imports configurables.
-
-Cada perfil de entrega puede declarar el nombre y la huella SHA-256 normalizada
-de su `.g4`. El adaptador verifica esa identidad antes de recorrer el árbol para
-evitar que reglas homónimas, pero estructuralmente distintas, lleguen a
-selectores de índices incompatibles.
-
-Las acciones pueden ejecutarse al entrar a una regla, al salir o justo después
-de un hijo indicado (`after_child`). Esta tercera fase permite enlazar, por
-ejemplo, el tipo de un iterable antes de recorrer el bloque de `foreach`, sin
-introducir nombres de Compiscript en el Listener genérico.
-
-Al entrar a `program`, el perfil activa un prepass declarativo que publica las
-clases, sus interfaces y las firmas de funciones globales. Después se recorren
-los cuerpos normalmente. Así, el orden textual no rompe referencias de clase,
-herencia, llamadas adelantadas ni recursión mutua.
-
-La capa se divide de esta forma:
-
-- Daniel define diagnósticos, tipos, valores y acciones de expresiones;
-- Nadissa define símbolos, perfiles, registro, acciones de sentencias y
-  evaluador;
-- Dulce conecta el resultado ANTLR con el evaluador y demuestra generalidad;
-- Nelson proporciona el perfil Compiscript y presenta el resultado.
-
-`SemanticEvaluator` se prueba primero con árboles manuales. Por eso Nadissa no
-depende de que Dulce haya terminado el adaptador. Después, Dulce prueba el mismo
-motor con una gramática real sin modificarlo.
-
-## Adaptador ANTLR-semántica
-
-`src/semantic/antlr_adapter.py` y `antlr_listener.py` forman el límite de
-integración. La operación pública recibe gramática, archivo fuente, regla
-inicial y perfil:
-
-```text
-analyze_semantics_with_g4(...)
-        │
-        ├── analyze_with_g4(...)
-        ├── load_profile(...)
-        ├── validate_profile(...)
-        ├── SemanticTreeListener(...)
-        └── ParseTreeWalker.DEFAULT.walk(listener, native_tree)
-```
-
-Si existen errores léxicos o sintácticos, el adaptador devuelve ese resultado y
-no ejecuta semántica. La GUI recibe un paquete completo y se limita a
-presentarlo. El resultado integrado se acepta solo si sintaxis y semántica están
-aceptadas; la ruta `.cps` opcional se conserva en todos los diagnósticos.
-
-La ruta de consola `python -m src.main --cps` usa por defecto la gramática y el
-perfil de Compiscript. Si recibe una `.g4` externa sin perfil, se limita a
-sintaxis; solo ejecuta semántica externa cuando también se entrega un perfil
-compatible.
-
-## Límites
-
-- `src/antlr_mode/` no contiene semántica Compiscript.
-- el núcleo `src/semantic/`, excepto `antlr_listener.py` y `antlr_adapter.py`,
-  no importa ANTLR ni PyQt6;
-- `antlr_listener.py` solo importa contratos genéricos de `antlr4`, nunca clases
-  generadas para Compiscript;
-- `src/gui/` presenta resultados, no decide tipos o scopes.
-- `src/lexer/` y `src/parser/` no se reescriben para soportar `.g4`.
-- `output/` no se versiona.
-- Daniel no importa módulos propiedad de Nadissa, Dulce o Nelson.
-- Nadissa no importa `src/antlr_mode/` ni `src/gui/`.
-- Dulce no modifica los algoritmos semánticos ya aceptados.
-- el perfil Compiscript utiliza únicamente acciones del registro público del
-  motor; la GUI no inyecta extensiones.
-
-## Representación visual del árbol
-
-El resultado común se transforma en nodos y aristas. La salida puede ser una
-imagen Graphviz o una vista jerárquica interactiva, siempre que permita observar
-la estructura padre-hijo. Un volcado de texto plano no sustituye esta salida.
-
-La representación conserva al menos símbolo, regla o token y ubicación. Los
-fallos de Graphviz producen un diagnóstico visible y no cierran el IDE.
-
-## Dependencias
-
-- Java 11 o superior para ejecutar el generador.
-- ANTLR Tool 4.13.2, descargado o indicado mediante `ANTLR4_JAR`.
-- `antlr4-python3-runtime==4.13.2`.
-- Graphviz para imágenes.
-- PyQt6 para el IDE.
-
-Generador y runtime deben compartir versión.
-
-## Seguridad y fallos
-
-Las gramáticas se consideran entradas proporcionadas por el curso. Aun así:
-
-- la descarga usa la URL oficial;
-- los procesos se invocan con argumentos, no mediante shell;
-- la generación tiene timeout;
-- los errores se muestran sin cerrar el IDE;
-- las cachés se encuentran bajo una ruta ignorada;
-- acciones embebidas no confiables quedan fuera del alcance.
-
-## Generalidad verificable
-
-La base prueba:
-
-- `Compiscript.g4` con regla `program`;
-- `MiniCalc.g4` con regla `root`.
-
-Ambas usan la misma función `analyze_with_g4`. Esta prueba debe mantenerse para
-impedir acoplamiento accidental.
-
-La generalidad semántica se comprueba además con perfiles distintos. MiniCalc
-es la prueba pequeña del bloque de Dulce y Compiscript es la prueba integral del
-bloque de Nelson. Ambos usan el mismo `SemanticEvaluator`.
-
-Para calificación, la gramática oficial de Compiscript y su suite tienen
-prioridad. MiniCalc demuestra generalidad, pero no sustituye los casos exigidos
-por `MATRIZ_CUMPLIMIENTO.md`.
-
-## Orden de construcción
-
-1. Daniel entrega el núcleo sin depender de árboles ni gramáticas.
-2. Nadissa entrega el motor probado con árboles manuales.
-3. Dulce entrega el adaptador probado con gramáticas reales.
-4. Nelson entrega la integración visual y las regresiones finales.
-
-Cada paso se integró antes de comenzar el siguiente. Después de los cuatro
-handoffs, Daniel realizó una auditoría de cumplimiento autorizada en
-`fix/fase3-final-compliance`; sus correcciones quedan separadas de los commits
-originales para conservar la trazabilidad individual.
+La siguiente fase, como código de tres direcciones, debe consumir el árbol y la
+información semántica solamente después de un resultado aceptado. No requiere
+modificar la gramática mientras la sintaxis de Compiscript permanezca igual.

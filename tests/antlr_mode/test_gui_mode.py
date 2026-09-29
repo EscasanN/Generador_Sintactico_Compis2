@@ -5,54 +5,47 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication
 
-from src.antlr_mode.runner import analyze_with_g4
+from src.antlr_mode.parse_tree_visualizer import render_parse_tree
 from src.gui.app import MainWindow
-from src.utils.visualizer import render_parse_tree
+from src.semantic.antlr_adapter import analyze_semantics_with_g4
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-COMPISCRIPT_GRAMMAR = (
-    REPO_ROOT / "src" / "compiscript" / "grammar" / "Compiscript.g4"
-)
+GRAMMAR = REPO_ROOT / "src" / "compiscript" / "grammar" / "Compiscript.g4"
+PROFILE = REPO_ROOT / "semantic_profiles" / "compiscript.semantic.json"
 
 
-def test_main_window_exposes_both_modes_and_g4_rules() -> None:
+def test_main_window_is_configured_only_for_compiscript() -> None:
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     try:
-        assert window._mode_combo.count() == 2
-        assert window._file_list.count() == 4
+        assert window.windowTitle() == "Compiscript IDE"
+        assert window._file_list.count() == 1
+        assert Path(window._g4_path) == GRAMMAR
+        assert Path(window._profile_path) == PROFILE
 
-        window._load_g4_rules(str(COMPISCRIPT_GRAMMAR))
-        window._set_mode("antlr")
-
-        assert window._mode_combo.currentData() == "antlr"
-        assert window._start_rule_combo.isEnabled()
-        assert window._start_rule_combo.currentText() == "program"
-        assert window._start_rule_combo.findText("classDeclaration") >= 0
-
-        window._set_mode("yapar")
-        assert window._mode_combo.currentData() == "yapar"
-        assert not window._start_rule_combo.isEnabled()
-
-        result = analyze_with_g4(
-            COMPISCRIPT_GRAMMAR,
+        result = analyze_semantics_with_g4(
+            GRAMMAR,
             "let value: integer = 7;",
+            PROFILE,
             "program",
+            "programa.cps",
         )
         tree_image = render_parse_tree(
-            result.tree,
+            result.syntax_result.tree,
             "output/antlr/test-gui-tree",
         )
-        window._render_antlr_bundle({
-            "mode": "antlr",
-            "result": result,
-            "tree_image": tree_image,
-            "tree_error": None,
-        })
+        window._render_bundle(
+            {
+                "mode": "semantic",
+                "result": result.syntax_result,
+                "semantic_result": result.semantic_result,
+                "tree_image": tree_image,
+                "tree_error": None,
+            }
+        )
 
-        assert window._table_tabs.count() == 1
-        assert window._tree_tabs.count() == 1
+        assert window._tree_tabs.count() == 2
         assert "ACCEPT" in window._results.toPlainText()
     finally:
         window.close()

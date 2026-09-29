@@ -21,7 +21,7 @@ from src.semantic.types import ERROR, UNKNOWN, VOID, FunctionType, Type
 from src.semantic.values import SemanticValue
 
 if TYPE_CHECKING:
-    from src.parser.parse_tree import ParseTreeNode
+    from src.antlr_mode.parse_tree import ParseTreeNode
     from src.semantic.evaluator import SemanticContext
 
 

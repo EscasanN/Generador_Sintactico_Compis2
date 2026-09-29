@@ -1,329 +1,132 @@
-# Proyecto de Compiladores — YALex y YAPar
+# Compiscript — frontend y análisis semántico
 
-**Curso:** Construcción de Compiladores
+Proyecto de Construcción de Compiladores enfocado en analizar programas
+Compiscript (`.cps`). La gramática combinada de ANTLR produce el lexer, el
+parser y el árbol sintáctico; una segunda fase ejecuta acciones semánticas
+declarativas para validar tipos, ámbitos, funciones, control de flujo, clases y
+arreglos.
 
-**Universidad:** Universidad del Valle de Guatemala
+La versión presentada y calificada con **100/100** permanece disponible en la
+etiqueta Git `entrega-semantica-100`. La rama actual elimina los generadores
+históricos que ya no forman parte del flujo de trabajo.
 
-**Lenguaje:** Python 3.x
+## Flujo
 
-> **Estado:** las fases léxica y sintáctica constituyen la base estable. El IDE
-> conserva el modo YALex + YAPar y agrega un modo ANTLR capaz de cargar gramáticas
-> combinadas `.g4` sin modificar el código. El análisis semántico de Compiscript
-> (Proyecto 2) está implementado: gramática de entrega, perfil semántico, motor
-> genérico y flujo completo de IDE para archivos `.cps` — ver la sección
-> "Fase 3" más abajo.
-
----
-
-## Descripción
-
-Implementación de un generador completo de analizadores léxicos (**YALex**) y
-sintácticos (**YAPar**) con una interfaz gráfica tipo IDE. El modo original toma
-una especificación de tokens (`.yal`) y una gramática libre de contexto
-(`.yapar`), construye los autómatas y tablas de parseo, y analiza cadenas con
-tres métodos simultáneamente. El modo adicional genera y ejecuta automáticamente
-Lexer y Parser de Python a partir de una gramática ANTLR `.g4`.
-
-```
-.yal  →  YALex  →  Tokens
-.yapar →  YAPar  →  LR(0)  →  SLR(1) / LALR / LL(1)  →  Análisis de cadenas
+```text
+programa.cps
+    ↓
+Compiscript.g4
+    ↓
+Lexer y Parser de ANTLR
+    ↓
+árbol sintáctico común
+    ↓
+compiscript.semantic.json
+    ↓
+diagnósticos + tabla de símbolos + ACCEPT/REJECT
 ```
 
-### Algoritmos implementados
+La semántica solo se ejecuta cuando el análisis sintáctico termina sin errores.
+Los warnings no rechazan el programa; los diagnósticos de severidad `error` sí.
 
-| Componente | Algoritmo / Técnica |
-|------------|---------------------|
-| RE → NFA | Construcción de Thompson |
-| NFA → DFA | Construcción de subconjuntos |
-| DFA → DFA mínimo | Algoritmo de Hopcroft |
-| Autómata LR(0) | Cierre e items LR(0) |
-| Tabla SLR(1) | FOLLOW sets + LR(0) |
-| Tabla LALR | Items LR(1) fusionados por core LR(0) |
-| Tabla LL(1) | FIRST / FOLLOW sets |
-| Árbol de derivación | Construcción durante shift/reduce/expand |
+## Estructura
 
----
+```text
+src/
+├── antlr_mode/
+│   ├── grammar_info.py              # Inspección de gramáticas ANTLR
+│   ├── runner.py                    # Generación, caché y ejecución
+│   ├── parse_tree.py                # Árbol independiente del runtime
+│   └── parse_tree_visualizer.py     # Imagen Graphviz del árbol
+├── compiscript/grammar/
+│   └── Compiscript.g4               # Gramática oficial
+├── semantic/                        # Tipos, símbolos, acciones y adaptador
+├── gui/                             # IDE de Compiscript
+└── main.py                          # GUI y CLI
 
-## Estructura del proyecto
+semantic_profiles/
+└── compiscript.semantic.json        # Enlace gramática → acciones semánticas
 
+tests/
+├── antlr_mode/
+├── cps/                             # Programas válidos, inválidos y warnings
+├── gui/
+└── semantic/
 ```
-Generador_Sintactico/
-├── src/
-│   ├── main.py                  # Punto de entrada (GUI / CLI / modo léxico)
-│   ├── gui/
-│   │   └── app.py               # IDE PyQt6
-│   ├── antlr_mode/
-│   │   ├── grammar_info.py      # Inspección de gramáticas .g4
-│   │   └── runner.py            # Generación, caché y ejecución ANTLR
-│   ├── semantic/                 # Tipos, acciones, perfiles, listener y símbolos
-│   ├── lexer/
-│   │   ├── scanner.py           # Lectura del archivo .yal
-│   │   ├── regex_parser.py      # Parser de expresiones regulares
-│   │   ├── resolver.py          # Resolución de definiciones
-│   │   ├── nfa.py               # Construcción de Thompson (RE → NFA)
-│   │   ├── dfa.py               # Subconjuntos + Hopcroft (NFA → DFA mínimo)
-│   │   └── codegen.py           # Generación de lexer
-│   ├── parser/
-│   │   ├── yapar_scanner.py     # Lectura del archivo .yapar
-│   │   ├── grammar.py           # Estructura de gramática y producciones
-│   │   ├── lr0.py               # Autómata LR(0)
-│   │   ├── first_follow.py      # Cálculo de FIRST y FOLLOW
-│   │   ├── slr1.py              # Tabla y parser SLR(1) + árbol de derivación
-│   │   ├── lalr.py              # Tabla y parser LALR + árbol de derivación
-│   │   ├── ll1.py               # Tabla y parser LL(1) + árbol de derivación
-│   │   ├── parse_tree.py        # Nodo del árbol de derivación
-│   │   ├── string_analyzer.py   # Coordinador de análisis (SLR/LALR/LL1)
-│   │   └── tokenizer_bridge.py  # Integración YALex → YAPar
-│   └── utils/
-│       └── visualizer.py        # Generación de imágenes (Graphviz)
-├── tests/
-│   ├── cases/                   # Casos activos de aceptación y rechazo
-│   └── legacy/                  # Fixtures heredados de fases anteriores
-├── docs/
-│   └── phase3/                  # Plan y decisiones para análisis semántico
-├── requirements.txt
-└── README.md
-```
-
----
 
 ## Requisitos
 
-- Python 3.10 o superior
-- Java 11 o superior para generar parsers ANTLR
-- [Graphviz](https://graphviz.org/download/) instalado en el sistema y en el PATH
+- Python 3.10 o superior.
+- Java 11 o superior para generar el parser de ANTLR.
+- Graphviz instalado y disponible en `PATH` para la imagen del árbol.
 
-```bash
-pip install -r requirements.txt
+```powershell
+python -m pip install -r requirements.txt
 ```
 
----
+En el primer análisis, el frontend obtiene ANTLR 4.13.2 y guarda el JAR y los
+archivos generados en `output/antlr/`, que está ignorado por Git. También puede
+definirse `ANTLR4_JAR` con una ruta local.
 
 ## Uso
 
-### Modo GUI (recomendado)
+### Interfaz gráfica
 
-```bash
-python src/main.py
+```powershell
+python -m src.main
 ```
 
-El IDE permite:
+La GUI permite crear, abrir, editar y guardar `.cps`; muestra el árbol como
+imagen y vista navegable, los diagnósticos semánticos y la tabla de símbolos por
+ámbito.
 
-1. Elegir entre los modos **YALex + YAPar** y **ANTLR (.g4)**.
-2. Cargar archivos `.yal`, `.yapar`, `.g4` y el archivo de entrada requerido.
-3. Seleccionar la regla inicial de una gramática ANTLR.
-4. Editar y guardar los archivos directamente.
-5. Ejecutar el análisis completo con **Ctrl+R** o el botón **Analyze**.
-6. Visualizar resultados en las pestañas:
+### Terminal
 
-| Pestaña | Contenido |
-|---------|-----------|
-| **LR(0)** | Imagen del autómata LR(0) generado |
-| **Tables → FIRST/FOLLOW** | Conjuntos FIRST y FOLLOW por no-terminal |
-| **Tables → SLR(1)** | Tabla de parseo SLR(1) con tooltips por celda |
-| **Tables → LALR** | Tabla de parseo LALR con tooltips por celda |
-| **Tables → LL(1)** | Tabla de parseo LL(1) (si la gramática lo permite) |
-| **Tables → Productions** | Leyenda numerada de todas las producciones |
-| **Parse Tree** | Árbol de derivación por cadena aceptada |
-| **Steps** | Navegador paso a paso del proceso de parseo |
-| **Results** | Resumen con ACCEPT/REJECT por método y mensajes de error |
+Análisis sintáctico y semántico:
 
-### Modo ANTLR `.g4`
-
-1. Seleccionar **ANTLR (.g4)** en `Mode` o presionar **Open G4**.
-2. Cargar una gramática combinada cuyo encabezado sea `grammar Nombre;`.
-3. Elegir una regla sintáctica en `Start`.
-4. Cargar el programa de entrada y presionar **Analyze**.
-
-Durante el primer uso, el IDE descarga ANTLR 4.13.2 desde su sitio oficial y lo
-guarda en `output/antlr/`, carpeta ignorada por Git. Cada parser generado también
-se almacena allí usando un hash del contenido de la gramática. Para trabajar sin
-descarga automática se puede definir `ANTLR4_JAR` con la ruta local del JAR.
-
-En este modo se muestran tokens, árbol y diagnósticos de ANTLR. Las pestañas
-LR(0), SLR, LALR, LL(1) y pasos continúan perteneciendo al modo YAPar y no se
-eliminan ni reemplazan.
-
-### Modo CLI YALex + YAPar
-
-```bash
-python src/main.py --cli <archivo.yal> <archivo.yapar> <entrada.txt>
+```powershell
+python -m src.main --cps tests/cps/demostracion-valida.cps
 ```
 
-### Modo CLI Compiscript
+Solo sintaxis, útil para aislar errores del parser:
 
-Con la gramática y el perfil incluidos:
-
-```bash
-python -m src.main --cps programa.cps
+```powershell
+python -m src.main --cps tests/cps/demostracion-valida.cps --syntax-only
 ```
 
-Con otra gramática, sin perfil, se ejecuta únicamente lexer y parser:
+Los códigos de salida son:
 
-```bash
-python -m src.main --cps entrada.cps --grammar Otra.g4 --start reglaInicial
+- `0`: programa aceptado;
+- `1`: programa rechazado por sintaxis o semántica;
+- `2`: error de configuración o lectura.
+
+## Pruebas
+
+Suite completa:
+
+```powershell
+python -m pytest tests -q
 ```
 
-Para análisis completo de otra gramática se debe proporcionar su perfil
-compatible:
+Programas de demostración:
 
-```bash
-python -m src.main --cps entrada.cps --grammar Otra.g4 \
-  --profile otra.semantic.json --start reglaInicial
+```powershell
+python -m pytest tests/semantic/test_cps_programs.py -vv
 ```
 
-El comando devuelve código `0` para **ACCEPT**, `1` para **REJECT** y `2` para
-errores de configuración o archivos. `--syntax-only` fuerza explícitamente el
-análisis léxico y sintáctico.
+Solo warnings:
 
-### Modo léxico (solo YALex)
-
-```bash
-python src/main.py --lex <archivo.yal>
+```powershell
+python -m pytest tests/semantic/test_cps_programs.py -vv -k warning
 ```
 
----
+Consulte [tests/cps/README.md](tests/cps/README.md) para ejecutar casos
+individuales y [docs/phase3/README.md](docs/phase3/README.md) para la
+documentación del análisis semántico.
 
-## Formato de archivos
+## Perfil semántico
 
-### Archivo `.yal` (YALex)
-
-```
-(* Comentario *)
-let digit = ['0'-'9']
-let letter = ['a'-'z''A'-'Z']
-let id = letter (letter | digit)*
-
-rule tokens =
-  | digit+       { return INT }
-  | id           { return ID }
-  | ' '          { (* skip *) }
-```
-
-### Archivo `.yapar` (YAPar)
-
-```
-/* Tokens */
-%token ID NUMBER PLUS SEMICOLON
-IGNORE WS
-
-%%
-
-/* Producciones */
-expr:
-    expr PLUS term
-  | term
-;
-
-term:
-    NUMBER
-  | ID
-;
-```
-
----
-
-## Manejo de errores
-
-- **Errores léxicos:** columna exacta del carácter inesperado
-- **Errores sintácticos:** columna, token inesperado y tokens esperados en ese estado
-- **Errores en `.yapar`:** línea exacta del problema en la gramática
-- **Visualización:** líneas del archivo de entrada coloreadas (verde = aceptado, rojo = rechazado)
-
----
-
-## Fase 3 — Análisis semántico de Compiscript
-
-El Proyecto 2 (analizador semántico + IDE para Compiscript) está implementado
-por los cuatro integrantes en el orden documentado en
-[`docs/phase3/`](docs/phase3/README.md): Daniel (núcleo semántico), Nadissa
-(motor y tabla de símbolos), Dulce (puente ANTLR↔semántica) y Nelson (gramática
-de entrega, perfil de Compiscript e IDE). El flujo real es:
-
-```text
-Compiscript.g4 → Lexer/Parser ANTLR → programa.cps → árbol visual
-                                                    → Listener/Visitor semántico
-                                                    → errores + tabla de símbolos
-```
-
-### Compilar un `.cps` desde la GUI
-
-1. `python -m src.main` (o el punto de entrada del modo GUI, ver arriba).
-2. Botón **"Open G4"** → selecciona `src/compiscript/grammar/Compiscript.g4`.
-   El modo cambia automáticamente a **ANTLR (.g4)** y la regla inicial queda
-   en `program`.
-3. Botón **"Load Profile"** → selecciona
-   `semantic_profiles/compiscript.semantic.json`. Es opcional: sin perfil,
-   "Analyze" solo corre léxico + sintáctico, igual que con cualquier otra
-   gramática `.g4`.
-4. **File → New .cps…** para crear un programa nuevo, o **"Open Input"**
-   (o **File → Open .cps**) para abrir uno existente. El editor permite
-   escribir y modificar libremente; **"Save"**/**File → Save As…** guardan
-   sin cambiar la extensión.
-5. **Analyze (Ctrl+R)**: con un perfil cargado, corre sintaxis y semántica en
-   un hilo aparte (la ventana no se congela) y abre la pestaña **Semantics**
-   con la tabla de diagnósticos (severidad, categoría, línea, columna) y el
-   árbol de entornos (global, función, clase, bloque). La pestaña
-   **Parse Tree** agrega, junto a la imagen Graphviz, una vista **Navigable**
-   (árbol expandible) del mismo árbol sintáctico.
-
-### Compilar un `.cps` desde Python
-
-```python
-from src.semantic.antlr_adapter import analyze_semantics_with_g4
-
-run = analyze_semantics_with_g4(
-    grammar_path="src/compiscript/grammar/Compiscript.g4",
-    source=open("programa.cps", encoding="utf-8").read(),
-    profile_path="semantic_profiles/compiscript.semantic.json",
-    start_rule="program",
-    source_path="programa.cps",
-)
-
-print(run.accepted)                       # True si no hay errores
-for d in run.semantic_result.diagnostics: # severidad, categoría, línea, columna
-    print(d.severity.value, d.category.value, d.location.line, d.message)
-```
-
-`analyze_semantics_with_g4` es el único punto de entrada público para
-Compiscript y para otras gramáticas (por ejemplo `MiniCalc.g4`). Todas las
-acciones permitidas pertenecen al registro genérico del motor; los nombres de
-reglas y tokens permanecen exclusivamente en cada perfil JSON.
-
-### Cargar otra gramática o perfil
-
-El frontend puede cargar otra `.g4` sin modificar Python. Para ejecutar también
-semántica se necesita un `.semantic.json` compatible con las reglas,
-alternativas y forma de árbol de esa gramática; la semántica no puede inferirse
-solo desde la sintaxis. Ambos archivos pueden elegirse desde la GUI o pasarse a
-`analyze_semantics_with_g4`. Los perfiles incluidos registran nombre y huella
-SHA-256 normalizada de su `.g4`, por lo que una sustitución incompatible falla
-antes del recorrido semántico. La cobertura exacta del enunciado y el
-detalle de cada regla están en la
-[matriz de cumplimiento](docs/phase3/MATRIZ_CUMPLIMIENTO.md); las decisiones
-de diseño y limitaciones conocidas están fechadas en
-[`REGLAS_Y_DECISIONES.md`](docs/phase3/REGLAS_Y_DECISIONES.md).
-
-### Pruebas
-
-```bash
-python -m pytest tests/antlr_mode -q   # frontend ANTLR genérico
-python -m pytest tests/semantic -q     # motor semántico + matriz de Compiscript
-python -m pytest tests/gui -q          # flujo del IDE (.cps, IDE-01..08)
-python -m pytest tests -q              # batería completa
-```
-
-Los IDs de la matriz aparecen en los nombres de las pruebas
-(`tests/semantic/test_end_to_end.py`, `tests/gui/test_cps_workflow.py`) para
-localizar fácilmente el caso exitoso y fallido de cada regla.
-También hay programas `.cps` listos para abrir o compilar en
-[`tests/cps/`](tests/cps/README.md), incluyendo una demostración válida, una
-demostración con múltiples errores y casos aislados por cada ID de la matriz.
-
----
-
-## Autor
-
-| Nombre | Carné |
-|--------|-------|
-|        |       |
+`semantic_profiles/compiscript.semantic.json` contiene únicamente datos y
+nombres de acciones permitidas. Su fingerprint vincula el perfil con la fuente
+normalizada de `Compiscript.g4`; si la gramática cambia intencionalmente, el
+perfil debe revisarse y actualizarse junto con sus pruebas.

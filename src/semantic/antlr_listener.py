@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from antlr4 import ParseTreeListener
 
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.diagnostics import DiagnosticCategory
 from src.semantic.evaluator import SemanticEvaluator
 from src.semantic.profile import RuleBinding, SemanticProfile, resolve_binding

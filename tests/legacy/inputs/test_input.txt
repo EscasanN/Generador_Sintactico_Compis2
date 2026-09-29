@@ -1,3 +1,0 @@
-total = 12
-x = 3.14 + y
-result = (a - b) * 2

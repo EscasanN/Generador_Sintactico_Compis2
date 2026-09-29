@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.action_registry import ActionRegistry
 from src.semantic.profile import (
     ActionInvocation,

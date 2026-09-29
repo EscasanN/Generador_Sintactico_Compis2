@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.action_registry import ActionRegistry
 from src.semantic.actions import register_builtin_actions
 from src.semantic.diagnostics import DiagnosticBag, SourceLocation

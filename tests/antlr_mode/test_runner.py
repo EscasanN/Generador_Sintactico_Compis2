@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from src.antlr_mode.runner import AntlrModeError, analyze_with_g4
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

@@ -1,4 +1,4 @@
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.actions.control_flow import FlowSignal, validate_sequence
 from src.semantic.actions.declarations import declare_parameter, declare_variable
 from src.semantic.diagnostics import DiagnosticSeverity

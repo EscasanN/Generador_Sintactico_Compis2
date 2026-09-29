@@ -1,72 +1,38 @@
-# Tests
+# Pruebas de Compiscript
 
-Organized test cases for manual + automated verification of the YAPar generator.
+La suite cubre el frontend ANTLR, el motor semántico, la CLI, la GUI y programas
+Compiscript completos.
 
-## Layout
+## Organización
 
-```
+```text
 tests/
-  cases/                       Self-contained test cases (one folder each)
-    01_arithmetic_id/          Lexer + grammar + input + expected
-    02_arithmetic_extended/
-    03_arithmetic_numbers/
-    04_assignments/
-    05_classes_functions/
-    06_rejection_examples/     Negative tests (should REJECT)
-  legacy/                      Old layout (kept for reference)
-    first_test/                Original .yal + input files
-    Second_test/               Sample Python programs
-    inputs/                    Misc .yal experiments
-    grammars/                  Old grammar folder (now under cases/)
+├── antlr_mode/    # Gramática, caché, runtime y árbol común
+├── cps/           # Programas válidos, inválidos y advertencias
+├── gui/           # Flujo de edición y compilación desde PyQt6
+├── semantic/      # Tipos, scopes, acciones, perfiles e integración
+└── test_main_cli.py
 ```
 
-## Per-case contract
+Cada archivo `.cps` está registrado en
+`tests/semantic/test_cps_programs.py`. La prueba de inventario falla si se agrega
+un programa sin indicar su resultado esperado.
 
-Every folder under `cases/` contains exactly:
-- `lexer.yal`     — YALex specification (tokens)
-- `grammar.yapar` — YAPar specification (productions)
-- `input.txt`     — One input string per line
-- `README.md`     — Description, expected outcome, run command
+## Ejecución
 
-## Running a case from the CLI
-
-```bash
-python src/main.py --cli tests/cases/<CASE>/lexer.yal tests/cases/<CASE>/grammar.yapar tests/cases/<CASE>/input.txt
-```
-
-Example:
-```bash
-python src/main.py --cli tests/cases/05_classes_functions/lexer.yal tests/cases/05_classes_functions/grammar.yapar tests/cases/05_classes_functions/input.txt
-```
-
-## Running a case from the GUI
-
-```bash
-python src/main.py
-```
-
-Then:
-1. **Open YALex** → pick `tests/cases/<CASE>/lexer.yal`
-2. **Open YAPar** → pick `tests/cases/<CASE>/grammar.yapar`
-3. **Open Input** → pick `tests/cases/<CASE>/input.txt`
-4. Press **Analyze (Ctrl+R)**
-5. Inspect tabs: Editor (highlight per line), LR(0), Tables, Parse Tree, Steps, Results
-
-## Run all cases at once
-
-PowerShell:
 ```powershell
-$cases = @("01_arithmetic_id","02_arithmetic_extended","03_arithmetic_numbers","04_assignments","05_classes_functions","06_rejection_examples")
-foreach ($c in $cases) {
-    Write-Host "=== $c ==="
-    python src/main.py --cli "tests/cases/$c/lexer.yal" "tests/cases/$c/grammar.yapar" "tests/cases/$c/input.txt"
-}
+python -m pytest tests -q
+python -m pytest tests/semantic -q
+python -m pytest tests/gui -q
+python -m pytest tests/semantic/test_cps_programs.py -vv
 ```
 
-Bash:
-```bash
-for c in 01_arithmetic_id 02_arithmetic_extended 03_arithmetic_numbers 04_assignments 05_classes_functions 06_rejection_examples; do
-    echo "=== $c ==="
-    python src/main.py --cli tests/cases/$c/lexer.yal tests/cases/$c/grammar.yapar tests/cases/$c/input.txt
-done
+Para probar un programa manualmente:
+
+```powershell
+python -m src.main --cps tests/cps/demostracion-valida.cps
+python -m src.main --cps tests/cps/demostracion-invalida.cps
 ```
+
+El programa inválido devuelve código de salida `1` porque los diagnósticos se
+detectaron correctamente.

@@ -1,6 +1,6 @@
 import pytest
 
-from src.parser.parse_tree import ParseTreeNode
+from src.antlr_mode.parse_tree import ParseTreeNode
 from src.semantic.actions.callables import (
     declare_function,
     enter_function,
