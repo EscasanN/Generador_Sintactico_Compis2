@@ -1,4 +1,4 @@
-"""Pruebas de ubicaciones en la fuente y diagnósticos semánticos acumulados."""
+"""Tests for source locations and accumulated semantic diagnostics."""
 
 from dataclasses import FrozenInstanceError
 
@@ -14,7 +14,7 @@ from src.semantic.diagnostics import (
 
 
 def test_source_location_uses_one_based_coordinates_and_is_immutable() -> None:
-    """Una coordenada cero debe fallar; las coordenadas válidas no cambian."""
+    """A zero coordinate must fail; valid public coordinates remain unchanged."""
     location = SourceLocation(
         line=1,
         column=2,
@@ -34,7 +34,7 @@ def test_source_location_uses_one_based_coordinates_and_is_immutable() -> None:
 
 
 def test_diagnostic_preserves_category_severity_message_and_location() -> None:
-    """Un diagnóstico conserva todos los campos necesarios para las vistas."""
+    """A diagnostic must retain every field needed by later result views."""
     location = SourceLocation(7, 11)
     diagnostic = Diagnostic(
         category=DiagnosticCategory.TYPE,
@@ -54,7 +54,7 @@ def test_diagnostic_preserves_category_severity_message_and_location() -> None:
 def test_diagnostic_bag_accumulates_in_order_without_printing(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Los errores semánticos independientes se acumulan en orden y sin imprimir."""
+    """Independent semantic errors must accumulate silently in source order."""
     bag = DiagnosticBag()
     first = bag.add(
         DiagnosticCategory.TYPE,
@@ -84,7 +84,7 @@ def test_diagnostic_bag_accumulates_in_order_without_printing(
 
 
 def test_diagnostic_bag_exposes_an_immutable_snapshot() -> None:
-    """Las vistas obtenidas previamente no cambian al agregar diagnósticos."""
+    """Previously obtained item views must not change with later additions."""
     bag = DiagnosticBag()
     bag.add(
         DiagnosticCategory.GENERAL,
@@ -102,7 +102,7 @@ def test_diagnostic_bag_exposes_an_immutable_snapshot() -> None:
 
 
 def test_warning_only_bag_does_not_report_errors() -> None:
-    """Las advertencias por sí solas no deben rechazar el resultado semántico."""
+    """Warnings alone must not make a semantic result fail acceptance."""
     bag = DiagnosticBag()
     bag.add(
         DiagnosticCategory.GENERAL,

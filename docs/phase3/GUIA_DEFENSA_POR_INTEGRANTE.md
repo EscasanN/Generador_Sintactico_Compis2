@@ -4,8 +4,8 @@ Esta guía organiza la entrega por responsable para que el profesor pueda ver
 qué problema resolvió cada integrante, qué archivos produjo, cómo se conecta su
 bloque con los demás y qué prueba demuestra su funcionamiento.
 
-> Estado comprobado el 7 de septiembre de 2026: **385 pruebas aprobadas**. La
-> suite específica contiene **71 pruebas** y cubre los **69 programas `.cps`**
+> Estado comprobado el 7 de septiembre de 2026: **388 pruebas aprobadas**. La
+> suite específica contiene **74 pruebas** y cubre los **72 programas `.cps`**
 > preparados para la demostración; una prueba verifica el inventario completo y
 > algunos programas se ejecutan en más de un escenario.
 
@@ -45,7 +45,7 @@ integrado, corrigió riesgos de entrega y agregó evidencia ejecutable.
 | 2 | Nadissa Vela | ¿Cómo manejar símbolos, ámbitos y acciones configurables? | Motor semántico genérico y perfiles seguros. |
 | 3 | Dulce Ambrosio | ¿Cómo conectar un árbol real de ANTLR con ese motor? | Listener genérico y adaptador sintaxis→semántica. |
 | 4 | Nelson Escalante | ¿Cómo convertir lo anterior en el analizador de Compiscript que usa el estudiante? | Perfil Compiscript, flujo `.cps`, resultados e IDE. |
-| Auditoría | Daniel Chet | ¿Qué podía fallar al evaluar y cómo se demuestra cada requisito? | Correcciones integradas, CLI, 69 fixtures y 71 pruebas `.cps`. |
+| Auditoría | Daniel Chet | ¿Qué podía fallar al evaluar y cómo se demuestra cada requisito? | Correcciones integradas, CLI, 72 fixtures y 74 pruebas `.cps`. |
 
 Los conteos incluidos más adelante son agrupaciones funcionales ejecutadas
 sobre el estado actual, después de la auditoría. Demuestran que el subsistema de
@@ -380,7 +380,7 @@ original. La auditoría agregó o corrigió:
 - fase `after_child`, fingerprint y validación estricta de perfiles;
 - eliminación del puente duplicado de GUI;
 - CLI `--cps`, gramática/perfil opcionales y `--syntax-only`;
-- 69 programas `.cps` cubiertos por una suite de 71 pruebas, incluido un control
+- 72 programas `.cps` cubiertos por una suite de 74 pruebas, incluido un control
   automático del inventario.
 
 Evidencia:
@@ -395,14 +395,14 @@ Evidencia:
 python -m pytest tests/semantic/test_cps_programs.py -q
 ```
 
-Resultado: `71 passed`.
+Resultado: `74 passed`.
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 python -m pytest tests -q
 ```
 
-Resultado: `385 passed`.
+Resultado: `388 passed`.
 
 > “La auditoría no sustituye la autoría original; verifica los contratos de los
 > cuatro bloques trabajando juntos. Corregí riesgos de extremo a extremo y
@@ -434,7 +434,7 @@ una capa reutilizable que consume la entrega anterior.
 | 2 min | Nadissa | Tabla de símbolos, resolución y perfil seguro. |
 | 2 min | Dulce | Caché ANTLR, sintaxis antes de semántica y MiniCalc. |
 | 3 min | Nelson | GUI, programa válido, inválido, árbol y símbolos. |
-| 2 min | Daniel/auditoría | 69 programas `.cps`, suite de 71 pruebas y 385 pruebas totales. |
+| 2 min | Daniel/auditoría | 72 programas `.cps`, suite de 74 pruebas y 388 pruebas totales. |
 
 ## 25. Preguntas que debería responder cada integrante
 

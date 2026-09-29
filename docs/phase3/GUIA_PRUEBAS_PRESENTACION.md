@@ -64,9 +64,9 @@ Resultados esperados en la revisión del 7 de septiembre de 2026:
 
 ```text
 ANTLR:      12 passed
-Semántica: 359 passed
+Semántica: 362 passed
 GUI:        11 passed
-Total:     385 passed
+Total:     388 passed
 ```
 
 Para aislar un requisito concreto de la matriz:
@@ -468,7 +468,7 @@ Los límites que sí permanecen son:
 
 - [ ] Los cambios de `fix/fase3-final-compliance` están revisados y versionados.
 - [ ] La rama que se presentará está disponible en GitHub.
-- [ ] `python -m pytest tests -q` termina con 385 pruebas aprobadas.
+- [ ] `python -m pytest tests -q` termina con 388 pruebas aprobadas.
 - [ ] Java y Graphviz responden desde una terminal nueva.
 - [ ] ANTLR ya está disponible en caché.
 - [ ] La demostración válida produce `ACCEPT`.

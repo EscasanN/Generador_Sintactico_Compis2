@@ -87,7 +87,22 @@ ERROR_PROGRAMS = (
 )
 
 WARNING_PROGRAMS = (
-    "advertencias/GEN-01-codigo-inalcanzable.cps",
+    ("advertencias/GEN-01-codigo-inalcanzable.cps", "return", 1),
+    (
+        "advertencias/GEN-01-codigo-inalcanzable-despues-de-break.cps",
+        "break",
+        1,
+    ),
+    (
+        "advertencias/GEN-01-codigo-inalcanzable-despues-de-continue.cps",
+        "continue",
+        1,
+    ),
+    (
+        "advertencias/GEN-01-multiples-instrucciones-inalcanzables.cps",
+        "return",
+        2,
+    ),
 )
 
 
@@ -144,19 +159,31 @@ def test_invalid_cps_demonstrations_are_rejected(
     assert error_categories == {category}
 
 
-@pytest.mark.parametrize("relative_path", WARNING_PROGRAMS, ids=WARNING_PROGRAMS)
+@pytest.mark.parametrize(
+    ("relative_path", "transfer", "expected_warning_count"),
+    WARNING_PROGRAMS,
+    ids=[item[0] for item in WARNING_PROGRAMS],
+)
 def test_warning_cps_demonstrations_are_accepted_and_reported(
     relative_path: str,
+    transfer: str,
+    expected_warning_count: int,
 ) -> None:
-    """Removing unreachable-code detection must remove this warning."""
+    """Los programas se aceptan y reportan cada instruccion inalcanzable."""
     result = compile_program(relative_path)
 
     assert result.accepted
     assert result.semantic_result is not None
-    assert any(
-        diagnostic.severity.value == "warning"
-        and "unreachable" in diagnostic.message
+    warnings = [
+        diagnostic
         for diagnostic in result.semantic_result.diagnostics
+        if diagnostic.severity.value == "warning"
+    ]
+    assert len(warnings) == expected_warning_count
+    assert {diagnostic.category.value for diagnostic in warnings} == {"general"}
+    assert all(
+        diagnostic.message == f"unreachable instruction after {transfer}"
+        for diagnostic in warnings
     )
 
 
@@ -165,7 +192,7 @@ def test_every_cps_demonstration_is_executed_by_this_suite() -> None:
     registered = (
         set(VALID_PROGRAMS)
         | {item[0] for item in ERROR_PROGRAMS}
-        | set(WARNING_PROGRAMS)
+        | {item[0] for item in WARNING_PROGRAMS}
         | {"demostracion-invalida.cps"}
     )
     discovered = {

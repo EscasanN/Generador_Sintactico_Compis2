@@ -13,7 +13,7 @@ entrega.
 | `demostracion-invalida.cps` | `REJECT` | Muestra errores `type`, `scope`, `function`, `control_flow`, `class` y `array` juntos. |
 | `validos/` | `ACCEPT` | Un programa por cada regla TYP, SCP, FUN, CTL, CLS, LST y GEN. |
 | `invalidos/` | `REJECT` | Contraejemplos aislados con categoría verificable. |
-| `advertencias/` | `ACCEPT` con warning | Código inalcanzable detectado sin convertirlo en error. |
+| `advertencias/` | `ACCEPT` con warning(s) | Código inalcanzable después de `return`, `break` o `continue`, sin convertirlo en error. |
 
 Los prefijos de archivo corresponden directamente a
 `docs/phase3/MATRIZ_CUMPLIMIENTO.md`. `CTL-04`, `CLS-04` y `EXT-*` cubren el
@@ -37,3 +37,25 @@ analizador haya fallado internamente.
 Para una demostración puntual puede abrirse cualquier archivo desde la GUI o
 pasarlo al comando `--cps`. Los comentarios al inicio de cada archivo explican
 la regla que ejercita y por qué debe aceptarse o rechazarse.
+
+## Pruebas de advertencias
+
+Los cuatro programas de `advertencias/` comprueban casos distintos de
+`GEN-01`: una instrucción después de `return`, una después de `break`, una
+después de `continue` y dos instrucciones consecutivas después de `return`.
+La última prueba también demuestra que el analizador acumula todos los warnings
+del bloque y no solamente el primero.
+
+Para ver cada caso por separado y no únicamente el resumen de `passed`:
+
+```powershell
+python -m pytest tests/semantic/test_cps_programs.py -vv -k warning
+```
+
+También pueden ejecutarse individualmente desde la CLI, por ejemplo:
+
+```powershell
+python -m src.main --cps tests/cps/advertencias/GEN-01-codigo-inalcanzable-despues-de-break.cps
+python -m src.main --cps tests/cps/advertencias/GEN-01-codigo-inalcanzable-despues-de-continue.cps
+python -m src.main --cps tests/cps/advertencias/GEN-01-multiples-instrucciones-inalcanzables.cps
+```

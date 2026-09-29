@@ -3,7 +3,7 @@
   "version": 1,
   "grammar": {
     "name": "Compiscript",
-    "sha256": "73ae3243b6a72cb2d411e3c54b15084e6a70296d3b889f0f1b9f7fc1f96ef016"
+    "sha256": "b5300f69189743f8798f417cad270b0cd76d883d8ef800c0cc90ebf25c2ec5c7"
   },
   "bindings": [
     {

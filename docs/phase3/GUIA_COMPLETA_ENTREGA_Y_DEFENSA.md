@@ -5,8 +5,8 @@ Dulce y Nelson, consulte también la
 [guía de defensa por bloques e integrante](GUIA_DEFENSA_POR_INTEGRANTE.md).
 
 > Estado verificado: 7 de septiembre de 2026. La batería completa termina con
-> **385 pruebas aprobadas** y la evidencia ejecutable de Compiscript contiene
-> **69 programas `.cps`**.
+> **388 pruebas aprobadas** y la evidencia ejecutable de Compiscript contiene
+> **72 programas `.cps`**.
 
 ## 1. Qué se construyó
 
@@ -571,7 +571,7 @@ python -m pytest tests/semantic/test_cps_programs.py -q
 Resultado verificado:
 
 ```text
-71 passed
+74 passed
 ```
 
 Esta suite:
@@ -635,7 +635,7 @@ python -m pytest tests -q
 Resultado verificado en esta entrega:
 
 ```text
-385 passed
+388 passed
 ```
 
 ### Paso 7: mostrar generalidad
@@ -670,7 +670,7 @@ integrales.
 | `tests/semantic/test_antlr_listener.py` | Eventos del Listener sobre árbol nativo. |
 | `tests/semantic/test_generic_grammar.py` | MiniCalc y desacoplamiento de Compiscript. |
 | `tests/semantic/test_end_to_end.py` | Matriz semántica mediante fuentes reales. |
-| `tests/semantic/test_cps_programs.py` | Los 69 archivos `.cps` presentables. |
+| `tests/semantic/test_cps_programs.py` | Los 72 archivos `.cps` presentables. |
 | `tests/gui/test_cps_workflow.py` | IDE-01 a IDE-08. |
 | `tests/cases/` y pruebas de lexer/parser | Regresión del flujo YALex + YAPar. |
 
@@ -768,7 +768,7 @@ completa se debe adaptar o crear el perfil correspondiente.
    acciones.
 6. **Generalidad:** mostrar los dos perfiles y explicar MiniCalc.
 7. **Demostración:** ejecutar el `.cps` válido y el inválido.
-8. **Pruebas:** ejecutar las 71 pruebas `.cps` y enseñar la suite completa.
+8. **Pruebas:** ejecutar las 74 pruebas `.cps` y enseñar la suite completa.
 9. **GUI:** mostrar tokens, árbol, diagnósticos y scopes.
 10. **Cierre:** mencionar límites de gramáticas externas y fingerprint.
 
@@ -846,7 +846,7 @@ inalcanzable se reporta como `WARNING` y se conserva `ACCEPT`.
 - [ ] Mostrar tabla de símbolos con cuatro tipos de scope.
 - [ ] Repetir con `demostracion-invalida.cps`.
 - [ ] Enseñar las seis categorías de error.
-- [ ] Ejecutar la suite de 71 pruebas `.cps`.
+- [ ] Ejecutar la suite de 74 pruebas `.cps`.
 - [ ] Tener lista la explicación de los dos perfiles JSON.
 - [ ] Aclarar que una gramática externa requiere perfil propio para semántica.
 - [ ] Confirmar cuál gramática considera oficial el profesor.
