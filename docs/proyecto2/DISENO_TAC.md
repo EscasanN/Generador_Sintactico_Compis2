@@ -1,11 +1,11 @@
-# Diseño propuesto del lenguaje intermedio TAC
+# Diseño del lenguaje intermedio TAC — contrato del Bloque 1
 
 ## Propósito y estado
 
-Este documento fija el contrato inicial del código intermedio para que los
-cuatro bloques trabajen sobre la misma representación. Es una decisión de
-diseño propuesta; al implementar el bloque 1 debe convertirse en la
-especificación ejecutable y mantenerse sincronizada con las pruebas.
+Este documento describe la representación y las APIs implementadas por Daniel
+en el Bloque 1. Los opcodes reservados para sentencias, objetos, listas y
+closures son parte del catálogo tipado; su lowering desde programas completos
+corresponde a los bloques posteriores.
 
 El diseño prioriza:
 
@@ -25,8 +25,12 @@ La fuente de verdad es un cuádruplo estructurado:
 (opcode, arg1, arg2, result)
 ~~~
 
-Cada instrucción también conserva tipo de resultado y ubicación fuente. Los
-campos no usados contienen ausencia, nunca una cadena ambigua.
+El tipo del resultado está en su `Operand`. Cada instrucción conserva
+`SourceLocation`; `IRVerifier` rechaza una instrucción sin ubicación. Los
+campos no usados contienen `None`, nunca una cadena ambigua. `Instruction`,
+`Operand`, `IRProcedure` e `IRProgram` son inmutables. Procedimientos y programa
+copian las secuencias recibidas a tuplas. Cada procedimiento conserva además
+`temporary_peak` para que el bloque de activaciones reserve sus slots.
 
 Un operando tiene una clase explícita:
 
@@ -36,7 +40,13 @@ Un operando tiene una clase explícita:
 | símbolo | global@x, frame@-8 | ubicación asignada a una declaración |
 | temporal | t0, t1 | resultado intermedio reciclable |
 | etiqueta | L0, fn_suma | destino de control o procedimiento |
-| offset | 16 | desplazamiento en bytes |
+| offset | 16 o 2:16 | desplazamiento en bytes, opcionalmente con profundidad léxica |
+
+Los operandos de valor requieren un `Type` semántico. Un temporal lleva además
+una identidad de adquisición (`lease`) que no aparece en el texto TAC: al
+reciclar `t0`, la nueva adquisición tiene otra identidad. Un operando de
+símbolo conserva `Address.symbol`, el objeto `Symbol` resuelto, y una dirección
+abstracta estable; el Bloque 1 no calcula offsets ni layouts.
 
 El texto TAC es una serialización para humanos. Las pruebas de invariantes usan
 los objetos estructurados.
@@ -89,6 +99,14 @@ Los comparadores son EQ, NE, LT, LE, GT y GE. Producen boolean.
 | call f, n | CALL, f, n, – | llamada sin retorno |
 | return x | RETURN, x, –, – | retorno con valor |
 | return | RETURN, –, –, – | retorno void |
+
+`release t0` (`RELEASE, t0, –, –`) es una marca de vida en la IR. Aparece en el
+formato de depuración, no representa una operación de la máquina destino.
+Permite verificar que cada temporal se lee antes de liberarse y que el nombre
+solo se recicla cuando el valor anterior dejó de estar vivo.
+`RETURN t0` consume el valor en esa ruta sin añadir `RELEASE` después del
+retorno. El builder conserva su lease hasta cerrar el procedimiento para no
+reciclar el mismo nombre mientras otra rama todavía puede usarlo.
 
 Los argumentos se evalúan de izquierda a derecha. Para métodos, closures y
 constructores pueden existir parámetros ocultos documentados: this y env.
@@ -184,24 +202,37 @@ serialización para facilitar la defensa.
 No es válido calcular ambos operandos incondicionalmente. Para a && b:
 
 ~~~text
-t0 = false
-ifFalse a goto Lend
-ifFalse b goto Lend
-t0 = true
+t0 = a
+ifFalse t0 goto Lend
+t0 = b
 Lend:
 ~~~
 
 Para a || b:
 
 ~~~text
-t0 = true
-if a goto Lend
-if b goto Lend
-t0 = false
+t0 = a
+if t0 goto Lend
+t0 = b
 Lend:
 ~~~
 
 Esto preserva efectos laterales y excepciones del segundo operando.
+
+### Ternario
+
+El valor de la condición sigue vivo hasta la unión; el temporal del resultado
+se reserva antes de entrar en cualquiera de las ramas y se define en ambas.
+Solo una rama se ejecuta:
+
+~~~text
+ifFalse c goto Lfalse
+t0 = valor_true
+goto Lend
+Lfalse:
+t0 = valor_false
+Lend:
+~~~
 
 ### Condicional
 
@@ -376,6 +407,30 @@ t0 = c * d      # reutilización válida
 y = t0
 ~~~
 
+En la IR real se emite `release t0` después de cada último consumo. El nombre
+puede repetirse; el `lease` distingue los dos valores en el verificador.
+
+## APIs públicas del Bloque 1
+
+- `SemanticFacts` consulta `value_for(node)`, `symbol_for(node)`,
+  `scope_for(node)`, `address_for(symbol)`, `member_offset(owner, name)` y
+  `lexical_access(node, symbol)`. Nadissa implementará el adaptador real.
+- `ValueRef` contiene `operand`, `type` y `owns_temporary`; `release(builder)`
+  libera únicamente un temporal poseído.
+- `IRBuilder` ofrece `begin_procedure`, `end_procedure`, `emit`, `mark`, `jump`,
+  `branch_true`, `branch_false`, `temporary`, `release` y `build`. El pool de
+  temporales se aísla por procedimiento; al cerrar solo pueden quedar leases
+  consumidos por `RETURN` en una ruta terminal.
+- `ExpressionLowerer.lower(node)` consume las alternativas del árbol de
+  Compiscript para literales, identificadores, aritmética, comparaciones,
+  negaciones, lógica, asignación simple y ternario. Los nodos no soportados
+  lanzan `CodegenError` con código `IRGEN-UNSUPPORTED-NODE`.
+- `ExpressionLowerer.emit_value`, `emit_store` y `emit_call` son primitivas
+  públicas para el futuro lowering de cargas de listas/campos, stores,
+  closures y llamadas. `snapshot` captura inmediatamente un valor de símbolo;
+  `lower_arguments` evalúa y captura argumentos de izquierda a derecha antes de
+  `emit_call`. No calculan layouts ni recorren sentencias.
+
 Las pruebas deben demostrar que una expresión secuencial reutiliza nombres y
 que una expresión anidada conserva simultáneamente todos los temporales todavía
 vivos.
@@ -420,19 +475,24 @@ La tabla extendida registra por símbolo:
 
 ## Verificación obligatoria
 
-Antes de exponer TAC, el verificador comprueba:
+El verificador del Bloque 1 comprueba:
 
 - opcode conocido y aridad correcta;
-- tipos de operandos compatibles con la instrucción;
+- presencia y clase de los operandos requeridos por la instrucción;
 - temporal definido antes de cada uso;
-- ninguna lectura después de liberar un temporal;
+- ninguna lectura después de liberar un temporal y ninguna colisión de dos
+  valores vivos con el mismo nombre;
 - etiqueta definida exactamente una vez;
 - todo salto apunta a una etiqueta definida en el mismo procedimiento;
 - cada procedimiento termina con retorno o transferencia definitiva;
-- cantidad declarada de argumentos coherente con PARAM;
-- offsets alineados y sin solapamiento;
-- funciones anidadas con enlace de acceso o entorno explícito;
+- cantidad declarada de argumentos coherente con la secuencia de PARAM;
 - ubicación fuente presente en instrucciones derivadas del programa.
+
+La verificación de tamaños, alineación, solapamiento de offsets, tipos de
+argumentos de una función y enlaces de entornos pertenece a los bloques de
+layouts y lowering completo. `CALL` permite una etiqueta externa de runtime;
+el Bloque 1 comprueba forma y cantidad de argumentos, no vinculación de
+funciones.
 
 Los errores del verificador son fallos de compilación con categoría IR, no
 errores semánticos del usuario.
