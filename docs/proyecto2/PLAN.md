@@ -91,21 +91,21 @@ GUI ni modificar la fase semántica.
 
 ## Bloque 2 — Nadissa: tabla extendida y entorno de ejecución
 
-- [ ] Exponer anotaciones semánticas inmutables por nodo sin romper la API
+- [x] Exponer anotaciones semánticas inmutables por nodo sin romper la API
   existente.
-- [ ] Registrar el scope activo después de las acciones de entrada.
-- [ ] Asociar expresiones y declaraciones con su Symbol resuelto.
-- [ ] Implementar el adaptador SemanticFacts definido por Daniel.
-- [ ] Definir tamaños y alineaciones del modelo abstracto.
-- [ ] Calcular direcciones globales y offsets de parámetros, locales y campos.
-- [ ] Asignar etiquetas estables a funciones, métodos y clases.
-- [ ] Implementar SymbolLayoutTable como extensión de la tabla existente.
-- [ ] Implementar ActivationRecordLayout y su builder.
-- [ ] Diferenciar enlace de control y enlace de acceso.
-- [ ] Detectar capturas y calcular distancia léxica.
-- [ ] Reservar slots según el máximo de temporales vivos.
-- [ ] Probar layouts, alineación, scopes anidados y closures.
-- [ ] Cubrir SYM-* y RUN-* asignados en la matriz.
+- [x] Registrar el scope activo después de las acciones de entrada.
+- [x] Asociar expresiones y declaraciones con su Symbol resuelto.
+- [x] Implementar el adaptador SemanticFacts definido por Daniel.
+- [x] Definir tamaños y alineaciones del modelo abstracto.
+- [x] Calcular direcciones globales y offsets de parámetros, locales y campos.
+- [x] Asignar etiquetas estables a funciones, métodos y clases.
+- [x] Implementar SymbolLayoutTable como extensión de la tabla existente.
+- [x] Implementar ActivationRecordLayout y su builder.
+- [x] Diferenciar enlace de control y enlace de acceso.
+- [x] Detectar capturas y calcular distancia léxica.
+- [x] Reservar slots según el máximo de temporales vivos.
+- [x] Probar layouts, alineación, scopes anidados y closures.
+- [x] Cubrir SYM-* y RUN-* asignados en la matriz.
 
 Puerta Nadissa → Dulce: dado un árbol ya analizado, cualquier nodo relevante
 puede consultar tipo, símbolo, scope y ubicación; cada declaración tiene layout
