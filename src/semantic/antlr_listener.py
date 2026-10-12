@@ -88,6 +88,7 @@ class SemanticTreeListener(ParseTreeListener):
                     produced = self._invoke(action, common_node)
                     if produced is not None:
                         frame.result = produced
+        context.record_scope(common_node)
 
     def exitEveryRule(self, ctx: object) -> None:  # noqa: N802 - ANTLR API
         """Run exit actions after every child result is available."""
@@ -123,6 +124,7 @@ class SemanticTreeListener(ParseTreeListener):
         """Retain the terminal's precomputed common-tree metadata."""
         common_node = self._common_node(node)
         self.evaluator.context.results[id(common_node)] = None
+        self.evaluator.context.record_scope(common_node)
         self._statistics["terminals_visited"] += 1
         self._run_parent_after_child(common_node)
 
@@ -156,6 +158,7 @@ class SemanticTreeListener(ParseTreeListener):
                 else None
             ),
             statistics=self._statistics,
+            annotations=context.annotations(),
         )
 
     def abort(self) -> None:
@@ -165,6 +168,7 @@ class SemanticTreeListener(ParseTreeListener):
         context.function_stack.clear()
         context.class_stack.clear()
         context.loop_stack.clear()
+        context.clear_node_state()
         self._frames.clear()
 
     def _invoke(self, action, node: ParseTreeNode) -> object:
