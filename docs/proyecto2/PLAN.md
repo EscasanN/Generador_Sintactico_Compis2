@@ -113,24 +113,24 @@ y cada función dispone de un descriptor de activación construible.
 
 ## Bloque 3 — Dulce: lowering completo y pipeline
 
-- [ ] Implementar el generador Compiscript sobre ParseTreeNode.
-- [ ] Traducir declaraciones, copias y asignaciones de elementos o miembros.
-- [ ] Traducir if/else, while, do-while, for y switch.
-- [ ] Mantener pilas separadas de break y continue con destinos correctos.
-- [ ] Traducir funciones, parámetros, llamadas y retornos.
-- [ ] Demostrar recursión directa y mutua con etiquetas predeclaradas.
-- [ ] Traducir funciones anidadas y creación/acceso de closures.
-- [ ] Traducir clases, objetos, constructor, campos, métodos y this.
-- [ ] Traducir listas, cargas y almacenamientos indexados.
-- [ ] Cubrir print, módulo, ternario, foreach y herencia de la gramática actual.
-- [ ] Definir una salida explícita para try/catch o un diagnóstico de
+- [x] Implementar el generador Compiscript sobre ParseTreeNode.
+- [x] Traducir declaraciones, copias y asignaciones de elementos o miembros.
+- [x] Traducir if/else, while, do-while, for y switch.
+- [x] Mantener pilas separadas de break y continue con destinos correctos.
+- [x] Traducir funciones, parámetros, llamadas y retornos.
+- [x] Demostrar recursión directa y mutua con etiquetas predeclaradas.
+- [x] Traducir funciones anidadas y creación/acceso de closures.
+- [x] Traducir clases, objetos, constructor, campos, métodos y this.
+- [x] Traducir listas, cargas y almacenamientos indexados.
+- [x] Cubrir print, módulo, ternario, foreach y herencia de la gramática actual.
+- [x] Definir una salida explícita para try/catch o un diagnóstico de
   construcción no soportada acordado con el profesor.
-- [ ] Crear IntermediateCodeResult y CompilationResult.
-- [ ] Implementar compile_compiscript sin cambiar
+- [x] Crear IntermediateCodeResult y CompilationResult.
+- [x] Implementar compile_compiscript sin cambiar
   analyze_semantics_with_g4.
-- [ ] Impedir TAC cuando sintaxis o semántica reporten errores.
-- [ ] Ejecutar el verificador antes de aceptar la compilación.
-- [ ] Cubrir CTL-*, FUN-*, CLS-*, LST-* y PIPE-*.
+- [x] Impedir TAC cuando sintaxis o semántica reporten errores.
+- [x] Ejecutar el verificador antes de aceptar la compilación.
+- [x] Cubrir CTL-*, FUN-*, CLS-*, LST-* y PIPE-*.
 
 Puerta Dulce → Nelson: desde Python, un .cps válido produce TAC verificado,
 tabla extendida y frames; uno inválido conserva sus diagnósticos y no produce
