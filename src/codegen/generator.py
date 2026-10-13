@@ -1,8 +1,8 @@
 """Lower a whole analysed Compiscript program to structured TAC (block 3).
 
 ``CompiscriptCodeGenerator`` walks the common ``ParseTreeNode`` tree of an
-accepted program. Statement handlers live in mixins (``statements``,
-``control_flow``); expressions go through ``ProgramExpressionLowerer``, which
+accepted program. Handlers live in mixins (``statements``, ``control_flow``,
+``callables``); expressions go through ``ProgramExpressionLowerer``, which
 extends Daniel's ``ExpressionLowerer`` only for the alternatives owned by this
 block and delegates everything else unchanged.
 
@@ -13,11 +13,13 @@ program is never accepted with partial TAC (EXT-08).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from src.antlr_mode.parse_tree import ParseTreeNode
 from src.codegen.activation import RuntimeLayouts
 from src.codegen.builder import IRBuilder
+from src.codegen.callables import CallableLowering, ProcedureContext
 from src.codegen.contracts import CodegenError, ValueRef
 from src.codegen.control_flow import ControlFlowLowering
 from src.codegen.expression_lowering import ExpressionLowerer
@@ -27,6 +29,12 @@ from src.codegen.statements import StatementLowering
 from src.semantic.diagnostics import SourceLocation
 from src.semantic.symbol_table import Symbol
 from src.semantic.values import SemanticValue
+
+_TRANSPARENT = frozenset({
+    "ExprNoAssign", "ConditionalAtom", "LogicalOrAtom", "LogicalAndAtom",
+    "EqualityAtom", "RelationalAtom", "AdditiveAtom", "MultiplicativeAtom",
+    "UnaryAtom", "LeftHandSidePrimary", "ParenPrimary", "LeftHandSideAtom",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,15 +68,20 @@ class ProgramExpressionLowerer(ExpressionLowerer):
         return super().lower(node)
 
 
-class CompiscriptCodeGenerator(ControlFlowLowering, StatementLowering):
+class CompiscriptCodeGenerator(CallableLowering, ControlFlowLowering, StatementLowering):
     """Coordinate facts, layouts, the IR builder and the control stacks."""
 
     STATEMENTS: dict[str, str] = {
         **StatementLowering.STATEMENTS,
         **ControlFlowLowering.STATEMENTS,
+        **CallableLowering.STATEMENTS,
     }
     EXPRESSIONS: dict[str, str] = {
         **StatementLowering.EXPRESSIONS,
+        **CallableLowering.EXPRESSIONS,
+    }
+    PROCEDURES: dict[str, str] = {
+        **CallableLowering.PROCEDURES,
     }
 
     def __init__(self, facts: SemanticFactsIndex) -> None:
@@ -78,8 +91,9 @@ class CompiscriptCodeGenerator(ControlFlowLowering, StatementLowering):
         self.expressions = ProgramExpressionLowerer(self)
         self.break_targets: list[Operand] = []
         self.continue_targets: list[Operand] = []
-        self.function_stack: list[object] = []
+        self.function_stack: list[ProcedureContext] = []
         self.class_stack: list[object] = []
+        self.hidden_operands: dict[tuple[str, str], Operand] = {}
         self.reachable = True
         self._targeted: set[str] = set()
         self._used = False
@@ -87,15 +101,24 @@ class CompiscriptCodeGenerator(ControlFlowLowering, StatementLowering):
     # -- entry point -------------------------------------------------------------
 
     def generate(self, root: ParseTreeNode) -> GeneratedProgram:
-        """Lower global code, then every procedure, and reserve temporary slots."""
+        """Lower global code, then every procedure, and reserve temporary slots.
+
+        Procedures are produced after the global code, in source order, for
+        every declaration (nested or unreachable ones included): labels are
+        fixed by the layouts, so no body depends on its position in the flow.
+        """
         if self._used:
             raise RuntimeError("a generator lowers exactly one program")
         self._used = True
         for statement in self.rule_children(root):
             self.lower_statement(statement)
         global_peak = self.builder.temporaries.peak_active
+        for node in self.walk(root):
+            handler = self.PROCEDURES.get(node.rule_name or "")
+            if handler is not None:
+                getattr(self, handler)(node)
         program = self.builder.build()
-        layouts = self.layouts.with_temporary_peaks({}, global_peak)
+        layouts = self.layouts.finalize_temporaries(program, global_peak)
         return GeneratedProgram(program, layouts, global_peak)
 
     # -- dispatch ----------------------------------------------------------------
@@ -166,6 +189,24 @@ class CompiscriptCodeGenerator(ControlFlowLowering, StatementLowering):
     @staticmethod
     def rule_children(node: ParseTreeNode) -> list[ParseTreeNode]:
         return [child for child in node.children if child.rule_name is not None]
+
+    @classmethod
+    def walk(cls, node: ParseTreeNode) -> Iterator[ParseTreeNode]:
+        """Rule nodes in source (pre-)order."""
+        yield node
+        for child in cls.rule_children(node):
+            yield from cls.walk(child)
+
+    def unwrap(self, node: ParseTreeNode) -> ParseTreeNode:
+        """Skip single-child wrapper alternatives down to the meaningful node."""
+        while True:
+            children = self.rule_children(node)
+            transparent = node.alternative in _TRANSPARENT or (
+                node.alternative is None and node.rule_name in ("expression", "statement")
+            )
+            if not transparent or len(children) != 1:
+                return node
+            node = children[0]
 
     def child(self, node: ParseTreeNode, rule: str) -> ParseTreeNode | None:
         return next((c for c in node.children if c.rule_name == rule), None)
