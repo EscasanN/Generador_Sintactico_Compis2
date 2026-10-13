@@ -389,7 +389,7 @@ class CallableLowering:
             closure = self.function_value(symbol, callee)
         else:
             closure = self.lower_expression(callee_node)
-            if arguments:
+            if any(self.may_write(argument) for argument in arguments):
                 closure = self.expressions.snapshot(closure, location)
         values = self.lower_call_arguments(arguments, closure.type)
         return self.invoke(
@@ -408,13 +408,8 @@ class CallableLowering:
         return NotImplemented
 
     def call_arguments(self, node: ParseTreeNode) -> list[ParseTreeNode]:
-        """Argument expressions in source order (``argumentList`` is left-recursive)."""
-        arguments = self.child(node, "argumentList")
-        found: list[ParseTreeNode] = []
-        while arguments is not None:
-            found.insert(0, self.children(arguments, "expression")[-1])
-            arguments = self.child(arguments, "argumentList")
-        return found
+        """Argument expressions in source order."""
+        return self.list_items(node, "argumentList")
 
     def lower_call_arguments(
         self, arguments: list[ParseTreeNode], signature: Type
