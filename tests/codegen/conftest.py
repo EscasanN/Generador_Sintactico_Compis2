@@ -1,10 +1,12 @@
-"""Shared helpers: analyze real Compiscript source and index its codegen facts."""
+"""Shared helpers: analyze real Compiscript source, index its codegen facts and lower it."""
 
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 import pytest
 
+from src.codegen.ir import IRProgram
 from src.codegen.semantic_facts import SemanticFactsIndex
 from src.semantic.antlr_adapter import analyze_semantics_with_g4
 
@@ -51,3 +53,39 @@ def find_references():
 @pytest.fixture
 def walk_tree():
     return walk
+
+
+@dataclass(frozen=True)
+class Lowered:
+    """A whole program lowered by the block-3 generator and already verified."""
+
+    run: object
+    facts: SemanticFactsIndex
+    program: IRProgram
+    layouts: object
+    text: str
+
+    def unit(self, label: str = "global") -> tuple:
+        """Instructions of global code or of the procedure labelled ``label``."""
+        if label == "global":
+            return self.program.global_code
+        return next(p for p in self.program.procedures if p.label.value == label).instructions
+
+
+@pytest.fixture
+def generate_tac(compile_facts):
+    """``generate_tac(source) -> Lowered``; the IR must pass ``IRVerifier``."""
+    from src.codegen.formatter import format_program
+    from src.codegen.generator import CompiscriptCodeGenerator
+    from src.codegen.verifier import IRVerifier
+
+    def lower(source: str) -> Lowered:
+        run, facts = compile_facts(source)
+        generated = CompiscriptCodeGenerator(facts).generate(run.syntax_result.tree)
+        diagnostics = IRVerifier().verify(generated.program)
+        assert diagnostics == (), diagnostics
+        return Lowered(
+            run, facts, generated.program, generated.layouts, format_program(generated.program)
+        )
+
+    return lower
