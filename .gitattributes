@@ -6,3 +6,5 @@
 *.yal text eol=lf
 *.txt text eol=lf
 *.md  text eol=lf
+*.cps text eol=lf
+*.tac text eol=lf
