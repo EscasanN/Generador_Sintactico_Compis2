@@ -1,4 +1,4 @@
-# Arquitectura propuesta — generación de código intermedio
+# Arquitectura — generación de código intermedio
 
 ## Objetivo arquitectónico
 
@@ -60,7 +60,7 @@ IntermediateCodeResult
 CLI o IDE
 ~~~
 
-## Contratos públicos propuestos
+## Contratos públicos
 
 ### Anotaciones semánticas
 
@@ -126,18 +126,21 @@ CompilationResult
 └── accepted
 ~~~
 
-La función pública propuesta es:
+La función pública (src/codegen/pipeline.py) es:
 
 ~~~python
 compile_compiscript(
     source: str,
     source_path: str | Path | None = None,
+    *,
+    grammar_path: str | Path = GRAMMAR_PATH,
+    profile_path: str | Path = PROFILE_PATH,
 ) -> CompilationResult
 ~~~
 
 Esta función envuelve analyze_semantics_with_g4; no sustituye ni cambia esa API.
 
-## Paquetes propuestos
+## Paquetes
 
 ~~~text
 src/
@@ -163,9 +166,11 @@ src/
 │   ├── results.py
 │   └── pipeline.py
 ├── gui/
-│   ├── app.py
-│   └── codegen_results.py
-└── main.py
+│   ├── app.py                          # ventana, CompilationWorker (QThread)
+│   ├── codegen_results.py              # TacView, LayoutPanel, DiagnosticsTable
+│   ├── semantic_results.py             # diagnósticos y tabla por ámbito
+│   └── parse_tree_view.py              # árbol navegable
+└── main.py                             # CLI: --cps, --emit-tac, --show-layout
 
 tests/
 ├── codegen/
@@ -176,9 +181,37 @@ tests/
 └── gui/
 ~~~
 
-Los nombres son el contrato de planificación. Si durante el primer bloque se
-decide combinar dos módulos, el cambio debe registrarse antes de que otro
-integrante consuma la API.
+Los nombres coinciden con el código entregado. La única desviación registrada
+es tests/codegen/test_control_flow_lowering.py (bloque 3), renombrado para no
+chocar con tests/semantic/test_control_flow.py.
+
+## Presentación: CLI e IDE
+
+Ambos consumidores llaman a compile_compiscript y no contienen reglas de
+traducción:
+
+~~~text
+python -m src.main --cps x.cps [--emit-tac [RUTA]] [--show-layout]
+    └── _run_cps_cli → compile_compiscript → reporte por fase
+                                            → tac_document(result.tac)
+
+python -m src.main  (IDE)
+    └── MainWindow._run_compilation
+          ├── limpia resultados anteriores y deshabilita Compilar
+          └── CompilationWorker (QThread) → compile_compiscript
+                └── señal completed(bundle) → hilo de Qt
+                      ├── TacView           (OUT-03)
+                      ├── LayoutPanel       (OUT-04)
+                      ├── DiagnosticsTable  (OUT-05)
+                      └── árbol + panel semántico existentes
+~~~
+
+- El texto del TAC es el mismo en ambos: tac_document agrega solo el salto de
+  línea final y los archivos se escriben en UTF-8 con LF.
+- Un rechazo en cualquier fase deja intermediate_result sin programa; las vistas
+  muestran el motivo y nunca conservan el TAC de una compilación anterior.
+- La CLI separa stdout (solo TAC con --emit-tac) de stderr (diagnósticos), para
+  poder redirigir la salida.
 
 ## Invariantes de la arquitectura
 

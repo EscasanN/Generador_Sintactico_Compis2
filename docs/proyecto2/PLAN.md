@@ -138,20 +138,20 @@ TAC.
 
 ## Bloque 4 — Nelson: IDE, CLI y entrega
 
-- [ ] Cambiar la acción principal del IDE de Analizar a Compilar.
-- [ ] Mantener la ejecución fuera del hilo principal de Qt.
-- [ ] Agregar vista de TAC con copia y exportación opcional.
-- [ ] Mostrar diagnósticos de frontend, semántica y generación.
-- [ ] Mostrar tabla extendida y registros de activación.
-- [ ] Mantener árbol sintáctico y tabla semántica existentes.
-- [ ] Agregar opción CLI para imprimir o guardar TAC.
-- [ ] Crear fixtures .cps por cada ID obligatorio.
-- [ ] Crear salidas esperadas estables para casos representativos.
-- [ ] Probar que entradas inválidas nunca muestran TAC antiguo.
-- [ ] Actualizar README principal e instrucciones de ejecución.
-- [ ] Preparar una demostración válida y una fallida.
-- [ ] Ejecutar regresión completa y revisar los commits individuales.
-- [ ] Cubrir IDE-*, OUT-* y TST-*.
+- [x] Cambiar la acción principal del IDE de Analizar a Compilar.
+- [x] Mantener la ejecución fuera del hilo principal de Qt.
+- [x] Agregar vista de TAC con copia y exportación opcional.
+- [x] Mostrar diagnósticos de frontend, semántica y generación.
+- [x] Mostrar tabla extendida y registros de activación.
+- [x] Mantener árbol sintáctico y tabla semántica existentes.
+- [x] Agregar opción CLI para imprimir o guardar TAC.
+- [x] Crear fixtures .cps por cada ID obligatorio.
+- [x] Crear salidas esperadas estables para casos representativos.
+- [x] Probar que entradas inválidas nunca muestran TAC antiguo.
+- [x] Actualizar README principal e instrucciones de ejecución.
+- [x] Preparar una demostración válida y una fallida.
+- [x] Ejecutar regresión completa y revisar los commits individuales.
+- [x] Cubrir IDE-*, OUT-* y TST-*.
 
 Puerta Nelson → entrega: una sola ventana permite editar y compilar .cps,
 presenta TAC y tabla extendida, y la suite completa pasa desde un clon limpio.

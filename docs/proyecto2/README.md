@@ -4,8 +4,10 @@ Esta carpeta contiene la planificación de la siguiente etapa de Compiscript:
 generar código de tres direcciones (TAC) a partir del árbol sintáctico y de la
 tabla de símbolos producidos por la entrega semántica.
 
-> Estado: estos documentos describen trabajo propuesto. Las casillas sin marcar
-> no representan funcionalidades ya implementadas.
+> Estado: los cuatro bloques están implementados e integrados. La evidencia de
+> cada requisito está en [MATRIZ_CUMPLIMIENTO.md](MATRIZ_CUMPLIMIENTO.md#evidencia-por-id)
+> y las entregas en bloque2-entrega.md, bloque3-entrega.md y
+> [bloque4-entrega.md](bloque4-entrega.md).
 
 La fuente oficial es
 [proyecto2-compiladores.md](proyecto2-compiladores.md). La propuesta también
@@ -20,7 +22,7 @@ temporales, offsets y registros de activación.
 | [PLAN.md](PLAN.md) | Secuencia completa de implementación, puertas y riesgos. |
 | [DIVISION_TRABAJO.md](DIVISION_TRABAJO.md) | Responsabilidad de cada integrante, ramas y entregables. |
 | [GUIA_IMPLEMENTACION_POR_INTEGRANTE.md](GUIA_IMPLEMENTACION_POR_INTEGRANTE.md) | Archivos, APIs y pruebas esperadas por bloque. |
-| [ARQUITECTURA.md](ARQUITECTURA.md) | Flujo técnico propuesto y contratos entre fases. |
+| [ARQUITECTURA.md](ARQUITECTURA.md) | Flujo técnico y contratos entre fases, CLI e IDE. |
 | [DISENO_TAC.md](DISENO_TAC.md) | Lenguaje intermedio, instrucciones, temporales y ejemplos de traducción. |
 | [MATRIZ_CUMPLIMIENTO.md](MATRIZ_CUMPLIMIENTO.md) | Trazabilidad entre el enunciado, pruebas y responsables. |
 | [REGLAS_Y_DECISIONES.md](REGLAS_Y_DECISIONES.md) | Decisiones adoptadas, supuestos y preguntas para el profesor. |
