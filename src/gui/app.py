@@ -1,4 +1,10 @@
-"""IDE enfocado exclusivamente en el flujo de Compiscript."""
+"""IDE de Compiscript: editar, guardar y compilar programas ``.cps``.
+
+La compilación (sintaxis, semántica, generación de TAC y verificación) se
+ejecuta en ``CompilationWorker`` fuera del hilo de Qt mediante la misma API
+pública que usa la CLI: ``compile_compiscript``. La ventana solo presenta el
+resultado inmutable que entrega el worker; nunca construye ni modifica IR.
+"""
 
 from __future__ import annotations
 
@@ -28,6 +34,14 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.gui.codegen_results import (
+    STAGE_NAMES,
+    DiagnosticsTable,
+    LayoutPanel,
+    TacView,
+    collect_diagnostics,
+    use_code_font,
+)
 from src.gui.parse_tree_view import build_tree_widget
 from src.gui.semantic_results import SemanticResultsPanel
 from src.gui.theme import DARK, LIGHT, Palette, stylesheet
@@ -41,45 +55,45 @@ DEFAULT_PROFILE = REPOSITORY_ROOT / "semantic_profiles" / "compiscript.semantic.
 DEFAULT_START_RULE = "program"
 
 
-class SemanticAnalysisWorker(QThread):
-    """Ejecuta sintaxis y semántica fuera del hilo de la interfaz."""
+class CompilationWorker(QThread):
+    """Compila el programa completo fuera del hilo de la interfaz (IDE-02)."""
 
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
+    completed = pyqtSignal(object)
+    failed = pyqtSignal(str)
 
     def __init__(
         self,
         grammar_path: str,
         profile_path: str,
-        start_rule: str,
         input_text: str,
         source_path: str | None = None,
     ) -> None:
         super().__init__()
         self.grammar_path = grammar_path
         self.profile_path = profile_path
-        self.start_rule = start_rule
         self.input_text = input_text
         self.source_path = source_path
 
     def run(self) -> None:
-        """Compila el texto y prepara las vistas del resultado."""
+        """Ejecuta ``compile_compiscript`` y prepara la imagen del árbol."""
         try:
+            from src.antlr_mode.grammar_info import GrammarInfoError
             from src.antlr_mode.parse_tree_visualizer import render_parse_tree
             from src.antlr_mode.runner import AntlrModeError
-            from src.semantic.antlr_adapter import (
-                SemanticAdapterError,
-                analyze_semantics_with_g4,
-            )
+            from src.codegen.pipeline import compile_compiscript
+            from src.semantic.antlr_adapter import SemanticAdapterError
 
-            result = analyze_semantics_with_g4(
-                self.grammar_path,
-                self.input_text,
-                self.profile_path,
-                self.start_rule,
-                self.source_path,
-            )
-            syntax_result = result.syntax_result
+            try:
+                compilation = compile_compiscript(
+                    self.input_text,
+                    self.source_path,
+                    grammar_path=self.grammar_path,
+                    profile_path=self.profile_path,
+                )
+            except (AntlrModeError, GrammarInfoError, SemanticAdapterError) as exc:
+                self.failed.emit(str(exc))
+                return
+            syntax_result = compilation.syntax_result
             tree_image = None
             tree_error = None
             if syntax_result.tree is not None:
@@ -91,25 +105,24 @@ class SemanticAnalysisWorker(QThread):
                     )
                 except Exception as exc:  # pragma: no cover - Graphviz externo
                     tree_error = str(exc)
-            self.finished.emit(
+            self.completed.emit(
                 {
-                    "mode": "semantic",
+                    "mode": "compile",
+                    "compilation": compilation,
                     "result": syntax_result,
-                    "semantic_result": result.semantic_result,
+                    "semantic_result": compilation.semantic_result,
                     "tree_image": tree_image,
                     "tree_error": tree_error,
                 }
             )
-        except (AntlrModeError, SemanticAdapterError) as exc:
-            self.error.emit(str(exc))
         except Exception:
             import traceback
 
-            self.error.emit(traceback.format_exc())
+            self.failed.emit(traceback.format_exc())
 
 
 class MainWindow(QMainWindow):
-    """Editor y analizador de programas ``.cps`` de Compiscript."""
+    """Editor y compilador de programas ``.cps`` de Compiscript."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -120,7 +133,7 @@ class MainWindow(QMainWindow):
         self._profile_path = str(DEFAULT_PROFILE)
         self._input_path: str | None = None
         self._active_file: str | None = None
-        self._worker: SemanticAnalysisWorker | None = None
+        self._worker: CompilationWorker | None = None
         self._last_bundle: dict | None = None
         self._palette: Palette = LIGHT
 
@@ -128,7 +141,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._apply_theme(LIGHT)
         self.statusBar().showMessage(
-            "Listo — cree o abra un programa .cps y presione Analizar."
+            "Listo — escriba, cree o abra un programa .cps y presione Compilar."
         )
 
     def _build_menu(self) -> None:
@@ -145,10 +158,15 @@ class MainWindow(QMainWindow):
             file_menu.addAction(action)
 
         run_menu = self.menuBar().addMenu("&Ejecutar")
-        analyze_action = QAction("Analizar", self)
-        analyze_action.setShortcut("Ctrl+R")
-        analyze_action.triggered.connect(self._run_analysis)
-        run_menu.addAction(analyze_action)
+        self._compile_action = QAction("Compilar", self)
+        self._compile_action.setShortcuts(["Ctrl+R", "F5"])
+        self._compile_action.triggered.connect(self._run_compilation)
+        run_menu.addAction(self._compile_action)
+        self._export_action = QAction("Exportar TAC…", self)
+        self._export_action.setShortcut("Ctrl+E")
+        self._export_action.setEnabled(False)
+        self._export_action.triggered.connect(self._export_tac)
+        run_menu.addAction(self._export_action)
 
         view_menu = self.menuBar().addMenu("&Vista")
         theme_action = QAction("Cambiar tema", self)
@@ -173,8 +191,11 @@ class MainWindow(QMainWindow):
             button.clicked.connect(slot)
             toolbar.addWidget(button)
 
-        self._run_btn = QPushButton("Analizar")
-        self._run_btn.clicked.connect(self._run_analysis)
+        self._run_btn = QPushButton("Compilar")
+        self._run_btn.setToolTip(
+            "Sintaxis, semántica y código intermedio (Ctrl+R / F5)"
+        )
+        self._run_btn.clicked.connect(self._run_compilation)
         toolbar.addWidget(self._run_btn)
         toolbar.addStretch()
 
@@ -198,6 +219,7 @@ class MainWindow(QMainWindow):
         files_group = QGroupBox("Programa")
         files_layout = QVBoxLayout(files_group)
         self._file_list = QListWidget()
+        self._file_list.setMaximumHeight(44)
         self._file_items: dict[str, QListWidgetItem] = {}
         item = QListWidgetItem("Compiscript: ninguno")
         item.setData(Qt.ItemDataRole.UserRole, "input")
@@ -208,6 +230,8 @@ class MainWindow(QMainWindow):
         editor_layout.addWidget(files_group)
 
         self._editor = QTextEdit()
+        self._editor.setAcceptRichText(False)
+        use_code_font(self._editor)
         self._editor.setPlaceholderText(
             "Escriba o abra aquí un programa Compiscript (.cps)."
         )
@@ -216,14 +240,26 @@ class MainWindow(QMainWindow):
 
         self._tabs = QTabWidget()
         self._tree_tabs = QTabWidget()
-        self._tabs.addTab(self._tree_tabs, "Árbol sintáctico")
+        self._tabs.addTab(self._tree_tabs, "Árbol")
 
         self._semantic_panel = SemanticResultsPanel()
         self._tabs.addTab(self._semantic_panel, "Semántica")
 
+        self._tac_view = TacView()
+        self._tac_view.export_button.clicked.connect(self._export_tac)
+        self._tabs.addTab(self._tac_view, "Código TAC")
+
+        self._layout_panel = LayoutPanel()
+        self._tabs.addTab(self._layout_panel, "Tabla extendida")
+
+        self._summary = QSplitter(Qt.Orientation.Vertical)
         self._results = QTextEdit()
         self._results.setReadOnly(True)
-        self._tabs.addTab(self._results, "Resultados")
+        self._summary.addWidget(self._results)
+        self._diagnostics = DiagnosticsTable()
+        self._summary.addWidget(self._diagnostics)
+        self._summary.setSizes([300, 260])
+        self._tabs.addTab(self._summary, "Resumen")
         splitter.addWidget(self._tabs)
         splitter.setSizes([520, 660])
         root.addWidget(splitter, 1)
@@ -330,49 +366,69 @@ class MainWindow(QMainWindow):
         self._active_file = path
         self._set_file_slot("input", "Compiscript", path)
 
-    def _run_analysis(self) -> None:
-        self._run_semantic_analysis()
+    # ------------------------------------------------------------ compilation
 
-    def _run_semantic_analysis(self) -> None:
-        if self._input_path is None:
-            QMessageBox.warning(
-                self,
-                "Falta programa",
-                "Primero cree o abra un archivo .cps.",
-            )
+    def _run_compilation(self) -> None:
+        """Compila el contenido actual del editor, aunque no esté guardado."""
+        if self._worker is not None and self._worker.isRunning():
             return
         source = self._editor.toPlainText()
         self._run_btn.setEnabled(False)
-        self.statusBar().showMessage("Analizando programa Compiscript…")
-        self._worker = SemanticAnalysisWorker(
+        self._compile_action.setEnabled(False)
+        self._clear_results()
+        self.statusBar().showMessage("Compilando programa Compiscript…")
+        worker = CompilationWorker(
             self._g4_path,
             self._profile_path,
-            DEFAULT_START_RULE,
             source,
             self._input_path,
         )
-        self._worker.finished.connect(self._on_finished)
-        self._worker.error.connect(self._on_error)
-        self._worker.start()
+        worker.completed.connect(self._on_finished)
+        worker.failed.connect(self._on_error)
+        self._worker = worker
+        worker.start()
+
+    def _clear_results(self) -> None:
+        """Ningún resultado anterior queda visible como si fuera actual (IDE-03)."""
+        self._last_bundle = None
+        self._tree_tabs.clear()
+        self._semantic_panel.set_result(None)
+        self._tac_view.show_pending()
+        self._layout_panel.show_pending()
+        self._diagnostics.set_compilation(None)
+        self._results.clear()
+        self._export_action.setEnabled(False)
+
+    def _finish_run(self) -> None:
+        self._run_btn.setEnabled(True)
+        self._compile_action.setEnabled(True)
 
     def _on_finished(self, bundle: dict) -> None:
-        self._run_btn.setEnabled(True)
+        self._finish_run()
         self._last_bundle = bundle
         self._render_bundle(bundle)
-        semantic_result = bundle.get("semantic_result")
-        accepted = semantic_result is not None and semantic_result.accepted
-        self.statusBar().showMessage(
-            "Análisis completado: ACCEPT"
-            if accepted
-            else "Análisis completado con errores"
+        compilation = bundle["compilation"]
+        if compilation.accepted:
+            stats = compilation.intermediate_result.statistics
+            self.statusBar().showMessage(
+                f"Compilación aceptada: {stats['instructions']} instrucciones TAC, "
+                f"pico de {stats['temporary_peak']} temporales vivos."
+            )
+            self._tabs.setCurrentWidget(self._tac_view)
+            return
+        errors = sum(
+            1 for row in collect_diagnostics(compilation) if row.severity == "ERROR"
         )
+        stage = STAGE_NAMES.get(compilation.failed_stage, compilation.failed_stage)
+        self.statusBar().showMessage(
+            f"Compilación rechazada en la fase {stage}: {errors} error(es)."
+        )
+        self._tabs.setCurrentWidget(self._summary)
 
     def _render_bundle(self, bundle: dict) -> None:
-        self._render_semantic_bundle(bundle)
-
-    def _render_semantic_bundle(self, bundle: dict) -> None:
         syntax_result = bundle["result"]
         semantic_result = bundle.get("semantic_result")
+        compilation = bundle.get("compilation")
 
         self._tree_tabs.clear()
         image_path = bundle.get("tree_image")
@@ -401,40 +457,113 @@ class MainWindow(QMainWindow):
             )
 
         self._semantic_panel.set_result(semantic_result)
+        self._tac_view.set_compilation(compilation)
+        self._layout_panel.set_compilation(compilation)
+        self._diagnostics.set_compilation(compilation)
+        self._export_action.setEnabled(
+            compilation is not None and compilation.accepted
+        )
+
         lines = [
             "=" * 70,
-            "  ANÁLISIS DE COMPISCRIPT",
+            "  COMPILACIÓN DE COMPISCRIPT",
             "=" * 70,
-            f"Archivo    : {self._input_path or '(memoria)'}",
+            f"Archivo    : {self._input_path or '(editor sin guardar)'}",
             f"Gramática  : {syntax_result.grammar.name}",
             f"Regla      : {syntax_result.start_rule}",
             f"Tokens     : {len(syntax_result.tokens)}",
         ]
         if not syntax_result.accepted:
-            lines.append("Resultado  : ERRORES SINTÁCTICOS")
+            lines.append("Sintaxis   : ERRORES LÉXICOS O SINTÁCTICOS")
             for diagnostic in syntax_result.diagnostics:
                 lines.append(
                     f"[!] {diagnostic.stage} {diagnostic.line}:"
                     f"{diagnostic.column} — {diagnostic.message}"
                 )
-        elif semantic_result is None:
-            lines.append("Resultado  : la semántica no se ejecutó")
+        else:
+            lines.append("Sintaxis   : sin errores léxicos ni sintácticos")
+        if semantic_result is None:
+            lines.append("Semántica  : no se ejecutó")
         else:
             lines.append(
-                f"Resultado  : {'ACCEPT' if semantic_result.accepted else 'WITH ERRORS'}"
+                f"Semántica  : "
+                f"{'ACCEPT' if semantic_result.accepted else 'WITH ERRORS'} "
+                f"({len(semantic_result.diagnostics)} diagnóstico(s))"
             )
-            lines.append(f"Diagnósticos: {len(semantic_result.diagnostics)}")
             for diagnostic in semantic_result.diagnostics:
                 lines.append(
                     f"[!] {diagnostic.severity.value} {diagnostic.category.value} "
                     f"{diagnostic.location.line}:{diagnostic.location.column} — "
                     f"{diagnostic.message}"
                 )
+        lines.extend(self._codegen_summary(compilation))
         if bundle.get("tree_error"):
             lines.append(f"[!] Árbol: {bundle['tree_error']}")
 
         self._results.setHtml(self._build_results_html(lines))
         self._tabs.setCurrentIndex(self._tabs.indexOf(self._semantic_panel))
+
+    @staticmethod
+    def _codegen_summary(compilation: object | None) -> list[str]:
+        intermediate = (
+            compilation.intermediate_result if compilation is not None else None
+        )
+        if intermediate is None:
+            lines = ["TAC        : no generado"]
+        elif intermediate.accepted:
+            stats = intermediate.statistics
+            lines = [
+                "TAC        : ACCEPT (verificado por IRVerifier)",
+                f"Estadísticas: {stats['instructions']} instrucciones, "
+                f"{stats['procedures']} procedimientos, {stats['labels']} etiquetas, "
+                f"{stats['temporaries_created']} temporales creados, pico de "
+                f"{stats['temporary_peak']} vivos",
+            ]
+        else:
+            lines = ["TAC        : ERRORES DE GENERACIÓN"]
+            for diagnostic in intermediate.diagnostics:
+                location = diagnostic.location
+                position = (
+                    f"{location.line}:{location.column}"
+                    if location is not None
+                    else "-:-"
+                )
+                lines.append(
+                    f"[!] {diagnostic.code} {position} — {diagnostic.message}"
+                )
+        if compilation is not None:
+            if compilation.accepted:
+                lines.append("Resultado  : ACCEPT")
+            else:
+                stage = STAGE_NAMES.get(
+                    compilation.failed_stage, compilation.failed_stage
+                )
+                lines.append(f"Resultado  : REJECT — fase {stage}; sin TAC")
+        return lines
+
+    def _export_tac(self) -> None:
+        if not self._tac_view.has_tac():
+            QMessageBox.information(
+                self, "Sin TAC", "Compile un programa válido antes de exportar."
+            )
+            return
+        suggested = (
+            str(Path(self._input_path).with_suffix(".tac")) if self._input_path else ""
+        )
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar código intermedio",
+            suggested,
+            "TAC (*.tac);;Texto (*.txt)",
+        )
+        if not path:
+            return
+        try:
+            target = self._tac_view.export(path)
+        except OSError as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+            return
+        self.statusBar().showMessage(f"TAC exportado: {target}")
 
     def _build_results_html(self, lines: list[str]) -> str:
         parts = [
@@ -443,7 +572,12 @@ class MainWindow(QMainWindow):
         ]
         for line in lines:
             escaped = html.escape(line)
-            if "[!]" in line or "WITH ERRORS" in line or "ERRORES" in line:
+            if (
+                "[!]" in line
+                or "WITH ERRORS" in line
+                or "ERRORES" in line
+                or "REJECT" in line
+            ):
                 parts.append(
                     f'<span style="color:{self._palette.danger};">{escaped}</span>'
                 )
@@ -458,14 +592,17 @@ class MainWindow(QMainWindow):
         return "".join(parts)
 
     def _on_error(self, message: str) -> None:
-        self._run_btn.setEnabled(True)
-        self.statusBar().showMessage("Error durante el análisis.")
+        self._finish_run()
+        self._clear_results()
+        self._tac_view.set_compilation(None)
+        self._layout_panel.set_compilation(None)
+        self.statusBar().showMessage("Error interno durante la compilación.")
         escaped = html.escape(message)
         self._results.setHtml(
             '<pre style="font-family:Cascadia Mono,Courier New,monospace;'
             f'font-size:10pt;color:{self._palette.danger};">ERROR:\n{escaped}</pre>'
         )
-        self._tabs.setCurrentIndex(self._tabs.indexOf(self._results))
+        self._tabs.setCurrentWidget(self._summary)
 
 
 def launch_gui() -> None:
@@ -476,4 +613,4 @@ def launch_gui() -> None:
     sys.exit(application.exec())
 
 
-__all__ = ["MainWindow", "SemanticAnalysisWorker", "launch_gui"]
+__all__ = ["CompilationWorker", "MainWindow", "launch_gui"]

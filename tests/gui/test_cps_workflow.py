@@ -18,7 +18,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication
 
 from src.antlr_mode.runner import analyze_with_g4
-from src.gui.app import MainWindow, SemanticAnalysisWorker
+from src.gui.app import CompilationWorker, MainWindow
 from src.semantic.antlr_adapter import analyze_semantics_with_g4
 from src.antlr_mode.parse_tree_visualizer import render_parse_tree
 
@@ -127,7 +127,7 @@ def test_ide_03_save_as_adds_cps_extension_when_omitted(tmp_path, monkeypatch):
 def test_ide_02_and_04_compile_uses_unsaved_editor_contents(
     tmp_path, monkeypatch
 ):
-    """IDE-02 / IDE-04: Analyze must compile the current editor buffer."""
+    """IDE-02 / IDE-04: Compile must use the current editor buffer."""
     application, window = _make_window()
     try:
         cps_path = tmp_path / "programa.cps"
@@ -139,11 +139,11 @@ def test_ide_02_and_04_compile_uses_unsaved_editor_contents(
         window._input_path = str(cps_path)
         window._active_file = str(cps_path)
         window._editor.setPlainText(edited_program)
-        monkeypatch.setattr(SemanticAnalysisWorker, "start", lambda worker: None)
+        monkeypatch.setattr(CompilationWorker, "start", lambda worker: None)
 
-        window._run_semantic_analysis()
+        window._run_compilation()
 
-        assert isinstance(window._worker, SemanticAnalysisWorker)
+        assert isinstance(window._worker, CompilationWorker)
         assert window._worker.input_text == edited_program
         assert cps_path.read_text(encoding="utf-8") == VALID_PROGRAM
     finally:
@@ -252,27 +252,28 @@ def test_ide_07_parse_tree_has_both_image_and_navigable_views():
         application.processEvents()
 
 
-def test_ide_08_semantic_analysis_runs_on_a_worker_thread():
-    """IDE-08: compiling never blocks the GUI thread."""
+def test_ide_08_compilation_runs_on_a_worker_thread():
+    """IDE-08 / IDE-02 (Proyecto 2): compiling never blocks the GUI thread."""
     application = QApplication.instance() or QApplication([])
-    worker = SemanticAnalysisWorker(
-        str(GRAMMAR), str(PROFILE), "program", VALID_PROGRAM, "programa.cps"
+    worker = CompilationWorker(
+        str(GRAMMAR), str(PROFILE), VALID_PROGRAM, "programa.cps"
     )
     from PyQt6.QtCore import QThread
 
     assert isinstance(worker, QThread)
 
     captured = {}
-    worker.finished.connect(lambda bundle: captured.setdefault("bundle", bundle))
-    worker.error.connect(lambda message: captured.setdefault("error", message))
+    worker.completed.connect(lambda bundle: captured.setdefault("bundle", bundle))
+    worker.failed.connect(lambda message: captured.setdefault("error", message))
     worker.start()
     worker.wait(15000)
     application.processEvents()
 
     assert "error" not in captured
-    assert captured["bundle"]["mode"] == "semantic"
+    assert captured["bundle"]["mode"] == "compile"
     assert captured["bundle"]["semantic_result"] is not None
     assert captured["bundle"]["semantic_result"].accepted
+    assert captured["bundle"]["compilation"].accepted
 
 
 def test_two_compiscript_analyses_can_render_consecutively():
