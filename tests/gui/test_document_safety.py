@@ -158,6 +158,35 @@ def test_saving_same_path_preserves_current_compilation(window, tmp_path):
     assert window._export_action.isEnabled()
 
 
+@pytest.mark.parametrize("already_named", [True, False])
+def test_new_never_truncates_the_file_just_saved_by_its_guard(window, tmp_path, monkeypatch, already_named):
+    target = tmp_path / "target.cps"
+    if already_named:
+        target.write_text("let x:integer=1;", encoding="utf-8")
+        window._load_into_editor(str(target))
+    window._editor.insertPlainText("// keep this edit\n")
+    edited = window._editor.toPlainText()
+    monkeypatch.setattr("src.gui.app.QMessageBox.warning", lambda *a, **k: QMessageBox.StandardButton.Save)
+    monkeypatch.setattr("src.gui.app.QFileDialog.getSaveFileName", lambda *a, **k: (str(target), ""))
+
+    window._new_cps()
+
+    assert target.read_text(encoding="utf-8") == edited
+    assert window._editor.toPlainText() == edited
+    assert not window._editor.document().isModified()
+
+
+def test_theme_keeps_internal_error_heading_visibly_marked_as_error(window):
+    window._on_error("failure details")
+
+    window._toggle_theme()
+
+    cursor = window._results.textCursor()
+    cursor.setPosition(0)
+    cursor.setPosition(1, QTextCursor.MoveMode.KeepAnchor)
+    assert cursor.charFormat().foreground().color().name() == window._palette.danger.lower()
+
+
 @pytest.mark.parametrize("tab", ["_tac_view", "_layout_panel", "_summary", "_tree_tabs"])
 def test_changing_theme_preserves_navigation_and_selection(window, tab):
     result = compile_compiscript("function f():integer { return 1; } let x=f();")

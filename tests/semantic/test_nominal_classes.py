@@ -28,6 +28,8 @@ def test_homonymous_declarations_are_incompatible_in_every_type_position(wrap):
     assert not is_assignable(right, left)
     assert common_type((left, right)) is ERROR
     assert common_type((UNKNOWN, left, right)) is ERROR
+    assert len({left, right}) == 2
+    assert {left: "first", right: "second"}[wrap(first)] == "first"
 
 
 def test_subclass_does_not_widen_to_a_homonymous_unrelated_base():

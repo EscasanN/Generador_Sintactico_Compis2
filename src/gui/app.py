@@ -311,9 +311,20 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
+        path = self._ensure_cps_suffix(path)
+        was_modified = self._editor.document().isModified()
         if not self._confirm_document_replacement():
             return
-        path = self._ensure_cps_suffix(path)
+        if (
+            was_modified
+            and not self._editor.document().isModified()
+            and self._active_file is not None
+            and Path(path).resolve() == Path(self._active_file).resolve()
+        ):
+            self.statusBar().showMessage(
+                "El programa se guardó en esa ruta; elija otra para crear uno nuevo."
+            )
+            return
         try:
             Path(path).write_text("", encoding="utf-8")
         except OSError as exc:
@@ -660,6 +671,7 @@ class MainWindow(QMainWindow):
             escaped = html.escape(line)
             if (
                 "[!]" in line
+                or "ERROR:" in line
                 or "WITH ERRORS" in line
                 or "ERRORES" in line
                 or "REJECT" in line
