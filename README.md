@@ -87,6 +87,9 @@ python -m src.main
 ```
 
 1. **Nuevo / Abrir .cps** o escribir directamente en el editor.
+   Si hay cambios pendientes, abrir, crear o cerrar ofrece guardar, descartar o
+   cancelar. Un guardado fallido o cancelado conserva el programa. Pulsar su fila
+   en **Programa** no recarga el archivo ni pierde el historial de deshacer.
 2. **Compilar** (botón, `Ctrl+R` o `F5`). Compila el contenido actual del
    editor, aunque no esté guardado, en un hilo separado; el botón se deshabilita
    mientras compila y los resultados anteriores se limpian al empezar.
@@ -104,6 +107,10 @@ python -m src.main
      entorno de closure y tamaño total.
    - **Resumen**: estado por fase y tabla única de diagnósticos léxicos,
      sintácticos, semánticos y de generación con fase, tipo, línea y columna.
+
+Cambiar tema conserva la pestaña y navegación actuales. Si **Nuevo** selecciona
+el archivo que acaba de guardar el aviso de cambios, se conserva ese contenido
+y se pide elegir otro nombre; no se vacía el archivo recién guardado.
 
 ### Terminal
 

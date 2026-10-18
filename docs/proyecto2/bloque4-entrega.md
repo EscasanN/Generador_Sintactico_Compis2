@@ -20,7 +20,7 @@ posteriores y la validación de la rama integrada están en
 | `tests/gui/test_codegen_results.py` | OUT-03, OUT-04, OUT-05, IDE-01, IDE-02, IDE-03 sobre la ventana real. |
 | `tests/gui/test_cps_workflow.py` | Flujo `.cps` existente adaptado a `CompilationWorker` y `_run_compilation`. |
 | `tests/codegen/test_codegen_fixtures.py` | Inventario, positivos, negativos por fase, golden TAC y cobertura de IDs (TST-01…03). |
-| `tests/cps/codegen/` | 21 programas válidos, 10 inválidos y 7 TAC esperados tras el cierre ([README](../../tests/cps/codegen/README.md)). |
+| `tests/cps/codegen/` | 22 programas válidos, 11 inválidos y 7 TAC esperados tras los parches de cierre ([README](../../tests/cps/codegen/README.md)). |
 | `README.md`, `tests/README.md` | Instalación, ejecución del IDE y la CLI, pruebas y demostración. |
 | `docs/proyecto2/` | Matriz con evidencia por ID, plan, arquitectura (CLI e IDE) y este documento. |
 

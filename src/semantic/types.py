@@ -113,9 +113,13 @@ class FunctionType(Type):
         return f"({parameters}) -> {self.return_type}"
 
 
-@dataclass(frozen=True, slots=True, repr=False)
+@dataclass(frozen=True, slots=True, repr=False, eq=False)
 class ClassType(Type):
-    """Representa una clase con nombre y su superclase directa opcional.
+    """Representa una declaración nominal y su superclase directa opcional.
+
+    Cada instancia pertenece a una declaración distinta, aunque coincidan los
+    nombres. Las referencias a esa declaración reutilizan el mismo objeto;
+    igualdad y hash conservan su identidad también dentro de tipos compuestos.
 
     Argumentos:
         name: Nombre de clase declarado por la etapa frontal del lenguaje.

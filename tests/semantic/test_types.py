@@ -167,11 +167,6 @@ def test_class_assignability_follows_declared_superclasses_only() -> None:
         pytest.param([ERROR, INTEGER], ERROR, id="error-propagation"),
         pytest.param([STRING, INTEGER], ERROR, id="incompatible-primitives"),
         pytest.param(
-            [ClassType("Node"), NULL],
-            ClassType("Node"),
-            id="nullable-class-reference",
-        ),
-        pytest.param(
             [ArrayType(INTEGER), NULL],
             ArrayType(INTEGER),
             id="nullable-array-reference",
@@ -215,6 +210,13 @@ def test_common_type_uses_nearest_shared_class_and_exact_function_signatures() -
     assert common_type((poodle, cat)) == animal
     assert common_type((first_signature, same_signature)) == first_signature
     assert common_type((first_signature, other_signature)) is ERROR
+
+
+def test_nullable_class_reference_preserves_its_declared_type() -> None:
+    node = ClassType("Node")
+
+    assert is_assignable(NULL, node)
+    assert common_type((node, NULL)) is node
 
 
 @pytest.mark.parametrize(
