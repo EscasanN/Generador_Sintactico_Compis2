@@ -176,6 +176,27 @@ def test_new_never_truncates_the_file_just_saved_by_its_guard(window, tmp_path, 
     assert not window._editor.document().isModified()
 
 
+def test_new_preserves_saved_contents_when_its_target_is_a_hardlink(window, tmp_path, monkeypatch):
+    original = tmp_path / "original.cps"
+    alias = tmp_path / "alias.cps"
+    original.write_text("let x:integer=1;", encoding="utf-8")
+    try:
+        os.link(original, alias)
+    except OSError:
+        pytest.skip("filesystem does not support hardlinks")
+    window._load_into_editor(str(original))
+    window._editor.insertPlainText("// preserve\n")
+    edited = window._editor.toPlainText()
+    monkeypatch.setattr("src.gui.app.QMessageBox.warning", lambda *a, **k: QMessageBox.StandardButton.Save)
+    monkeypatch.setattr("src.gui.app.QFileDialog.getSaveFileName", lambda *a, **k: (str(alias), ""))
+
+    window._new_cps()
+
+    assert original.read_text(encoding="utf-8") == edited
+    assert alias.read_text(encoding="utf-8") == edited
+    assert window._editor.toPlainText() == edited
+
+
 def test_theme_keeps_internal_error_heading_visibly_marked_as_error(window):
     window._on_error("failure details")
 

@@ -319,12 +319,16 @@ class MainWindow(QMainWindow):
             was_modified
             and not self._editor.document().isModified()
             and self._active_file is not None
-            and Path(path).resolve() == Path(self._active_file).resolve()
         ):
-            self.statusBar().showMessage(
-                "El programa se guardó en esa ruta; elija otra para crear uno nuevo."
-            )
-            return
+            try:
+                same_file = Path(path).samefile(self._active_file)
+            except OSError:
+                same_file = Path(path).resolve() == Path(self._active_file).resolve()
+            if same_file:
+                self.statusBar().showMessage(
+                    "El programa se guardó en esa ruta; elija otra para crear uno nuevo."
+                )
+                return
         try:
             Path(path).write_text("", encoding="utf-8")
         except OSError as exc:
