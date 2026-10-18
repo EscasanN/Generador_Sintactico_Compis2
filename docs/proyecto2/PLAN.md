@@ -10,6 +10,12 @@ etiquetas y registros de activación.
 El plan conserva la entrega semántica calificada y agrega una fase nueva con
 contratos propios.
 
+El cierre de auditoría autorizado por Daniel se realiza en
+`fix/proyecto2-final-compliance`, desde la entrega completa del Bloque 4, para
+integrarse en `feature/proyecto2-codegen`. Su alcance, pruebas y decisiones están
+en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md); conserva la historia individual de los
+cuatro bloques.
+
 ## Estrategia de ejecución
 
 Se usan cuatro bloques secuenciales y cerrados:
@@ -91,21 +97,21 @@ GUI ni modificar la fase semántica.
 
 ## Bloque 2 — Nadissa: tabla extendida y entorno de ejecución
 
-- [ ] Exponer anotaciones semánticas inmutables por nodo sin romper la API
+- [x] Exponer anotaciones semánticas inmutables por nodo sin romper la API
   existente.
-- [ ] Registrar el scope activo después de las acciones de entrada.
-- [ ] Asociar expresiones y declaraciones con su Symbol resuelto.
-- [ ] Implementar el adaptador SemanticFacts definido por Daniel.
-- [ ] Definir tamaños y alineaciones del modelo abstracto.
-- [ ] Calcular direcciones globales y offsets de parámetros, locales y campos.
-- [ ] Asignar etiquetas estables a funciones, métodos y clases.
-- [ ] Implementar SymbolLayoutTable como extensión de la tabla existente.
-- [ ] Implementar ActivationRecordLayout y su builder.
-- [ ] Diferenciar enlace de control y enlace de acceso.
-- [ ] Detectar capturas y calcular distancia léxica.
-- [ ] Reservar slots según el máximo de temporales vivos.
-- [ ] Probar layouts, alineación, scopes anidados y closures.
-- [ ] Cubrir SYM-* y RUN-* asignados en la matriz.
+- [x] Registrar el scope activo después de las acciones de entrada.
+- [x] Asociar expresiones y declaraciones con su Symbol resuelto.
+- [x] Implementar el adaptador SemanticFacts definido por Daniel.
+- [x] Definir tamaños y alineaciones del modelo abstracto.
+- [x] Calcular direcciones globales y offsets de parámetros, locales y campos.
+- [x] Asignar etiquetas estables a funciones, métodos y clases.
+- [x] Implementar SymbolLayoutTable como extensión de la tabla existente.
+- [x] Implementar ActivationRecordLayout y su builder.
+- [x] Diferenciar enlace de control y enlace de acceso.
+- [x] Detectar capturas y calcular distancia léxica.
+- [x] Reservar slots según el máximo de temporales vivos.
+- [x] Probar layouts, alineación, scopes anidados y closures.
+- [x] Cubrir SYM-* y RUN-* asignados en la matriz.
 
 Puerta Nadissa → Dulce: dado un árbol ya analizado, cualquier nodo relevante
 puede consultar tipo, símbolo, scope y ubicación; cada declaración tiene layout
@@ -113,24 +119,24 @@ y cada función dispone de un descriptor de activación construible.
 
 ## Bloque 3 — Dulce: lowering completo y pipeline
 
-- [ ] Implementar el generador Compiscript sobre ParseTreeNode.
-- [ ] Traducir declaraciones, copias y asignaciones de elementos o miembros.
-- [ ] Traducir if/else, while, do-while, for y switch.
-- [ ] Mantener pilas separadas de break y continue con destinos correctos.
-- [ ] Traducir funciones, parámetros, llamadas y retornos.
-- [ ] Demostrar recursión directa y mutua con etiquetas predeclaradas.
-- [ ] Traducir funciones anidadas y creación/acceso de closures.
-- [ ] Traducir clases, objetos, constructor, campos, métodos y this.
-- [ ] Traducir listas, cargas y almacenamientos indexados.
-- [ ] Cubrir print, módulo, ternario, foreach y herencia de la gramática actual.
-- [ ] Definir una salida explícita para try/catch o un diagnóstico de
+- [x] Implementar el generador Compiscript sobre ParseTreeNode.
+- [x] Traducir declaraciones, copias y asignaciones de elementos o miembros.
+- [x] Traducir if/else, while, do-while, for y switch.
+- [x] Mantener pilas separadas de break y continue con destinos correctos.
+- [x] Traducir funciones, parámetros, llamadas y retornos.
+- [x] Demostrar recursión directa y mutua con etiquetas predeclaradas.
+- [x] Traducir funciones anidadas y creación/acceso de closures.
+- [x] Traducir clases, objetos, constructor, campos, métodos y this.
+- [x] Traducir listas, cargas y almacenamientos indexados.
+- [x] Cubrir print, módulo, ternario, foreach y herencia de la gramática actual.
+- [x] Definir una salida explícita para try/catch o un diagnóstico de
   construcción no soportada acordado con el profesor.
-- [ ] Crear IntermediateCodeResult y CompilationResult.
-- [ ] Implementar compile_compiscript sin cambiar
+- [x] Crear IntermediateCodeResult y CompilationResult.
+- [x] Implementar compile_compiscript sin cambiar
   analyze_semantics_with_g4.
-- [ ] Impedir TAC cuando sintaxis o semántica reporten errores.
-- [ ] Ejecutar el verificador antes de aceptar la compilación.
-- [ ] Cubrir CTL-*, FUN-*, CLS-*, LST-* y PIPE-*.
+- [x] Impedir TAC cuando sintaxis o semántica reporten errores.
+- [x] Ejecutar el verificador antes de aceptar la compilación.
+- [x] Cubrir CTL-*, FUN-*, CLS-*, LST-* y PIPE-*.
 
 Puerta Dulce → Nelson: desde Python, un .cps válido produce TAC verificado,
 tabla extendida y frames; uno inválido conserva sus diagnósticos y no produce
@@ -138,20 +144,20 @@ TAC.
 
 ## Bloque 4 — Nelson: IDE, CLI y entrega
 
-- [ ] Cambiar la acción principal del IDE de Analizar a Compilar.
-- [ ] Mantener la ejecución fuera del hilo principal de Qt.
-- [ ] Agregar vista de TAC con copia y exportación opcional.
-- [ ] Mostrar diagnósticos de frontend, semántica y generación.
-- [ ] Mostrar tabla extendida y registros de activación.
-- [ ] Mantener árbol sintáctico y tabla semántica existentes.
-- [ ] Agregar opción CLI para imprimir o guardar TAC.
-- [ ] Crear fixtures .cps por cada ID obligatorio.
-- [ ] Crear salidas esperadas estables para casos representativos.
-- [ ] Probar que entradas inválidas nunca muestran TAC antiguo.
-- [ ] Actualizar README principal e instrucciones de ejecución.
-- [ ] Preparar una demostración válida y una fallida.
-- [ ] Ejecutar regresión completa y revisar los commits individuales.
-- [ ] Cubrir IDE-*, OUT-* y TST-*.
+- [x] Cambiar la acción principal del IDE de Analizar a Compilar.
+- [x] Mantener la ejecución fuera del hilo principal de Qt.
+- [x] Agregar vista de TAC con copia y exportación opcional.
+- [x] Mostrar diagnósticos de frontend, semántica y generación.
+- [x] Mostrar tabla extendida y registros de activación.
+- [x] Mantener árbol sintáctico y tabla semántica existentes.
+- [x] Agregar opción CLI para imprimir o guardar TAC.
+- [x] Crear fixtures .cps por cada ID obligatorio.
+- [x] Crear salidas esperadas estables para casos representativos.
+- [x] Probar que entradas inválidas nunca muestran TAC antiguo.
+- [x] Actualizar README principal e instrucciones de ejecución.
+- [x] Preparar una demostración válida y una fallida.
+- [x] Ejecutar regresión completa y revisar los commits individuales.
+- [x] Cubrir IDE-*, OUT-* y TST-*.
 
 Puerta Nelson → entrega: una sola ventana permite editar y compilar .cps,
 presenta TAC y tabla extendida, y la suite completa pasa desde un clon limpio.

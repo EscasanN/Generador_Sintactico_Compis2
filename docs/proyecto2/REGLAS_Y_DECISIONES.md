@@ -179,7 +179,6 @@ prólogos, epílogos ni registros de CPU en este proyecto.
 | ¿El método llamado se resuelve estáticamente o requiere despacho dinámico? | Requiere vtable si es dinámico. | Etiqueta resuelta por tipo estático. |
 | ¿Se exige manejo de límites en listas? | Puede requerir BOUNDS_CHECK. | Registrar instrucción abstracta si se solicita. |
 | ¿Qué semántica debe tener try/catch sin throw en la gramática? | No hay fuente explícita de excepción. | IR de alto nivel o diagnóstico documentado. |
-| ¿Una función no void debe retornar en todos los caminos? | La semántica actual valida cada return, pero no demuestra cobertura de caminos. | No inventar un valor; consultar antes de endurecer semántica o codegen. |
 | ¿Las extensiones foreach, herencia y try/catch serán evaluadas? | Aumenta alcance. | Cubrir después del mínimo, sin TAC parcial silencioso. |
 | ¿Se debe guardar automáticamente un archivo .tac? | Afecta UX y pruebas. | Mostrar siempre; exportar solo a solicitud. |
 
@@ -189,6 +188,23 @@ Cuando el profesor responda:
 2. actualizar DISENO_TAC.md;
 3. actualizar la matriz y fixtures;
 4. hacerlo dentro del bloque que todavía esté abierto.
+
+## Cierre de auditoría autorizado por Daniel — 2026-10-17
+
+- Una función no `void` cuya salida sea alcanzable sin valor se rechaza con
+  `IRGEN-MISSING-RETURN` en codegen. Daniel eligió esta política durante el cierre;
+  no es una respuesta atribuida al profesor ni cambia el perfil semántico.
+- Se conservan retornos implícitos para `void` y constructores. El análisis de
+  salida considera saltos, handlers y condiciones booleanas inmediatas; no es
+  optimización ni un demostrador general de terminación.
+- Las capturas son compartidas por referencia a celdas del entorno. Incluyen
+  dependencias entre funciones hermanas, receptores léxicos y clases locales.
+- El entorno de una clase local se retiene en la instancia; los métodos ligados
+  conservan receptor y entorno según el descriptor del procedimiento.
+- Un rechazo no expone TAC en memoria ni deja TAC vigente en el IDE. Una ruta
+  `.tac` existente en disco se preserva; la CLI advierte que no fue actualizada.
+- Las políticas anteriores de `switch`, resolución estática de métodos y runtime
+  abstracto se conservan; no se introducen vtables, GC ni un backend ejecutable.
 
 ## Alcance no incluido
 

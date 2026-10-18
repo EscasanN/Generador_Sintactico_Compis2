@@ -23,8 +23,12 @@ class IRBuilder:
         self._label: Operand | None = None
         self._parameters: tuple[Operand, ...] = ()
         self._returned: set[Operand] = set()
+        self._bound_environment_offset: int | None = None
 
-    def begin_procedure(self, label: Operand, parameters: Iterable[Operand]) -> None:
+    def begin_procedure(
+        self, label: Operand, parameters: Iterable[Operand], *,
+        bound_environment_offset: int | None = None,
+    ) -> None:
         if self._current is not None:
             raise RuntimeError("a procedure is already open")
         if label.kind is not OperandKind.LABEL:
@@ -32,6 +36,7 @@ class IRBuilder:
         if self.temporaries.active_count:
             raise RuntimeError("cannot begin a procedure with active global temporaries")
         self._label = label
+        self._bound_environment_offset = bound_environment_offset
         self._parameters = tuple(parameters)
         self._current = []
         self.temporaries = TemporaryPool()
@@ -50,10 +55,12 @@ class IRBuilder:
             self._parameters,
             tuple(self._current),
             self.temporaries.peak_active,
+            self._bound_environment_offset,
         )
         self._procedures.append(procedure)
         self._current = None
         self._label = None
+        self._bound_environment_offset = None
         self._parameters = ()
         self._returned.clear()
         self.temporaries = self._global_temporaries
@@ -105,3 +112,8 @@ class IRBuilder:
         if self._current is not None:
             raise RuntimeError("cannot build with an open procedure")
         return IRProgram(tuple(self._global), tuple(self._procedures))
+
+    @property
+    def current_code(self) -> tuple[Instruction, ...]:
+        """Immutable snapshot used to check a procedure's reachable exits."""
+        return tuple(self._global if self._current is None else self._current)

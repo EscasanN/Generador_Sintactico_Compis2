@@ -124,6 +124,7 @@ def resolve_identifier(
             location,
         )
         return SemanticValue(ERROR, location=location)
+    context.resolved_symbols[id(node)] = symbol
     return SemanticValue(
         symbol.type,
         assignable=symbol.kind

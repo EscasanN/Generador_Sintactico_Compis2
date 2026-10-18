@@ -6,8 +6,9 @@ Esta es la fuente de verdad para saber si la entrega está lista. Cada ID debe
 tener una prueba localizable y, cuando corresponda, un archivo .cps de
 demostración.
 
-Estado actual: planificación. Ninguna fila se considera satisfecha hasta que la
-ruta de evidencia exista y la prueba pase.
+Estado actual: bloques 1 a 4 integrados. Cada fila tiene su evidencia en la
+sección [Evidencia por ID](#evidencia-por-id); una fila solo se considera
+satisfecha mientras la ruta exista y la prueba pase con `python -m pytest tests -q`.
 
 ## Trazabilidad de la rúbrica
 
@@ -175,6 +176,94 @@ evitan un ACCEPT semántico seguido de código incompleto.
 | EXT-07 | try/catch | instrucciones de alto nivel o diagnóstico acordado. | Dulce |
 | EXT-08 | alternativa alcanzada sin handler | error IR explícito; nunca TAC parcial aceptado. | Dulce |
 
+## Evidencia por ID
+
+Rutas relativas a `tests/`. Los programas `.cps` están en
+`tests/cps/codegen/validos` (V) o `tests/cps/codegen/invalidos` (I) y los
+comprueba `codegen/test_codegen_fixtures.py`, que además exige que los válidos
+cubran todos los IDs de EXP, CTL, FUN, CLS, LST, TMP, PIPE-03/05 y EXT-01…07.
+
+| ID | Pruebas | Programas .cps |
+|---|---|---|
+| IR-01 | `codegen/test_ir.py` (cuádruplo tipado, opcode arbitrario rechazado) | — |
+| IR-02 | `codegen/test_ir.py`, `codegen/test_verifier.py` (tipos de operando) | — |
+| IR-03 | `codegen/test_builder.py` (global vs. procedimientos cerrados), `codegen/test_verifier.py` (procedimiento sin return) | — |
+| IR-04 | `codegen/test_ir.py` (formato estable, objeto arbitrario rechazado), golden en `cps/codegen/esperados/` | — |
+| IR-05 | `codegen/test_builder.py`, `codegen/test_expression_lowering.py` (ubicación fuente) | — |
+| IR-06 | `codegen/test_verifier.py` | — |
+| EXP-01, EXP-02 | `codegen/test_expression_lowering.py` | V `EXP-01-aritmetica.cps` |
+| EXP-03, EXP-04, EXP-07 | `codegen/test_expression_lowering.py` | V `EXP-03-logicas.cps` (golden) |
+| EXP-05 | `codegen/test_statements.py`, `codegen/test_semantic_facts.py`, `semantic/test_codegen_annotations.py` | V `EXP-05-asignaciones.cps` |
+| EXP-06 | `codegen/test_statements.py` | V `EXP-05-asignaciones.cps`, I `PIPE-02-error-tipos.cps` |
+| EXP-08 | `codegen/test_objects.py`, `codegen/test_lists.py` | V `EXP-05-asignaciones.cps` |
+| CTL-01, CTL-02 | `codegen/test_control_flow_lowering.py` | V `CTL-01-condicionales.cps` |
+| CTL-03…CTL-05 | `codegen/test_control_flow_lowering.py` | V `CTL-03-bucles.cps` (golden) |
+| CTL-06 | `codegen/test_control_flow_lowering.py` | V `CTL-06-switch.cps` |
+| CTL-07, CTL-08 | `codegen/test_control_flow_lowering.py` | V `CTL-03-bucles.cps`, I `CTL-07-break-fuera-de-bucle.cps` |
+| FUN-01, FUN-03 | `codegen/test_callables.py` | V `FUN-01-funciones.cps` |
+| FUN-02 | `codegen/test_activation.py` | V `FUN-01-funciones.cps` |
+| FUN-04 | `codegen/test_callables.py`, `codegen/test_pipeline.py` | V `FUN-01-funciones.cps`, I `FUN-04-retorno-incompatible.cps` |
+| FUN-05, FUN-06 | `codegen/test_callables.py` | V `FUN-05-recursion.cps` |
+| FUN-07 | `codegen/test_closures.py` | V `FUN-07-closures.cps` (golden) |
+| FUN-08, FUN-09 | `codegen/test_activation.py`, `codegen/test_closures.py` | V `FUN-07-closures.cps` |
+| CLS-01 | `codegen/test_layout.py`, `codegen/test_objects.py` | V `CLS-01-objetos.cps` (golden) |
+| CLS-02, CLS-03 | `codegen/test_objects.py` | V `CLS-01-objetos.cps` |
+| CLS-04, CLS-05 | `codegen/test_objects.py` | V `CLS-01-objetos.cps`, I `CLS-04-this-fuera-de-clase.cps` |
+| CLS-06 | `codegen/test_layout.py`, `codegen/test_objects.py` | V `CLS-06-herencia.cps` |
+| LST-01…LST-03 | `codegen/test_lists.py` | V `LST-01-listas.cps` (golden), I `LST-02-indice-no-entero.cps` |
+| LST-04 | `codegen/test_lists.py`, `codegen/test_control_flow_lowering.py` | V `LST-01-listas.cps` |
+| TMP-01…TMP-03 | `codegen/test_temporaries.py`, `codegen/test_builder.py` | V `TMP-01-reciclaje.cps` (golden) |
+| TMP-04 | `codegen/test_expression_lowering.py`, `codegen/test_control_flow_lowering.py` | V `EXP-03-logicas.cps`, `TMP-01-reciclaje.cps` |
+| TMP-05 | `codegen/test_activation.py`, `codegen/test_codegen_fixtures.py` | V `TMP-01-reciclaje.cps` |
+| SYM-01…SYM-04 | `codegen/test_layout.py` | V `EXP-05-asignaciones.cps` (SYM-03) |
+| SYM-05 | `codegen/test_semantic_facts.py`, `codegen/test_activation.py` | V `FUN-07-closures.cps` |
+| SYM-06 | `codegen/test_semantic_facts.py`, `semantic/test_codegen_annotations.py` | V `EXP-05-asignaciones.cps` |
+| RUN-01, RUN-02 | `codegen/test_activation.py` (header, parámetros, locales, aislamiento) | — |
+| RUN-03 | `codegen/test_activation.py`, `codegen/test_codegen_fixtures.py` | V `FUN-07-closures.cps` |
+| RUN-04 | `codegen/test_activation.py` | V `TMP-01-reciclaje.cps` |
+| PIPE-01 | `codegen/test_pipeline.py` | I `PIPE-01-error-lexico.cps`, `PIPE-01-error-sintactico.cps` |
+| PIPE-02 | `codegen/test_pipeline.py` | I `PIPE-02-error-tipos.cps`, `DEMO-fallida.cps` |
+| PIPE-03 | `codegen/test_pipeline.py` | V `EXT-01-print-try.cps` |
+| PIPE-04 | `codegen/test_pipeline.py`, `codegen/test_control_completion.py` | I `PIPE-04-error-generacion.cps`, `FUN-04-retorno-faltante.cps` |
+| PIPE-05 | `codegen/test_pipeline.py` | V `DEMO-completa.cps` (golden) |
+| OUT-01, OUT-02 | `test_main_cli.py` (`test_out_01_…`, `test_out_02_…`) | V `DEMO-completa.cps` |
+| OUT-03 | `gui/test_codegen_results.py` (`test_out_03_…`) | V `DEMO-completa.cps` |
+| OUT-04 | `gui/test_codegen_results.py` (`test_out_04_…`), `test_main_cli.py` (`--show-layout`) | V `FUN-07-closures.cps` |
+| OUT-05 | `gui/test_codegen_results.py` (`test_out_05_…`), `test_main_cli.py` | I `PIPE-01-*`, `DEMO-fallida.cps`, `PIPE-04-*` |
+| IDE-01 | `gui/test_codegen_results.py` (`test_ide_01_…`), `gui/test_cps_workflow.py` | — |
+| IDE-02 | `gui/test_cps_workflow.py` (`test_ide_08_compilation_runs_on_a_worker_thread`), `gui/test_codegen_results.py` | — |
+| IDE-03 | `gui/test_codegen_results.py` (`test_ide_03_…`) | I `DEMO-fallida.cps` |
+| TST-01 | `codegen/test_codegen_fixtures.py` (`test_valid_fixtures_cover_every_mandatory_matrix_id`) | `cps/codegen/validos/` |
+| TST-02 | `codegen/test_codegen_fixtures.py` (`test_invalid_fixtures_cover_every_failing_phase`), `codegen/test_verifier.py` | `cps/codegen/invalidos/` |
+| TST-03 | `codegen/test_codegen_fixtures.py` (`test_golden_tac_matches_the_compiler_output`) | `cps/codegen/esperados/` |
+| TST-04 | `semantic/`, `antlr_mode/` | `cps/` |
+| TST-05 | Comando y resultado en `docs/proyecto2/bloque4-entrega.md` | — |
+| EXT-01 | `codegen/test_statements.py` | V `EXT-01-print-try.cps` |
+| EXT-02, EXT-06 | `codegen/test_expression_lowering.py` | V `EXP-01-aritmetica.cps` |
+| EXT-03 | `codegen/test_expression_lowering.py` | V `EXP-03-logicas.cps` |
+| EXT-04 | `codegen/test_lists.py` | V `LST-01-listas.cps` |
+| EXT-05 | `codegen/test_objects.py` | V `CLS-06-herencia.cps` |
+| EXT-07 | `codegen/test_control_flow_lowering.py` | V `EXT-01-print-try.cps` |
+| EXT-08 | `codegen/test_pipeline.py` | I `PIPE-04-error-generacion.cps` |
+
+## Regresiones del cierre final
+
+La evidencia original se complementa con casos que fallaban pese a pasar la
+suite nominal; el registro de ejecución está en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
+
+| IDs | Regresión adicional | Evidencia |
+|---|---|---|
+| IR-06, FUN-03 | Firmas conocidas, accesos a otro frame y descriptor de método ligado | `codegen/test_final_compliance.py` |
+| EXP-07, EXT-03 | Conversión por rama del ternario mixto | `EXP-07-ternario-mixto.cps`, `codegen/test_final_compliance.py` |
+| TMP-05, RUN-04 | Identificadores t0/t1 no colisionan con slots | `TMP-05-identificadores-temporales.cps` |
+| CLS-01, SYM-04, SYM-06 | Clases homónimas y offsets de campos heredados | `codegen/test_final_compliance.py` |
+| FUN-07, FUN-08, RUN-03 | Dependencias de funciones hermanas y captura de this | `FUN-07-closures-hermanas.cps`, `CLS-04-this-en-funcion-anidada.cps` |
+| CLS-02, CLS-04, CLS-05 | Capturas en clase local y método ligado que escapa | `CLS-04-clase-local-capturada.cps` |
+| FUN-04, PIPE-04 | Salida no void sin valor rechazada sin TAC | `FUN-04-retorno-faltante.cps`, `codegen/test_control_completion.py` |
+| EXT-07, CTL-07, CTL-08 | Manejadores retirados en transferencias y CFG excepcional | `EXT-07-salidas-try.cps`, `codegen/test_control_completion.py` |
+| IDE-01, IDE-03 | Edición/apertura/guardar como durante worker; resultado obsoleto descartado | `gui/test_codegen_results.py` |
+| OUT-02 | Exportación rechazada preserva y advierte sobre archivo previo | `test_main_cli.py` |
+
 ## Comandos esperados
 
 ~~~powershell
@@ -197,6 +286,7 @@ cumplirse todo lo siguiente:
 - las funciones anidadas usan entorno léxico;
 - la tabla extendida y frames son visibles;
 - IDE y CLI recorren el mismo pipeline;
-- una entrada inválida no produce ni conserva TAC;
+- una entrada inválida no produce TAC y el IDE no conserva TAC vigente; un
+  archivo exportado antes se preserva en disco con una advertencia de la CLI;
 - la documentación coincide con el comportamiento;
 - el historial identifica las contribuciones individuales.

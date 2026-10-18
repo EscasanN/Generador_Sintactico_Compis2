@@ -17,8 +17,8 @@ from src.semantic.profile import (
     SemanticProfile,
     resolve_binding,
 )
-from src.semantic.results import SemanticAnalysisResult
-from src.semantic.symbol_table import Symbol, SymbolKind, SymbolTable
+from src.semantic.results import SemanticAnalysisResult, SemanticAnnotations
+from src.semantic.symbol_table import Scope, Symbol, SymbolKind, SymbolTable
 from src.semantic.types import ERROR, UNKNOWN, ClassType, Type, type_from_name
 from src.semantic.values import SemanticValue
 
@@ -36,6 +36,9 @@ class SemanticContext:
     results: dict[int, object] = field(default_factory=dict)
     classes: dict[str, Symbol] = field(default_factory=dict)
     predeclared_symbols: dict[int, Symbol | None] = field(default_factory=dict)
+    resolved_symbols: dict[int, Symbol] = field(default_factory=dict)
+    node_scopes: dict[int, Scope] = field(default_factory=dict)
+    node_anchors: dict[int, object] = field(default_factory=dict)
     expressions: ExpressionActions = field(init=False)
 
     def __post_init__(self) -> None:
@@ -50,6 +53,27 @@ class SemanticContext:
             _positive_or_none(getattr(node, "end_column", None)),
             self.source_path,
         )
+
+    def record_scope(self, node: ParseTreeNode) -> None:
+        """Remember the active scope for ``node`` once its entry actions ran."""
+        self.node_scopes[id(node)] = self.symbol_table.current_scope
+        self.node_anchors[id(node)] = node
+
+    def annotations(self) -> SemanticAnnotations:
+        """Snapshot the per-node facts gathered so far into an immutable index."""
+        return SemanticAnnotations.from_traversal(
+            self.results,
+            self.node_scopes,
+            self.resolved_symbols,
+            self.predeclared_symbols,
+            self.node_anchors,
+        )
+
+    def clear_node_state(self) -> None:
+        """Drop mutable per-node bookkeeping after a finished or aborted walk."""
+        self.node_scopes.clear()
+        self.node_anchors.clear()
+        self.resolved_symbols.clear()
 
     def text_of(self, value: object) -> str:
         """Extract declarative text without evaluating Python expressions."""
@@ -167,17 +191,23 @@ class SemanticEvaluator:
         result: object = None
         try:
             result = self.visit(tree)
+        except BaseException:
+            self.context.clear_node_state()
+            raise
         finally:
             self.context.symbol_table.restore_global()
             self.context.function_stack.clear()
             self.context.class_stack.clear()
             self.context.loop_stack.clear()
             self._profile = None
+        annotations = self.context.annotations()
+        self.context.clear_node_state()
         return SemanticAnalysisResult(
             diagnostics=self.context.diagnostics.items,
             symbol_table=self.context.symbol_table,
             value=result if isinstance(result, SemanticValue) else None,
             statistics=self._statistics,
+            annotations=annotations,
         )
 
     def visit(self, node: ParseTreeNode) -> object:
@@ -198,6 +228,7 @@ class SemanticEvaluator:
                         produced = self.invoke(action, node)
                         if produced is not None:
                             result = produced
+            self.context.record_scope(node)
             child_results_list: list[object] = []
             for index, child in enumerate(node.children):
                 child_results_list.append(self.visit(child))
