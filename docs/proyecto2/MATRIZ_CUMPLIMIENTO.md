@@ -209,7 +209,7 @@ cubran todos los IDs de EXP, CTL, FUN, CLS, LST, TMP, PIPE-03/05 y EXT-01…07.
 | CLS-01 | `codegen/test_layout.py`, `codegen/test_objects.py` | V `CLS-01-objetos.cps` (golden) |
 | CLS-02, CLS-03 | `codegen/test_objects.py` | V `CLS-01-objetos.cps` |
 | CLS-04, CLS-05 | `codegen/test_objects.py` | V `CLS-01-objetos.cps`, I `CLS-04-this-fuera-de-clase.cps` |
-| CLS-06 | `codegen/test_layout.py`, `codegen/test_objects.py` | V `CLS-06-herencia.cps` |
+| CLS-06 | `codegen/test_layout.py`, `codegen/test_objects.py`, `codegen/test_local_inheritance.py` | V `CLS-06-herencia.cps`, `CLS-06-herencia-local.cps` |
 | LST-01…LST-03 | `codegen/test_lists.py` | V `LST-01-listas.cps` (golden), I `LST-02-indice-no-entero.cps` |
 | LST-04 | `codegen/test_lists.py`, `codegen/test_control_flow_lowering.py` | V `LST-01-listas.cps` |
 | TMP-01…TMP-03 | `codegen/test_temporaries.py`, `codegen/test_builder.py` | V `TMP-01-reciclaje.cps` (golden) |
@@ -242,7 +242,7 @@ cubran todos los IDs de EXP, CTL, FUN, CLS, LST, TMP, PIPE-03/05 y EXT-01…07.
 | EXT-02, EXT-06 | `codegen/test_expression_lowering.py` | V `EXP-01-aritmetica.cps` |
 | EXT-03 | `codegen/test_expression_lowering.py` | V `EXP-03-logicas.cps` |
 | EXT-04 | `codegen/test_lists.py` | V `LST-01-listas.cps` |
-| EXT-05 | `codegen/test_objects.py` | V `CLS-06-herencia.cps` |
+| EXT-05 | `codegen/test_objects.py`, `codegen/test_local_inheritance.py` | V `CLS-06-herencia.cps`, `CLS-06-herencia-local.cps` |
 | EXT-07 | `codegen/test_control_flow_lowering.py` | V `EXT-01-print-try.cps` |
 | EXT-08 | `codegen/test_pipeline.py` | I `PIPE-04-error-generacion.cps` |
 

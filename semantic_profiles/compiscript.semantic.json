@@ -698,13 +698,14 @@
       "alternative": "ClassWithSuper",
       "actions": [
         {
-          "name": "class.declare",
+          "name": "class.declare_from_tree",
           "phase": "enter",
           "arguments": {
             "name": {
               "$select": "token",
               "token": "Identifier"
-            }
+            },
+            "identifier_token": "Identifier"
           }
         },
         {

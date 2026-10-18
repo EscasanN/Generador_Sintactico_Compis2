@@ -151,6 +151,13 @@ Una clase local que necesita el entorno de definición reserva un slot oculto
 guarda allí el entorno antes de llamar al constructor. Métodos y constructores
 lo reciben después de `this` y antes de los parámetros explícitos.
 
+Una instancia derivada conserva también los slots `$env` de sus bases. La
+construcción propaga las dependencias léxicas de todos esos ancestros. Al
+ejecutar un inicializador heredado dentro del constructor derivado, se carga
+el entorno de la base desde su slot y se usa el contexto léxico de su
+declaración; el inicializador no toma el entorno de la subclase. Los offsets
+de campos heredados siguen siendo los de sus símbolos declarados.
+
 `METHOD_REF` liga el receptor y, si el procedimiento tiene
 `bound_environment_offset`, también el entorno leído de ese slot de la instancia.
 Así `CLOSURE_CALL` solo cuenta argumentos explícitos, incluso para un método

@@ -35,6 +35,8 @@ class SemanticContext:
     loop_stack: list[object] = field(default_factory=list)
     results: dict[int, object] = field(default_factory=dict)
     classes: dict[str, Symbol] = field(default_factory=dict)
+    # Types retain their declaration even when a later scope reuses its name.
+    classes_by_type: dict[int, Symbol] = field(default_factory=dict)
     predeclared_symbols: dict[int, Symbol | None] = field(default_factory=dict)
     resolved_symbols: dict[int, Symbol] = field(default_factory=dict)
     node_scopes: dict[int, Scope] = field(default_factory=dict)
@@ -115,9 +117,10 @@ class SemanticContext:
             value,
             array_depth=array_depth,
             class_lookup=lambda name: (
-                self.classes[name].type
-                if name in self.classes
-                and isinstance(self.classes[name].type, ClassType)
+                symbol.type
+                if (symbol := self.symbol_table.resolve(name)) is not None
+                and symbol.kind is SymbolKind.CLASS
+                and isinstance(symbol.type, ClassType)
                 else None
             ),
         )
