@@ -296,3 +296,52 @@ def test_gui_package_does_not_reimplement_code_generation():
         text = module.read_text(encoding="utf-8")
         for forbidden in ("CompiscriptCodeGenerator", "IRBuilder", "IRVerifier()"):
             assert forbidden not in text, f"{module.name} uses {forbidden}"
+
+
+@pytest.mark.parametrize("change", ["edit", "open", "save_as"])
+def test_document_changes_discard_a_running_workers_obsolete_result(window, tmp_path, monkeypatch, change):
+    original = tmp_path / "original.cps"
+    changed = tmp_path / "changed.cps"
+    original.write_text("let x:integer=1;", encoding="utf-8")
+    changed.write_text("let x:integer=;", encoding="utf-8")
+    window._input_path = str(original)
+    window._load_into_editor(str(original))
+    window._run_compilation()
+    worker = window._worker
+    if change == "edit":
+        window._editor.setPlainText("let x:integer=;")
+    elif change == "open":
+        monkeypatch.setattr("src.gui.app.QFileDialog.getOpenFileName", lambda *a, **k: (str(changed), ""))
+        window._open_input()
+    else:
+        monkeypatch.setattr("src.gui.app.QFileDialog.getSaveFileName", lambda *a, **k: (str(changed), ""))
+        window._save_file_as()
+    assert worker.wait(30000)
+    QApplication.instance().processEvents()
+    assert window._tac_view.tac_text() == ""
+    assert window._last_bundle is None
+    assert not window._export_action.isEnabled()
+    assert "ACCEPT" not in window._results.toPlainText()
+    assert window._run_btn.isEnabled()
+
+
+def test_editing_after_compilation_immediately_invalidates_export(window):
+    window._editor.setPlainText("let x:integer=1;")
+    _run_worker_synchronously(window)
+    assert window._tac_view.has_tac()
+    window._editor.setPlainText("let x:integer=;")
+    assert not window._tac_view.has_tac()
+    assert not window._export_action.isEnabled()
+
+
+def test_failed_open_keeps_the_current_document_and_its_result(window, tmp_path, monkeypatch):
+    current = tmp_path / "current.cps"
+    current.write_text("let x:integer=1;", encoding="utf-8")
+    window._input_path = str(current)
+    window._load_into_editor(str(current))
+    _run_worker_synchronously(window)
+    monkeypatch.setattr("src.gui.app.QFileDialog.getOpenFileName", lambda *a, **k: (str(tmp_path / "missing.cps"), ""))
+    monkeypatch.setattr("src.gui.app.QMessageBox.critical", lambda *a: None)
+    window._open_input()
+    assert window._input_path == str(current)
+    assert window._tac_view.has_tac()

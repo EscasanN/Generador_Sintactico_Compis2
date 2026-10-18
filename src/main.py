@@ -156,6 +156,11 @@ def _run_cps_cli(arguments: Sequence[str]) -> int:
             print(f"ERROR — no se pudo guardar el TAC: {exc}", file=sys.stderr)
             return 2
         print(f"TAC guardado en: {target}")
+    elif options.emit_tac is not None and Path(options.emit_tac).exists():
+        print(
+            f"El archivo TAC existente no se actualizó porque la compilación fue rechazada: {options.emit_tac}",
+            file=sys.stderr,
+        )
     return 0 if result.accepted else 1
 
 

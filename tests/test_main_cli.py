@@ -109,6 +109,16 @@ def test_emit_tac_with_path_never_writes_a_file_for_a_rejected_program(tmp_path,
     assert "fase sintáctica" in output and "TAC guardado" not in output
 
 
+def test_rejected_export_preserves_and_identifies_an_existing_tac_file(tmp_path, capsys):
+    source = _write(tmp_path, "bad.cps", "let x: integer = ;\n")
+    target = tmp_path / "previous.tac"
+    target.write_bytes(b"global:\n    old = 1\n")
+    original = target.read_bytes()
+    assert _run_cps_cli([str(source), "--emit-tac", str(target)]) == 1
+    assert target.read_bytes() == original
+    assert "no se actualizó" in capsys.readouterr().err
+
+
 def test_codegen_rejection_reports_the_ir_code_and_location(tmp_path, capsys):
     """OUT-05 (CLI): an IRGEN diagnostic keeps its code and source position."""
     source = _write(

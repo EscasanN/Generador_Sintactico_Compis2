@@ -67,12 +67,14 @@ class CompilationWorker(QThread):
         profile_path: str,
         input_text: str,
         source_path: str | None = None,
+        document_revision: int | None = None,
     ) -> None:
         super().__init__()
         self.grammar_path = grammar_path
         self.profile_path = profile_path
         self.input_text = input_text
         self.source_path = source_path
+        self.document_revision = document_revision
 
     def run(self) -> None:
         """Ejecuta ``compile_compiscript`` y prepara la imagen del árbol."""
@@ -113,6 +115,7 @@ class CompilationWorker(QThread):
                     "semantic_result": compilation.semantic_result,
                     "tree_image": tree_image,
                     "tree_error": tree_error,
+                    "document_revision": self.document_revision,
                 }
             )
         except Exception:
@@ -135,11 +138,14 @@ class MainWindow(QMainWindow):
         self._active_file: str | None = None
         self._worker: CompilationWorker | None = None
         self._last_bundle: dict | None = None
+        self._document_revision = 0
+        self._document_snapshot: tuple[str | None, str] = (None, "")
         self._palette: Palette = LIGHT
 
         self._build_menu()
         self._build_ui()
         self._apply_theme(LIGHT)
+        self._editor.textChanged.connect(self._document_changed)
         self.statusBar().showMessage(
             "Listo — escriba, cree o abra un programa .cps y presione Compilar."
         )
@@ -300,6 +306,7 @@ class MainWindow(QMainWindow):
         self._active_file = path
         self._set_file_slot("input", "Compiscript", path)
         self._editor.clear()
+        self._document_changed()
 
     def _open_input(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -310,9 +317,8 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
-        self._input_path = path
-        self._set_file_slot("input", "Compiscript", path)
-        self._load_into_editor(path)
+        if self._load_into_editor(path):
+            self._set_file_slot("input", "Compiscript", path)
 
     def _set_file_slot(self, key: str, label: str, path: str) -> None:
         if key != "input":
@@ -325,14 +331,17 @@ class MainWindow(QMainWindow):
         if item.data(Qt.ItemDataRole.UserRole) == "input" and self._input_path:
             self._load_into_editor(self._input_path)
 
-    def _load_into_editor(self, path: str) -> None:
+    def _load_into_editor(self, path: str) -> bool:
         try:
             text = Path(path).read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             QMessageBox.critical(self, "Error", str(exc))
-            return
+            return False
+        self._input_path = path
         self._editor.setPlainText(text)
         self._active_file = path
+        self._document_changed()
+        return True
 
     def _save_file(self) -> None:
         if self._active_file is None:
@@ -366,6 +375,20 @@ class MainWindow(QMainWindow):
         self._active_file = path
         self._set_file_slot("input", "Compiscript", path)
 
+        self._document_changed()
+
+    def _document_changed(self) -> None:
+        """Invalidate results when the buffer or its document identity changes."""
+        snapshot = (self._input_path, self._editor.toPlainText())
+        if snapshot == self._document_snapshot:
+            return
+        self._document_snapshot = snapshot
+        self._document_revision += 1
+        self._clear_results()
+        self._tac_view.set_compilation(None)
+        self._layout_panel.set_compilation(None)
+        self.statusBar().showMessage("Documento modificado; compile para actualizar los resultados.")
+
     # ------------------------------------------------------------ compilation
 
     def _run_compilation(self) -> None:
@@ -382,9 +405,12 @@ class MainWindow(QMainWindow):
             self._profile_path,
             source,
             self._input_path,
+            self._document_revision,
         )
         worker.completed.connect(self._on_finished)
-        worker.failed.connect(self._on_error)
+        worker.failed.connect(
+            lambda message, revision=self._document_revision: self._on_compilation_error(message, revision)
+        )
         self._worker = worker
         worker.start()
 
@@ -405,6 +431,10 @@ class MainWindow(QMainWindow):
 
     def _on_finished(self, bundle: dict) -> None:
         self._finish_run()
+        revision = bundle.get("document_revision")
+        if revision is not None and revision != self._document_revision:
+            self.statusBar().showMessage("Resultado descartado: el documento cambió durante la compilación.")
+            return
         self._last_bundle = bundle
         self._render_bundle(bundle)
         compilation = bundle["compilation"]
@@ -424,6 +454,13 @@ class MainWindow(QMainWindow):
             f"Compilación rechazada en la fase {stage}: {errors} error(es)."
         )
         self._tabs.setCurrentWidget(self._summary)
+
+    def _on_compilation_error(self, message: str, revision: int) -> None:
+        if revision != self._document_revision:
+            self._finish_run()
+            self.statusBar().showMessage("Resultado descartado: el documento cambió durante la compilación.")
+            return
+        self._on_error(message)
 
     def _render_bundle(self, bundle: dict) -> None:
         syntax_result = bundle["result"]
@@ -468,7 +505,7 @@ class MainWindow(QMainWindow):
             "=" * 70,
             "  COMPILACIÓN DE COMPISCRIPT",
             "=" * 70,
-            f"Archivo    : {self._input_path or '(editor sin guardar)'}",
+            f"Archivo    : {(compilation.source_path if compilation else self._input_path) or '(editor sin guardar)'}",
             f"Gramática  : {syntax_result.grammar.name}",
             f"Regla      : {syntax_result.start_rule}",
             f"Tokens     : {len(syntax_result.tokens)}",
