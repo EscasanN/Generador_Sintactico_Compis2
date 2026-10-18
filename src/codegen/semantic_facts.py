@@ -48,10 +48,7 @@ class SemanticFactsIndex:
         self.annotations = annotations
         self.symbol_table = symbol_table
         self.layouts = layouts
-        self._owner: dict[int, Scope] = {}
-        for scope in symbol_table.iter_scopes():
-            for symbol in scope.symbols:
-                self._owner[id(symbol)] = scope
+        self._owner = dict(layouts.captures.owner_scope)
 
     @classmethod
     def from_result(

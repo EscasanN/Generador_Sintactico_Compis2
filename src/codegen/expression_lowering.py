@@ -10,7 +10,7 @@ from src.codegen.contracts import Address, CodegenError, SemanticFacts, ValueRef
 from src.codegen.ir import OpCode, Operand, OperandKind
 from src.semantic.diagnostics import SourceLocation
 from src.semantic.symbol_table import Symbol
-from src.semantic.types import INTEGER, Type
+from src.semantic.types import FLOAT, INTEGER, Type
 from src.semantic.values import SemanticValue
 
 
@@ -125,6 +125,22 @@ class ExpressionLowerer:
         self.builder.emit(OpCode.COPY, value.operand, result=temporary, location=location)
         return ValueRef(temporary, value.type, True, location)
 
+    def coerce(self, value: ValueRef, target: Type, location: SourceLocation) -> ValueRef:
+        """Materialize the numeric widening already approved by semantics."""
+        if value.type != INTEGER or target != FLOAT:
+            return value
+        if value.operand.kind is OperandKind.CONSTANT:
+            return ValueRef(
+                Operand(OperandKind.CONSTANT, float(value.operand.value), FLOAT),
+                FLOAT, location=location,
+            )
+        result = self.builder.temporary(FLOAT)
+        self.builder.emit(
+            OpCode.CAST, value.operand, Operand(OperandKind.LABEL, "float"), result, location
+        )
+        value.release(self.builder, location)
+        return ValueRef(result, FLOAT, True, location)
+
     def lower_arguments(self, nodes: Iterable[ParseTreeNode]) -> tuple[ValueRef, ...]:
         """Evaluate call arguments left to right and capture each value immediately."""
         values: list[ValueRef] = []
@@ -221,12 +237,12 @@ class ExpressionLowerer:
         false_label = self.builder.labels.next("ternary_false")
         end_label = self.builder.labels.next("ternary_end")
         self.builder.branch_false(condition.operand, false_label, location)
-        true_value = self.lower(true_node)
+        true_value = self.coerce(self.lower(true_node), result_type, location)
         self.builder.emit(OpCode.COPY, true_value.operand, result=result, location=location)
         true_value.release(self.builder, location)
         self.builder.jump(end_label, location)
         self.builder.mark(false_label, location)
-        false_value = self.lower(false_node)
+        false_value = self.coerce(self.lower(false_node), result_type, location)
         self.builder.emit(OpCode.COPY, false_value.operand, result=result, location=location)
         false_value.release(self.builder, location)
         self.builder.mark(end_label, location)

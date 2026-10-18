@@ -35,7 +35,7 @@ from src.codegen.layout import (
 )
 from src.semantic.results import SemanticAnnotations
 from src.semantic.symbol_table import Scope, ScopeKind, Symbol, SymbolKind, SymbolTable
-from src.semantic.types import UNKNOWN, ClassType, Type
+from src.semantic.types import UNKNOWN, VOID, ClassType, FunctionType, Type
 
 CALLABLE_KINDS = frozenset({SymbolKind.FUNCTION, SymbolKind.METHOD})
 STORAGE_KINDS = frozenset({SymbolKind.VARIABLE, SymbolKind.CONSTANT})
@@ -72,10 +72,23 @@ def lexical_level(scope: Scope | None) -> int:
 
 def function_symbol_of(scope: Scope) -> Symbol | None:
     """The function or method ``Symbol`` whose body is ``scope``."""
+    if isinstance(scope, _ImplicitConstructorScope):
+        return scope.symbol
     if scope.kind is not ScopeKind.FUNCTION or scope.parent is None:
         return None
     symbol = scope.parent.resolve_local(scope.name)
     return symbol if symbol is not None and symbol.kind in CALLABLE_KINDS else None
+
+
+class _ImplicitConstructorScope(Scope):
+    """A codegen-only callable; the semantic scope tree is never modified."""
+
+    def __init__(self, parent: Scope, owner: Symbol) -> None:
+        super().__init__(ScopeKind.FUNCTION, "constructor", owner.location, parent)
+        self.symbol = Symbol(
+            "constructor", SymbolKind.METHOD, FunctionType((), VOID), False,
+            owner.location, {"codegen_synthetic": True},
+        )
 
 
 def _is_ancestor_or_same(candidate: Scope, scope: Scope | None) -> bool:
@@ -268,8 +281,14 @@ class ActivationRecordLayout:
         slots = list(kept)
         for index in range(peak):
             offset = align_up(cursor, WORD_SIZE)
+            name = f"t{index}"
+            taken = {slot.name for slot in slots}
+            suffix = 2
+            while name in taken:
+                name = f"t{index}#{suffix}"
+                suffix += 1
             slots.append(
-                FrameSlot(f"t{index}", FrameSlotKind.TEMPORARY, offset, WORD_SIZE, WORD_SIZE)
+                FrameSlot(name, FrameSlotKind.TEMPORARY, offset, WORD_SIZE, WORD_SIZE)
             )
             cursor = offset + WORD_SIZE
         return replace(self, slots=tuple(slots), size=align_up(cursor, self.alignment))
@@ -331,7 +350,7 @@ class ActivationRecordBuilder:
         symbol: Symbol | None = None,
         hidden: bool = False,
     ) -> FrameSlot:
-        if symbol is not None:
+        if symbol is not None or kind is FrameSlotKind.TEMPORARY:
             name = self._unique_name(name)
         offset = self._layout.allocate(name, size, alignment)
         slot = FrameSlot(name, kind, offset, size, alignment, type_, symbol, hidden)
@@ -346,12 +365,22 @@ class ActivationRecordBuilder:
         for name in HEADER_FIELDS:
             self._add(name, FrameSlotKind.HEADER, WORD_SIZE, WORD_SIZE)
 
-    def reserve_hidden(self, name: str, type_: Type | None = None) -> FrameSlot:
+    def reserve_hidden(
+        self, name: str, type_: Type | None = None, *, symbol: Symbol | None = None,
+        captured: bool = False, env_offset: int | None = None,
+    ) -> FrameSlot:
         """A hidden parameter such as ``this`` or ``env`` (one word)."""
         self._enter("hidden")
-        return self._add(
-            name, FrameSlotKind.PARAMETER, WORD_SIZE, WORD_SIZE, type_, hidden=True
+        slot = self._add(
+            name, FrameSlotKind.PARAMETER, WORD_SIZE, WORD_SIZE, type_, symbol, hidden=True
         )
+        if symbol is not None:
+            self._symbols.append(SymbolLayout(
+                symbol, StorageClass.PARAMETER, WORD_SIZE, WORD_SIZE,
+                offset=slot.offset, frame=self.label, level=self.level,
+                captured=captured, env_offset=env_offset,
+            ))
+        return slot
 
     def _reserve_symbol(
         self,
@@ -478,15 +507,70 @@ class CaptureAnalysis:
         symbol_table: SymbolTable,
         root: object | None = None,
     ) -> None:
+        scopes = tuple(symbol_table.iter_scopes())
+        self.constructor_scopes: dict[int, Scope] = {}
+        self.receivers: dict[int, Symbol] = {}
+        self.effective_scopes = dict(annotations.scopes_by_node)
+        for scope in scopes:
+            if scope.kind is not ScopeKind.CLASS or scope.parent is None:
+                continue
+            owner = scope.parent.resolve_local(scope.name)
+            if owner is None:
+                continue
+            constructor = next((s for s in scope.children if s.kind is ScopeKind.FUNCTION
+                                and s.name == "constructor"), None)
+            if constructor is None:
+                constructor = _ImplicitConstructorScope(scope, owner)
+            self.constructor_scopes[id(owner)] = constructor
+        synthetic = tuple(s for s in self.constructor_scopes.values()
+                          if isinstance(s, _ImplicitConstructorScope))
+        self.scopes = (*scopes, *synthetic)
         self.owner_scope: dict[int, Scope] = {}
-        for scope in symbol_table.iter_scopes():
+        for scope in self.scopes:
             for symbol in scope.symbols:
                 self.owner_scope[id(symbol)] = scope
+            function = function_symbol_of(scope)
+            if function is not None and function.kind is SymbolKind.METHOD:
+                owner_scope = scope.parent
+                owner = owner_scope.parent.resolve_local(owner_scope.name)
+                receiver = Symbol("this", SymbolKind.PARAMETER, owner.type, False, owner.location,
+                                  {"codegen_hidden": True})
+                self.receivers[id(scope)] = receiver
+                self.owner_scope[id(receiver)] = scope
+                self.owner_scope[id(function)] = owner_scope
+        # Field expressions run in a constructor, not in the surrounding
+        # function where the semantic pass visits the class declaration.
+        nodes = {id(node): node for node in annotations.anchors}
+        for node in nodes.values():
+            if getattr(node, "rule_name", None) not in ("classField", "classConstant"):
+                continue
+            scope = annotations.scopes_by_node.get(id(node))
+            while scope is not None and scope.kind is not ScopeKind.CLASS:
+                scope = scope.parent
+            owner = scope.parent.resolve_local(scope.name) if scope and scope.parent else None
+            if owner is None:
+                continue
+            constructor = self.constructor_scopes[id(owner)]
+            pending = list(node.children)
+            while pending:
+                child = pending.pop()
+                self.effective_scopes[id(child)] = constructor
+                pending.extend(child.children)
         self._escaping = _escaping_functions(annotations, root)
         self._uses: list[_Use] = []
         seen: set[tuple[int, int]] = set()
-        for node_id, scope in annotations.scopes_by_node.items():
+        for node_id, scope in self.effective_scopes.items():
             symbol = annotations.symbols_by_node.get(node_id)
+            node = nodes.get(node_id)
+            user = enclosing_function(scope)
+            if (getattr(node, "alternative", None) == "ThisExpr"
+                    or (getattr(node, "alternative", None) == "IdentifierExpr"
+                        and symbol is not None and symbol.kind in (SymbolKind.FIELD, SymbolKind.METHOD))):
+                method = user
+                while method is not None and id(method) not in self.receivers:
+                    method = parent_function(method)
+                if method is not None:
+                    symbol = self.receivers[id(method)]
             if symbol is None or symbol.kind not in (
                 SymbolKind.VARIABLE,
                 SymbolKind.CONSTANT,
@@ -494,7 +578,6 @@ class CaptureAnalysis:
             ):
                 continue
             declared = self.owner_scope.get(id(symbol))
-            user = enclosing_function(scope)
             owner = enclosing_function(declared)
             if declared is None or owner is None or user is None or owner is user:
                 continue
@@ -527,6 +610,60 @@ class CaptureAnalysis:
                         creator = parent_function(creator)
                 function = parent_function(function)
 
+        # Referencing a closure needs its creator's environment even if the
+        # referring function reads none of the creator's variables itself.
+        functions = {
+            id(symbol): scope
+            for scope in self.scopes
+            if scope.kind is ScopeKind.FUNCTION
+            and (symbol := function_symbol_of(scope)) is not None
+        }
+        dependencies: list[tuple[Scope, Scope, Scope]] = []
+        for node_id, symbol in annotations.symbols_by_node.items():
+            if symbol.kind is not SymbolKind.FUNCTION or id(symbol) not in functions:
+                continue
+            user = enclosing_function(self.effective_scopes.get(node_id))
+            creator = enclosing_function(self.owner_scope.get(id(symbol)))
+            if user is not None and creator is not None and _is_ancestor_or_same(creator, user):
+                dependencies.append((user, functions[id(symbol)], creator))
+        for node_id, node in nodes.items():
+            if getattr(node, "alternative", None) not in ("NewExprNoArgs", "NewExprWithArgs"):
+                continue
+            value = annotations.values_by_node.get(node_id)
+            user = enclosing_function(self.effective_scopes.get(node_id))
+            if value is None or user is None:
+                continue
+            for class_scope in scopes:
+                if class_scope.kind is not ScopeKind.CLASS or class_scope.parent is None:
+                    continue
+                owner = class_scope.parent.resolve_local(class_scope.name)
+                if owner is None or owner.type is not value.type:
+                    continue
+                creator = enclosing_function(class_scope.parent)
+                if creator is None or not _is_ancestor_or_same(creator, user):
+                    continue
+                for target in self.scopes:
+                    if target.kind is ScopeKind.FUNCTION and target.parent is class_scope:
+                        dependencies.append((user, target, creator))
+        changed = True
+        while changed:
+            before = len(self.needs_env)
+            for user, target, creator in dependencies:
+                if id(target) not in self.needs_env:
+                    continue
+                function = user
+                while function is not creator:
+                    self.needs_env.add(id(function))
+                    if self._escapes(function):
+                        owner = parent_function(function)
+                        while owner is not None:
+                            self.heap_owners.add(id(owner))
+                            if owner is creator:
+                                break
+                            owner = parent_function(owner)
+                    function = parent_function(function)
+            changed = len(self.needs_env) != before
+
         self.env_offsets: dict[int, int] = {}
         for symbols in self.captured_by_owner.values():
             cursor = 0
@@ -540,7 +677,7 @@ class CaptureAnalysis:
         if self._escaping is None:
             return True
         symbol = function_symbol_of(function)
-        return symbol is not None and id(symbol) in self._escaping
+        return symbol is not None and (symbol.kind is SymbolKind.METHOD or id(symbol) in self._escaping)
 
     def is_captured(self, symbol: Symbol) -> bool:
         return id(symbol) in self.captured
@@ -633,12 +770,22 @@ class RuntimeLayouts:
         raise LookupError(f"no activation record for '{function.name}'")
 
     def class_layout(self, owner: Symbol | ClassType | str) -> ClassLayout:
-        """Class layout by symbol, class type or class name."""
-        name = owner if isinstance(owner, str) else owner.name
-        try:
-            return self.classes[name]
-        except KeyError:
-            raise LookupError(f"no layout for class '{name}'") from None
+        """Resolve declarations by identity; textual names must be unambiguous."""
+        if isinstance(owner, Symbol):
+            matches = [layout for layout in self.classes.values() if layout.symbol is owner]
+        elif isinstance(owner, ClassType):
+            matches = [layout for layout in self.classes.values() if layout.symbol.type is owner]
+            if not matches:
+                matches = [layout for layout in self.classes.values() if layout.symbol.name == owner.name]
+        else:
+            matches = [layout for layout in self.classes.values() if layout.symbol.name == owner]
+            if not matches and owner in self.classes:
+                return self.classes[owner]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise LookupError(f"ambiguous class name '{owner}'")
+        raise LookupError(f"no layout for class '{owner}'")
 
     def with_temporary_peaks(
         self,
@@ -695,8 +842,8 @@ def build_runtime_layouts(
     root: object | None = None,
 ) -> RuntimeLayouts:
     """Compute labels, class layouts, activation records and the extended table."""
-    scopes = tuple(symbol_table.iter_scopes())
     analysis = CaptureAnalysis(annotations, symbol_table, root)
+    scopes = analysis.scopes
     registry = LabelRegistry()
 
     labels: dict[int, str] = {}
@@ -704,6 +851,8 @@ def build_runtime_layouts(
         for symbol in scope.symbols:
             if symbol.kind in CALLABLE_KINDS or symbol.kind is SymbolKind.CLASS:
                 labels[id(symbol)] = registry.unique(_base_label(scope, symbol))
+        if isinstance(scope, _ImplicitConstructorScope):
+            labels[id(scope.symbol)] = registry.unique(_base_label(scope.parent, scope.symbol))
 
     entries: list[SymbolLayout] = []
 
@@ -723,7 +872,7 @@ def build_runtime_layouts(
                     )
                 )
 
-    classes = _build_classes(scopes, labels, entries)
+    classes = _build_classes(scopes, labels, entries, analysis)
 
     # Static variables: program scope and blocks outside any function.
     static = LayoutBuilder("the static area")
@@ -771,23 +920,24 @@ def _build_classes(
     scopes: tuple[Scope, ...],
     labels: dict[int, str],
     entries: list[SymbolLayout],
+    analysis: CaptureAnalysis,
 ) -> dict[str, ClassLayout]:
-    declared: dict[str, tuple[Scope, Symbol]] = {}
+    declared: dict[int, tuple[Scope, Symbol]] = {}
     for scope in scopes:
         for symbol in scope.symbols:
             if symbol.kind is SymbolKind.CLASS and isinstance(symbol.type, ClassType):
-                declared[symbol.name] = (scope, symbol)
-    built: dict[str, ClassLayout] = {}
+                declared[id(symbol.type)] = (scope, symbol)
+    built: dict[int, ClassLayout] = {}
 
-    def build(name: str, active: tuple[str, ...]) -> ClassLayout:
-        if name in built:
-            return built[name]
-        if name in active:
-            raise LayoutError(f"inheritance cycle through class '{name}'")
-        scope, symbol = declared[name]
+    def build(key: int, active: tuple[int, ...]) -> ClassLayout:
+        if key in built:
+            return built[key]
+        scope, symbol = declared[key]
+        if key in active:
+            raise LayoutError(f"inheritance cycle through class '{symbol.name}'")
         assert isinstance(symbol.type, ClassType)
         base_type = symbol.type.superclass
-        base = build(base_type.name, (*active, name)) if base_type and base_type.name in declared else None
+        base = build(id(base_type), (*active, key)) if base_type and id(base_type) in declared else None
         label = labels[id(symbol)]
         builder = LayoutBuilder(f"class {label}", start=base.size if base else 0)
         members = symbol.metadata.get("members", {})
@@ -810,6 +960,13 @@ def _build_classes(
                 )
             elif member.kind is SymbolKind.METHOD and id(member) in labels:
                 methods[member_name] = labels[id(member)]
+        class_scope = next((s for s in scopes if s.kind is ScopeKind.CLASS
+                            and s.parent is scope and s.name == symbol.name), None)
+        needs_environment = any(id(s) in analysis.needs_env for s in scopes
+                                if s.kind is ScopeKind.FUNCTION and s.parent is class_scope)
+        environment_offset = (
+            builder.allocate("$env", WORD_SIZE, WORD_SIZE) if needs_environment else None
+        )
         builder.validate()
         entries.extend(own)
         layout = ClassLayout(
@@ -820,16 +977,17 @@ def _build_classes(
             tuple(own),
             base.all_fields if base else (),
             methods,
-            f"{label}.constructor",
+            labels[id(function_symbol_of(analysis.constructor_scopes[id(symbol)]))],
             "constructor" in methods,
             base,
+            environment_offset,
         )
-        built[name] = layout
+        built[key] = layout
         return layout
 
-    for name in declared:
-        build(name, ())
-    return built
+    for key in declared:
+        build(key, ())
+    return {layout.label: layout for layout in built.values()}
 
 
 def _build_frame(
@@ -875,7 +1033,12 @@ def _build_frame(
             if parent_scope.kind is ScopeKind.CLASS and parent_scope.parent
             else None
         )
-        builder.reserve_hidden("this", class_symbol.type if class_symbol else UNKNOWN)
+        receiver = analysis.receivers.get(id(scope))
+        builder.reserve_hidden(
+            "this", class_symbol.type if class_symbol else UNKNOWN, symbol=receiver,
+            captured=receiver is not None and analysis.is_captured(receiver),
+            env_offset=analysis.env_offsets.get(id(receiver)),
+        )
     needs_env = id(scope) in analysis.needs_env
     if needs_env:
         builder.reserve_hidden("env")

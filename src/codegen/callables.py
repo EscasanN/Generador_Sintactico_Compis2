@@ -33,6 +33,7 @@ from src.codegen.activation import (
     enclosing_function,
     function_symbol_of,
     parent_function,
+    lexical_level,
 )
 from src.codegen.contracts import Address, CodegenError, ValueRef
 from src.codegen.ir import OpCode, Operand, OperandKind
@@ -166,10 +167,13 @@ class CallableLowering:
         key = (frame.label, slot.name)
         if key not in self.hidden_operands:
             type_ = slot.type or UNKNOWN
-            symbol = Symbol(slot.name, SymbolKind.PARAMETER, type_, False, location)
-            address = Address(
-                symbol, StorageClass.PARAMETER.value, slot.name, slot.offset, frame.label
-            )
+            if slot.symbol is not None:
+                address = self.facts.address_for(slot.symbol)
+            else:
+                symbol = Symbol(slot.name, SymbolKind.PARAMETER, type_, False, location)
+                address = Address(
+                    symbol, StorageClass.PARAMETER.value, slot.name, slot.offset, frame.label
+                )
             self.hidden_operands[key] = Operand(OperandKind.SYMBOL, address, type_)
         return self.hidden_operands[key]
 
@@ -231,23 +235,21 @@ class CallableLowering:
         if not layout.captured or not self.function_stack:
             return None
         context = self.function_stack[-1]
-        try:
-            access = self.facts.lexical_access(node, symbol)
-        except LookupError as error:
-            raise CodegenError(
-                "IRGEN-MISSING-FACT", f"no lexical access for {symbol.name}", self.location(node)
-            ) from error
-        if access.kind == "captured":
+        owner = enclosing_function(self.layouts.captures.owner_scope.get(id(symbol)))
+        user = context.scope
+        if owner is not None and user is not owner:
             if "env" not in context.hidden:
                 raise CodegenError(
                     "IRGEN-ENV-UNAVAILABLE",
                     f"{context.frame.label} receives no environment for {symbol.name}",
                     self.location(node),
                 )
-            assert access.offset is not None
-            offset = Operand(OperandKind.OFFSET, (access.depth, access.offset))
+            depth = lexical_level(user) - lexical_level(owner) - 1
+            if depth < 0 or layout.env_offset is None:
+                raise CodegenError("IRGEN-MISSING-FACT", f"invalid capture of {symbol.name}", self.location(node))
+            offset = Operand(OperandKind.OFFSET, (depth, layout.env_offset))
             return context.hidden["env"], offset
-        if access.kind == "local" and context.environment is not None:
+        if user is owner and context.environment is not None:
             assert layout.env_offset is not None
             return context.environment, Operand(OperandKind.OFFSET, layout.env_offset)
         return None

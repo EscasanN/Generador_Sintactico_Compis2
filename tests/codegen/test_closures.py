@@ -159,9 +159,9 @@ def test_nested_function_without_captures_is_a_plain_call(generate_tac):
     assert call.arg1.value == "fn_f.g"
 
 
-def test_a_caller_without_environment_cannot_close_over_a_sibling(compile_facts):
-    """h captures nothing, so it receives no env through which to reach outer's."""
-    run, facts = compile_facts(
+def test_a_caller_inherits_the_environment_needed_by_a_sibling(generate_tac):
+    """A function dependency needs the same lexical chain as a direct capture."""
+    lowered = generate_tac(
         "function outer(): integer {\n"
         "  let x: integer = 1;\n"
         "  function g(): integer { return x; }\n"
@@ -169,6 +169,6 @@ def test_a_caller_without_environment_cannot_close_over_a_sibling(compile_facts)
         "  return h();\n"
         "}\n"
     )
-    with pytest.raises(CodegenError, match="IRGEN-ENV-UNAVAILABLE") as error:
-        CompiscriptCodeGenerator(facts).generate(run.syntax_result.tree)
-    assert error.value.location.line == 4
+    assert lowered.layouts.frame_by_label("fn_outer.h").needs_env
+    (closure,) = find(lowered.unit("fn_outer.h"), OpCode.CLOSURE)
+    assert closure.arg1.value == "fn_outer.g" and is_hidden_env(closure.arg2)

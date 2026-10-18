@@ -23,7 +23,7 @@ operand of the same operation may change it (an assignment, call or ``new``).
 from __future__ import annotations
 
 from src.antlr_mode.parse_tree import ParseTreeNode
-from src.codegen.activation import ActivationRecordBuilder, lexical_level
+from src.codegen.activation import parent_function
 from src.codegen.callables import ProcedureContext
 from src.codegen.contracts import CodegenError, ValueRef
 from src.codegen.ir import OpCode, Operand, OperandKind
@@ -95,17 +95,11 @@ class ObjectLowering:
 
     def _lower_implicit_constructor(self, node: ParseTreeNode, layout: ClassLayout) -> None:
         """``C.constructor(this)``: field initializers only (CLS-05)."""
-        builder = ActivationRecordBuilder(
-            layout.constructor_label, "constructor",
-            lexical_level(self.facts.scope_for(node)) + 1,
-        )
-        builder.reserve_header()
-        builder.reserve_hidden("this", layout.symbol.type)
-        frame = builder.build()
-        self.extra_frames.append(frame)
+        frame = self.layouts.frame_by_label(layout.constructor_label)
+        scope = self.layouts.captures.constructor_scopes[id(layout.symbol)]
         location = self.location(node)
         self.lower_procedure(
-            node, frame, None, VOID, None,
+            node, frame, scope, VOID, None,
             lambda context: self._initialize_fields(layout, context, location),
         )
 
@@ -120,16 +114,21 @@ class ObjectLowering:
             current = current.superclass
         this = context.hidden["this"]
         for owner in chain:
-            for field, expression in self._field_initializers(owner):
-                field_location = self.location(field)
-                field_type = self.declared_symbol(field).type
-                value = self.coerce(self.lower_expression(expression), field_type, field_location)
-                offset = layout.field_offset(self.identifier(field))
-                self.builder.emit(
-                    OpCode.FIELD_SET, this, Operand(OperandKind.OFFSET, offset),
-                    value.operand, field_location,
-                )
-                value.release(self.builder, field_location)
+            saved_owner = self.initializer_owner
+            self.initializer_owner = owner
+            try:
+                for field, expression in self._field_initializers(owner):
+                    field_location = self.location(field)
+                    symbol = self.declared_symbol(field)
+                    value = self.coerce(self.lower_expression(expression), symbol.type, field_location)
+                    offset = self.layouts.symbols.layout_for(symbol).offset
+                    self.builder.emit(
+                        OpCode.FIELD_SET, this, Operand(OperandKind.OFFSET, offset),
+                        value.operand, field_location,
+                    )
+                    value.release(self.builder, field_location)
+            finally:
+                self.initializer_owner = saved_owner
 
     def _field_initializers(
         self, layout: ClassLayout
@@ -161,15 +160,25 @@ class ObjectLowering:
 
     def this_value(self, node: ParseTreeNode) -> ValueRef:
         context = self.function_stack[-1] if self.function_stack else None
-        if context is None or "this" not in context.hidden:
-            raise CodegenError(
-                "IRGEN-THIS-UNAVAILABLE",
-                "this is only available in methods and constructors",
-                self.location(node),
-            )
-        operand = context.hidden["this"]
-        assert operand.type is not None
-        return ValueRef(operand, operand.type, location=self.location(node))
+        if context is not None:
+            if "this" in context.hidden:
+                operand = context.hidden["this"]
+                type_ = self.initializer_owner.symbol.type if self.initializer_owner else operand.type
+                return ValueRef(operand, type_, location=self.location(node))
+            method = context.scope
+            while method is not None:
+                receiver = self.layouts.captures.receivers.get(id(method))
+                if receiver is not None:
+                    cell = self.environment_cell(node, receiver)
+                    if cell is not None:
+                        location = self.location(node)
+                        result = self.builder.temporary(receiver.type)
+                        self.builder.emit(OpCode.ENV_GET, cell[0], cell[1], result, location)
+                        return ValueRef(result, receiver.type, True, location)
+                method = parent_function(method)
+        raise CodegenError(
+            "IRGEN-THIS-UNAVAILABLE", "this has no lexical method receiver", self.location(node)
+        )
 
     def lower_this(self, node: ParseTreeNode) -> ValueRef:
         return self.this_value(node)
@@ -187,13 +196,23 @@ class ObjectLowering:
             instance.operand,
             location,
         )
+        for owner, offset in layout.environment_bindings:
+            environment, owned = self.environment_pointer(owner.symbol, location)
+            self.builder.emit(
+                OpCode.FIELD_SET, instance.operand, Operand(OperandKind.OFFSET, offset),
+                environment, location,
+            )
+            if owned is not None:
+                owned.release(self.builder, location)
         members = layout.symbol.metadata.get("members", {})
         constructor = members.get("constructor") if layout.explicit_constructor else None
         signature = constructor.type if constructor is not None else UNKNOWN
         values = self.lower_call_arguments(self.call_arguments(node), signature)
+        environment = self.method_environment(layout, layout.constructor_label, instance, location)
+        hidden = (instance, environment) if environment is not None else (instance,)
         self.invoke(
             OpCode.CALL, Operand(OperandKind.LABEL, layout.constructor_label),
-            (instance, *values), values, None, location,
+            (*hidden, *values), (*values, *((environment,) if environment else ())), None, location,
         )
         return instance
 
@@ -241,6 +260,7 @@ class ObjectLowering:
         result = self.builder.temporary(symbol.type)
         offset = self.member_offset_of(this.type, symbol.name, node)
         self.builder.emit(OpCode.FIELD_GET, this.operand, offset, result, location)
+        this.release(self.builder, location)
         return ValueRef(result, symbol.type, True, location)
 
     def direct_destination(self, node: ParseTreeNode, symbol: Symbol) -> Operand | None:
@@ -262,6 +282,7 @@ class ObjectLowering:
         this = self.this_value(node)
         offset = self.member_offset_of(this.type, symbol.name, node)
         self.builder.emit(OpCode.FIELD_SET, this.operand, offset, value.operand, location)
+        this.release(self.builder, location)
 
     def method_call(
         self,
@@ -287,10 +308,33 @@ class ObjectLowering:
         else:
             return NotImplemented
         label = self.method_label_of(receiver_type, method.name, callee)
+        layout = self.class_layout_of(receiver_type, callee)
+        environment = self.method_environment(layout, str(label.value), receiver, location)
         values = self.lower_call_arguments(arguments, method.type)
+        hidden = (receiver, environment) if environment is not None else (receiver,)
         return self.invoke(
-            OpCode.CALL, label, (receiver, *values), (receiver, *values), result_type, location
+            OpCode.CALL, label, (*hidden, *values), (*hidden, *values), result_type, location
         )
+
+    def method_environment(
+        self, layout: ClassLayout, label: str, receiver: ValueRef, location: SourceLocation
+    ) -> ValueRef | None:
+        """Load the defining environment retained by this method's instance."""
+        if not self.layouts.frame_by_label(label).needs_env:
+            return None
+        owner = layout
+        while owner is not None:
+            if label == owner.constructor_label or label in owner.methods.values():
+                break
+            owner = owner.superclass
+        if owner is None or owner.environment_offset is None:
+            raise CodegenError("IRGEN-ENV-UNAVAILABLE", f"no instance environment for {label}", location)
+        result = self.builder.temporary(UNKNOWN)
+        self.builder.emit(
+            OpCode.FIELD_GET, receiver.operand, Operand(OperandKind.OFFSET, owner.environment_offset),
+            result, location,
+        )
+        return ValueRef(result, UNKNOWN, True, location)
 
     # -- member stores -----------------------------------------------------------
 

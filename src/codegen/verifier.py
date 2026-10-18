@@ -104,6 +104,17 @@ class IRVerifier:
                     "IR-PROCEDURE-DUPLICATE", f"duplicate procedure {label}"
                 ))
             procedure_labels.add(label)
+        signatures = {str(p.label.value): len(p.parameters) for p in program.procedures}
+        for unit in (program.global_code, *(p.instructions for p in program.procedures)):
+            for item in unit:
+                if item.opcode is OpCode.CALL and item.arg1 is not None and item.arg2 is not None:
+                    target = str(item.arg1.value)
+                    if target in signatures and item.arg2.value != signatures[target]:
+                        diagnostics.append(IRDiagnostic(
+                            "IR-CALL-SIGNATURE",
+                            f"{target} requires {signatures[target]} parameters; got {item.arg2.value}",
+                            item.source_location,
+                        ))
         self._verify_unit(program.global_code, diagnostics, "global")
         for procedure in program.procedures:
             self._verify_unit(procedure.instructions, diagnostics, str(procedure.label.value))

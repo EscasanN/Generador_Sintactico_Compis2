@@ -105,6 +105,7 @@ class CompiscriptCodeGenerator(
         self.continue_targets: list[Operand] = []
         self.function_stack: list[ProcedureContext] = []
         self.class_stack: list[ClassLayout] = []
+        self.initializer_owner: ClassLayout | None = None
         self.hidden_operands: dict[tuple[str, str], Operand] = {}
         self.extra_frames: list[ActivationRecordLayout] = []
         self.root: ParseTreeNode | None = None

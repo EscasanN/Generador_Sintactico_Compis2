@@ -85,7 +85,7 @@ def test_implicit_constructor_is_synthesized_with_field_initializers(generate_ta
     ]
     frame = lowered.layouts.frame_by_label("SinConstructor.constructor")
     assert [slot.name for slot in frame.hidden_parameters] == ["this"]
-    assert frame.function is None and frame.level == 1
+    assert frame.function.metadata["codegen_synthetic"] and frame.level == 1
 
 
 def test_explicit_constructor_runs_field_initializers_before_its_body(generate_tac):
@@ -196,8 +196,8 @@ def test_static_member_access_through_a_class_name_is_rejected(compile_facts):
     assert error.value.location.line == 4
 
 
-def test_this_inside_a_function_nested_in_a_method_is_rejected(compile_facts):
-    run, facts = compile_facts(
+def test_this_inside_a_function_nested_in_a_method_is_captured(generate_tac):
+    lowered = generate_tac(
         "class C {\n"
         "  let v: integer;\n"
         "  function m(): integer {\n"
@@ -206,5 +206,4 @@ def test_this_inside_a_function_nested_in_a_method_is_rejected(compile_facts):
         "  }\n"
         "}\n"
     )
-    with pytest.raises(CodegenError, match="IRGEN-THIS-UNAVAILABLE"):
-        CompiscriptCodeGenerator(facts).generate(run.syntax_result.tree)
+    assert find(lowered.unit("fn_C.m.f"), OpCode.ENV_GET)

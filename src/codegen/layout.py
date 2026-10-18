@@ -255,6 +255,7 @@ class ClassLayout:
     constructor_label: str = ""
     explicit_constructor: bool = False
     superclass: "ClassLayout | None" = None
+    environment_offset: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fields", tuple(self.fields))
@@ -263,8 +264,16 @@ class ClassLayout:
         if self.size <= 0 or self.size % self.alignment:
             raise LayoutError(f"invalid instance size for class {self.label}")
         check_no_overlap(
-            (layout.region for layout in self.all_fields), f"class {self.label}"
+            [*(layout.region for layout in self.all_fields),
+             *(Region(f"{owner.label}.$env", offset, WORD_SIZE)
+               for owner, offset in self.environment_bindings)], f"class {self.label}"
         )
+
+    @property
+    def environment_bindings(self) -> tuple[tuple["ClassLayout", int], ...]:
+        inherited = self.superclass.environment_bindings if self.superclass else ()
+        own = ((self, self.environment_offset),) if self.environment_offset is not None else ()
+        return (*inherited, *own)
 
     @property
     def all_fields(self) -> tuple[SymbolLayout, ...]:
