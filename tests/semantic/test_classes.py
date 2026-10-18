@@ -10,6 +10,7 @@ from src.semantic.actions.classes import (
     this_value,
 )
 from src.semantic.evaluator import SemanticContext
+from src.semantic.symbol_table import ScopeKind
 from src.semantic.types import ERROR, INTEGER, STRING, VOID
 from src.semantic.values import SemanticValue
 
@@ -106,3 +107,33 @@ def test_cls_03_failure_this_outside_class():
     context = SemanticContext()
     assert this_value(context, node()).type == ERROR
     assert context.diagnostics.has_errors
+
+
+def test_member_lookup_keeps_the_original_base_after_name_shadowing():
+    context = SemanticContext()
+    base = declare_class(context, node(), "Base")
+    enter_class(context, node(), base)
+    field = declare_field(context, node(), "value", INTEGER)
+    exit_class(context, node())
+    child = declare_class(context, node(), "Child", base)
+    context.symbol_table.enter_scope(ScopeKind.BLOCK, "inner")
+    shadow = declare_class(context, node(), "Base")
+    enter_class(context, node(), shadow)
+    declare_field(context, node(), "value", STRING)
+    exit_class(context, node())
+
+    inherited = access_member(context, node(), SemanticValue(child.type), "value")
+
+    assert inherited.symbol is field.symbol
+    assert inherited.type == INTEGER
+
+
+def test_class_type_resolution_restores_the_outer_class_after_leaving_scope():
+    context = SemanticContext()
+    outer = declare_class(context, node(), "Base")
+    context.symbol_table.enter_scope(ScopeKind.BLOCK, "inner")
+    inner = declare_class(context, node(), "Base")
+    assert context.resolve_type("Base") is inner.type
+    context.symbol_table.exit_scope()
+
+    assert context.resolve_type("Base") is outer.type

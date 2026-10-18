@@ -552,6 +552,29 @@ def test_cls_04_failure_unknown_superclass_is_reported():
     assert_rejected("class Child : Missing { }", "class")
 
 
+def test_cls_04_success_local_subclass_preserves_inherited_members():
+    assert_accepted(
+        "function f():integer { class A { let x:integer=1; } "
+        "class B:A {} let b=new B(); return b.x; } let r=f();"
+    )
+
+
+def test_cls_04_success_member_access_ignores_an_out_of_scope_homonymous_class():
+    assert_accepted(
+        'class A { let x:integer=1; } function f():integer { '
+        'class A { let x:string="local"; } return 1; } '
+        'let r=f(); let a:A=new A(); let x:integer=a.x;'
+    )
+
+
+@pytest.mark.parametrize("base", ["Missing", "notAClass"])
+def test_cls_04_failure_local_superclass_must_resolve_to_a_visible_class(base):
+    assert_rejected(
+        f"function f() {{ let notAClass:integer=1; class B:{base} {{}} }} f();",
+        "class",
+    )
+
+
 # ---------------------------------------------------------------------------
 # LST -- Listas
 # ---------------------------------------------------------------------------

@@ -117,8 +117,29 @@ class ObjectLowering:
         this = context.hidden["this"]
         for owner in chain:
             saved_owner = self.initializer_owner
+            saved_context = self.function_stack[-1]
+            environment: ValueRef | None = None
             self.initializer_owner = owner
             try:
+                if owner is not layout:
+                    # Base initializers execute here, but their captures refer
+                    # to the base's defining environment, not the child's.
+                    hidden = {"this": this}
+                    if owner.environment_offset is not None:
+                        operand = self.builder.temporary(UNKNOWN)
+                        self.builder.emit(
+                            OpCode.FIELD_GET, this,
+                            Operand(OperandKind.OFFSET, owner.environment_offset),
+                            operand, location,
+                        )
+                        environment = ValueRef(operand, UNKNOWN, True, location)
+                        hidden["env"] = operand
+                    self.function_stack[-1] = ProcedureContext(
+                        context.frame,
+                        self.layouts.captures.constructor_scopes[id(owner.symbol)],
+                        context.return_type,
+                        hidden,
+                    )
                 for field, expression in self._field_initializers(owner):
                     field_location = self.location(field)
                     symbol = self.declared_symbol(field)
@@ -131,6 +152,9 @@ class ObjectLowering:
                     value.release(self.builder, field_location)
             finally:
                 self.initializer_owner = saved_owner
+                self.function_stack[-1] = saved_context
+                if environment is not None:
+                    environment.release(self.builder, location)
 
     def _field_initializers(
         self, layout: ClassLayout

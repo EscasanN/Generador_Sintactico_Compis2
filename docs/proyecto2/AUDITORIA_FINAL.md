@@ -10,8 +10,9 @@ Daniel, Nadissa, Dulce y Nelson. Los parches posteriores son de Daniel.
 
 La línea base se reprodujo con **790 pruebas aprobadas**. La auditoría encontró
 contraejemplos fuera de esa cobertura; cada corrección comenzó con una prueba
-fallida del comportamiento real. No se modificaron la gramática, su fingerprint,
-el perfil semántico ni los módulos semánticos.
+fallida del comportamiento real. En ese primer cierre no se modificaron la
+gramática, su fingerprint, el perfil semántico ni los módulos semánticos. La
+corrección posterior de herencia local, autorizada por Daniel, se detalla abajo.
 
 ## Hallazgos corregidos y evidencia
 
@@ -30,6 +31,7 @@ el perfil semántico ni los módulos semánticos.
 | Manejadores activos después de salir de try | Retirada según profundidad abandonada y ruta excepcional en el verificador | `test_control_completion.py`, `EXT-07-salidas-try.cps` |
 | Resultado del worker asociado a otro documento | Revisión de documento, invalidación al editar/abrir/guardar como y descarte de respuesta obsoleta | `test_document_changes_discard_a_running_workers_obsolete_result` |
 | Exportación rechazada con archivo previo | Se preserva el archivo y se advierte que no fue actualizado | `test_rejected_export_preserves_and_identifies_an_existing_tac_file` |
+| Herencia local pierde superclase o capturas | Perfil transmite la base; resolución por identidad y entorno de cada clase base durante inicialización | `test_local_inheritance.py`, `test_cls_04_success_local_subclass_preserves_inherited_members`, `CLS-06-herencia-local.cps` |
 
 Las pruebas de codegen anteriores están en `tests/codegen/test_final_compliance.py`
 salvo las indicadas por módulo. Las del IDE están en
@@ -57,13 +59,9 @@ presentaba como caso inválido ahora es un fixture positivo.
 - Una exportación fallida preserva archivos previos; el estado actual debe
   consultarse mediante el código de salida y los diagnósticos, no solo por la
   existencia de un archivo `.tac`.
-- Limitación semántica preexistente, fuera de estos parches: herencia entre
-  clases declaradas dentro de una función puede perder la superclase. Se
-  reprodujo `function f():integer { class A { let x:integer=1; } class B:A {}
-  let b=new B(); return b.x; }` y el frontend rechaza `class 'B' has no member
-  'x'`. La herencia global sigue cubierta. Resolver esta combinación requiere
-  trabajo posterior sobre el frontend, que este plan conserva intacto; no se
-  presenta como un requisito de combinaciones semánticas cerrado al 100 %.
+- La limitación de herencia local señalada en el primer cierre quedó corregida
+  en el parche posterior descrito abajo. Una suite aprobada no demuestra la
+  ausencia de todo posible defecto ni sustituye el ensayo de presentación.
 
 ## Validación y demostración
 
@@ -116,6 +114,62 @@ El merge local de integración `3547db8` volvió a pasar la suite completa:
 **852 passed en 29.96 s**. El cierre posterior únicamente normaliza dos finales
 de archivo heredados y registra este resultado; no cambia lógica ni pruebas.
 
+### Corrección posterior: herencia local
+
+Daniel autorizó corregir el defecto semántico pendiente el 2026-10-17. La rama
+`fix/proyecto2-local-inheritance` parte de `b53bd44`, sin cambios ajenos en el
+workspace. Esta ampliación modifica de forma acotada tres módulos semánticos,
+el perfil de Compiscript y la integración de capturas/inicializadores en codegen;
+no modifica la gramática ni su fingerprint, la GUI ni la CLI.
+
+La causa original era que `ClassWithSuper` no suministraba la superclase a la
+acción de declaración. Las clases globales ocultaban el defecto gracias a la
+predeclaración del programa. Ahora `class.declare_from_tree` recibe el nombre
+de token desde el perfil y transmite el segundo identificador a `class.declare`,
+sin introducir nombres de reglas de Compiscript en el motor genérico.
+
+También quedaron protegidos los casos relacionados:
+
+- Miembros heredados se buscan por identidad del tipo declarado, no en la
+  última clase homónima visitada; las anotaciones de tipo usan el ámbito léxico.
+- Cada inicializador heredado usa el entorno retenido por su propia clase base,
+  aunque el constructor ejecutado sea el de una subclase de otro ámbito.
+- La construcción de una subclase propaga las dependencias de entorno de todos
+  sus ancestros, incluso desde funciones más anidadas.
+- Superclases inexistentes o que no son clases siguen rechazadas; miembros
+  inexistentes detienen el pipeline semántico sin producir TAC.
+
+Las regresiones se observaron fallar antes de corregir el código. Verificación
+del parche, el 2026-10-17:
+
+| Comando | Resultado |
+|---|---:|
+| `python -m pytest tests/codegen -q` | 431 passed en 7.64 s |
+| `python -m pytest tests/semantic -q` | 377 passed en 4.04 s |
+| `python -m pytest tests -q` | 867 passed en 30.10 s |
+| `git diff --check` | Sin errores |
+| `python -m compileall -q src/semantic src/codegen` | Sin errores |
+
+Una copia de `git archive 2ae29b7`, sin artefactos generados del workspace,
+también pasó **867 pruebas en 38.91 s**. La CLI aceptó el fixture nuevo con
+`--emit-tac`: 51 instrucciones y 6 procedimientos, con pico de 3 temporales.
+
+Se solicitó revisión independiente del rango `b53bd44..2ae29b7`, pero el agente
+de revisión no pudo ejecutarse por el límite de gasto del workspace. **No hay
+dictamen independiente aprobado para este parche.** Como alternativa se revisó
+localmente el diff completo: registro de acciones, identidad de tipos, ámbitos,
+propagación de entornos, restauración del contexto mediante `finally`, últimos
+consumos de temporales y ubicaciones de instrucciones. También se comprobaron
+inicializadores con `this`, llamada a método, escritura de captura y método
+heredado ligado que escapa del creador. No se detectaron bloqueos en ese alcance;
+no se amplió el trabajo a rediseñar tipos nominales ni visibilidad de
+declaraciones locales adelantadas, ni a ejecutar TAC en un backend nativo.
+
+El fixture adicional es `tests/cps/codegen/validos/CLS-06-herencia-local.cps`:
+base y subclase locales, entornos de funciones distintas, construcción en una
+tercera función y llamada a método heredado. Su resultado es TAC verificado;
+no se afirma ejecución nativa, que no es el backend de este proyecto.
+
 Para presentar:
 
 1. Abrir `DEMO-completa.cps` en el IDE; mostrar TAC, procedimientos, tabla
@@ -131,6 +185,8 @@ Para presentar:
 6. Editar o abrir otro documento durante una compilación: ningún resultado
    anterior debe presentarse como vigente ni permitir exportación.
 7. Repetir el demo por CLI con `--emit-tac` y las capturas con `--show-layout`.
+8. Compilar `CLS-06-herencia-local.cps` y mostrar los slots de entorno separados
+   de la clase base y la subclase, así como la llamada al método heredado.
 
 Los pasos de IDE usan `tests/cps/codegen/validos`, salvo los casos rechazados,
 que están en `invalidos`. Las pruebas Qt se ejecutan en modo offscreen; el ensayo

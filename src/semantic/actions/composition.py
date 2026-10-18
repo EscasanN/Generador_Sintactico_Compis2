@@ -215,6 +215,18 @@ def _direct_declarations(
     return tuple(declarations)
 
 
+def _declare_class_from_tree(
+    context: SemanticContext,
+    node: ParseTreeNode,
+    name: object,
+    identifier_token: str,
+) -> SemanticValue:
+    """Forward the optional base identifier without grammar-specific selectors."""
+    identifiers = _children_by_token(node, identifier_token)
+    superclass = identifiers[1] if len(identifiers) > 1 else None
+    return declare_class(context, node, name, superclass)
+
+
 def _predeclare_program(
     context: SemanticContext,
     node: ParseTreeNode,
@@ -471,6 +483,7 @@ def register_composition_actions(registry: ActionRegistry) -> None:
     registry.register("assignment.identifier", _assign_to_identifier)
     registry.register("assignment.member", _assign_to_member)
     registry.register("function.declare_from_tree", _declare_function_from_tree)
+    registry.register("class.declare_from_tree", _declare_class_from_tree)
     registry.register("class.method_from_tree", _declare_method_from_tree)
     registry.register("class.predeclare_members", _predeclare_class_members)
 

@@ -67,6 +67,7 @@ def declare_class(
         )
         return SemanticValue(ERROR, location=location)
     context.classes[identifier] = symbol
+    context.classes_by_type[id(class_type)] = symbol
     return SemanticValue(class_type, symbol=symbol, location=location)
 
 
@@ -243,7 +244,7 @@ def access_member(
             location,
         )
         return SemanticValue(ERROR, location=location)
-    class_symbol = context.classes.get(instance.type.name)
+    class_symbol = context.classes_by_type.get(id(instance.type))
     while class_symbol is not None:
         member = class_symbol.metadata["members"].get(identifier)
         if member is not None:
@@ -256,7 +257,7 @@ def access_member(
             )
         superclass = class_symbol.type.superclass
         class_symbol = (
-            context.classes.get(superclass.name)
+            context.classes_by_type.get(id(superclass))
             if isinstance(superclass, ClassType)
             else None
         )

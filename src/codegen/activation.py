@@ -645,11 +645,16 @@ class CaptureAnalysis:
             user = enclosing_function(self.effective_scopes.get(node_id))
             if value is None or user is None:
                 continue
+            ancestors: list[ClassType] = []
+            instance_type: Type | None = value.type
+            while isinstance(instance_type, ClassType):
+                ancestors.append(instance_type)
+                instance_type = instance_type.superclass
             for class_scope in scopes:
                 if class_scope.kind is not ScopeKind.CLASS or class_scope.parent is None:
                     continue
                 owner = class_scope.parent.resolve_local(class_scope.name)
-                if owner is None or owner.type is not value.type:
+                if owner is None or not any(owner.type is base for base in ancestors):
                     continue
                 creator = enclosing_function(class_scope.parent)
                 if creator is None or not _is_ancestor_or_same(creator, user):
