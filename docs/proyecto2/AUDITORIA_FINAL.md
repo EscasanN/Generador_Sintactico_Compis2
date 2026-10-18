@@ -155,8 +155,8 @@ también pasó **867 pruebas en 38.91 s**. La CLI aceptó el fixture nuevo con
 `--emit-tac`: 51 instrucciones y 6 procedimientos, con pico de 3 temporales.
 
 Se solicitó revisión independiente del rango `b53bd44..2ae29b7`, pero el agente
-de revisión no pudo ejecutarse por el límite de gasto del workspace. **No hay
-dictamen independiente aprobado para este parche.** Como alternativa se revisó
+de revisión no pudo ejecutarse por el límite de gasto del workspace. **Ese
+intento inicial no produjo dictamen independiente.** Como alternativa se revisó
 localmente el diff completo: registro de acciones, identidad de tipos, ámbitos,
 propagación de entornos, restauración del contexto mediante `finally`, últimos
 consumos de temporales y ubicaciones de instrucciones. También se comprobaron
@@ -169,6 +169,66 @@ El fixture adicional es `tests/cps/codegen/validos/CLS-06-herencia-local.cps`:
 base y subclase locales, entornos de funciones distintas, construcción en una
 tercera función y llamada a método heredado. Su resultado es TAC verificado;
 no se afirma ejecución nativa, que no es el backend de este proyecto.
+
+### Cierre posterior: nominalidad y seguridad del documento
+
+El reintento de revisión independiente sí se completó con tres subagentes sobre
+`bf989e3`. El mínimo documental/funcional del enunciado cuenta con evidencia,
+pero la revisión y el ensayo encontraron dos problemas importantes y uno menor:
+compatibilidad incorrecta entre clases homónimas, pérdida de cambios sin guardar
+al pulsar Programa y salto a Semántica al cambiar el tema. Daniel autorizó
+corregirlos en `fix/proyecto2-types-and-ide`, desde ese commit y sin cambios ajenos.
+
+Correcciones verificadas mediante TDD:
+
+- `ClassType` representa una declaración nominal inmutable. Cada declaración
+  crea una instancia distinta; referencias y ancestros conservan ese objeto.
+  Igualdad y hash por identidad impiden mezclar homónimos en asignaciones,
+  argumentos, retornos, arreglos y firmas de función. Primitivos y estructuras
+  compuestas conservan sus reglas; herencia real y `null` siguen aceptados.
+- La fila Programa da foco al editor y no recarga desde disco. Abrir, Nuevo y
+  cerrar ofrecen Guardar / Descartar / Cancelar. Una cancelación o error al
+  guardar conserva el documento; guardar en la misma ruta no invalida su TAC.
+- Nuevo no vacía el archivo que acaba de guardar el aviso de cambios, incluso
+  si las rutas coinciden por sufijo, normalización o hardlink. Se conserva el
+  programa guardado y se solicita otro nombre para el nuevo.
+- Cambiar tema no reconstruye el bundle: conserva pestaña, búsquedas,
+  selecciones y expansiones. Solo recolorea el resumen y conserva su selección
+  y scroll; el encabezado de error interno mantiene el color de error.
+
+Evidencia versionada: `tests/semantic/test_nominal_classes.py`,
+`tests/gui/test_document_safety.py` y
+`tests/cps/codegen/invalidos/PIPE-02-clases-homonimas.cps`. Las dos expectativas
+anteriores que construían otra clase del mismo nombre ahora comprueban la
+declaración canónica real. El inventario es **22 válidos, 11 inválidos y 7 golden**.
+
+Verificación del código hasta `379f59f`, el 2026-10-17:
+
+| Comando / recorrido | Resultado |
+|---|---:|
+| `python -m pytest tests/semantic -q` | 389 passed |
+| `python -m pytest tests/codegen -q` | 433 passed |
+| `python -m pytest tests/gui -q` | 55 passed en 21.92 s |
+| `python -m pytest tests -q` | 905 passed en 33.98 s |
+| Ensayo del IDE con ventana Windows y diálogos Qt reales | 72 / 72 comprobaciones aprobadas |
+| `git diff --check`, `compileall` de semántica/GUI | Sin errores |
+
+El ensayo fue automatizado mediante eventos de Qt, no una interacción humana.
+Probó demo completo, closures, herencia local, temporales, errores por fase,
+exportación UTF-8/LF, tablas/frames, rutas con acentos, válido → inválido → válido,
+descarte de workers obsoletos y decisiones reales de guardado/cancelación.
+Se inspeccionaron capturas de ambas paletas y de los avisos. La evidencia local
+queda en `output/qa/ensayo-proyecto2-20261017-corregido/` (ignorada por Git).
+
+Dos revisiones independientes del parche dieron **Ready to merge: Yes**:
+nominalidad (`bf989e3..cb3d4a3`) y documento/tema (`bf989e3..379f59f`). Los
+hallazgos de colisiones de rutas se reprodujeron con pruebas fallidas antes de
+corregirlos. No quedan bloqueos identificados dentro de estos tres arreglos.
+Mejora cosmética opcional: los diagnósticos entre homónimos pueden mostrar el
+mismo nombre textual en ambos lados, aunque el rechazo nominal es correcto.
+El cierre con worker activo conserva su comportamiento previo; no se atribuye
+a este parche cancelación ni espera del hilo. La defensa oral y la comprobación
+del entorno el día de la presentación siguen correspondiendo al equipo.
 
 Para presentar:
 
@@ -189,5 +249,6 @@ Para presentar:
    de la clase base y la subclase, así como la llamada al método heredado.
 
 Los pasos de IDE usan `tests/cps/codegen/validos`, salvo los casos rechazados,
-que están en `invalidos`. Las pruebas Qt se ejecutan en modo offscreen; el ensayo
-visible y la defensa ante los calificadores corresponden al equipo.
+que están en `invalidos`. La suite Qt usa modo offscreen; el ensayo adicional
+anterior usó ventana Windows visible. El equipo debe repetir la demostración
+en el entorno de evaluación y preparar su defensa ante los calificadores.

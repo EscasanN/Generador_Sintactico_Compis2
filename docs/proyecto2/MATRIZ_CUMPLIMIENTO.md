@@ -262,6 +262,8 @@ suite nominal; el registro de ejecución está en [AUDITORIA_FINAL.md](AUDITORIA
 | FUN-04, PIPE-04 | Salida no void sin valor rechazada sin TAC | `FUN-04-retorno-faltante.cps`, `codegen/test_control_completion.py` |
 | EXT-07, CTL-07, CTL-08 | Manejadores retirados en transferencias y CFG excepcional | `EXT-07-salidas-try.cps`, `codegen/test_control_completion.py` |
 | IDE-01, IDE-03 | Edición/apertura/guardar como durante worker; resultado obsoleto descartado | `gui/test_codegen_results.py` |
+| PIPE-02, TST-02 | Clases homónimas incompatibles en asignaciones y tipos compuestos; rechazo sin TAC | `semantic/test_nominal_classes.py`, `PIPE-02-clases-homonimas.cps` |
+| IDE-01, IDE-03 | Guardar/descartar/cancelar sin pérdida de buffer; Nuevo protege el archivo recién guardado y sus alias; tema conserva navegación | `gui/test_document_safety.py` |
 | OUT-02 | Exportación rechazada preserva y advierte sobre archivo previo | `test_main_cli.py` |
 
 ## Comandos esperados

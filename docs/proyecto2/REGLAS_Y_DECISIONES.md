@@ -153,6 +153,10 @@ prólogos, epílogos ni registros de CPU en este proyecto.
 
 ## Reglas para clases, objetos y listas
 
+- Los tipos de clase son nominales por declaración, no por nombre ni estructura.
+  El ámbito resuelve el objeto `ClassType` canónico; la herencia conserva ese
+  mismo objeto base. Dos clases homónimas no son compatibles, tampoco dentro
+  de arreglos o firmas de función. Corrección autorizada por Daniel, 2026-10-17.
 - OBJECT_NEW reserva el tamaño calculado por ClassLayout.
 - Los campos heredados se ubican antes de los propios.
 - Los métodos tienen etiquetas; no ocupan bytes dentro del objeto.
