@@ -150,6 +150,21 @@ del parche, el 2026-10-17:
 | `git diff --check` | Sin errores |
 | `python -m compileall -q src/semantic src/codegen` | Sin errores |
 
+Una copia de `git archive 2ae29b7`, sin artefactos generados del workspace,
+también pasó **867 pruebas en 38.91 s**. La CLI aceptó el fixture nuevo con
+`--emit-tac`: 51 instrucciones y 6 procedimientos, con pico de 3 temporales.
+
+Se solicitó revisión independiente del rango `b53bd44..2ae29b7`, pero el agente
+de revisión no pudo ejecutarse por el límite de gasto del workspace. **No hay
+dictamen independiente aprobado para este parche.** Como alternativa se revisó
+localmente el diff completo: registro de acciones, identidad de tipos, ámbitos,
+propagación de entornos, restauración del contexto mediante `finally`, últimos
+consumos de temporales y ubicaciones de instrucciones. También se comprobaron
+inicializadores con `this`, llamada a método, escritura de captura y método
+heredado ligado que escapa del creador. No se detectaron bloqueos en ese alcance;
+no se amplió el trabajo a rediseñar tipos nominales ni visibilidad de
+declaraciones locales adelantadas, ni a ejecutar TAC en un backend nativo.
+
 El fixture adicional es `tests/cps/codegen/validos/CLS-06-herencia-local.cps`:
 base y subclase locales, entornos de funciones distintas, construcción en una
 tercera función y llamada a método heredado. Su resultado es TAC verificado;
