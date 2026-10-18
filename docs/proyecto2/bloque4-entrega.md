@@ -5,6 +5,10 @@ desde el IDE y la CLI, agrega la batería `.cps` con TAC esperado y actualiza la
 documentación. No introduce reglas de compilación: la GUI y la CLI solo leen
 `CompilationResult`.
 
+Este documento conserva los resultados originales de Nelson. Las correcciones
+posteriores y la validación de la rama integrada están en
+[AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
+
 ## Archivos
 
 | Archivo | Contenido |
@@ -16,7 +20,7 @@ documentación. No introduce reglas de compilación: la GUI y la CLI solo leen
 | `tests/gui/test_codegen_results.py` | OUT-03, OUT-04, OUT-05, IDE-01, IDE-02, IDE-03 sobre la ventana real. |
 | `tests/gui/test_cps_workflow.py` | Flujo `.cps` existente adaptado a `CompilationWorker` y `_run_compilation`. |
 | `tests/codegen/test_codegen_fixtures.py` | Inventario, positivos, negativos por fase, golden TAC y cobertura de IDs (TST-01…03). |
-| `tests/cps/codegen/` | 15 programas válidos, 10 inválidos y 7 TAC esperados ([README](../../tests/cps/codegen/README.md)). |
+| `tests/cps/codegen/` | 21 programas válidos, 10 inválidos y 7 TAC esperados tras el cierre ([README](../../tests/cps/codegen/README.md)). |
 | `README.md`, `tests/README.md` | Instalación, ejecución del IDE y la CLI, pruebas y demostración. |
 | `docs/proyecto2/` | Matriz con evidencia por ID, plan, arquitectura (CLI e IDE) y este documento. |
 
@@ -36,6 +40,8 @@ python -m src.main --cps programa.cps --syntax-only
   estado van a stderr. Así `> salida.tac` produce un archivo limpio.
 - `--emit-tac RUTA`: crea las carpetas necesarias y escribe UTF-8 con LF; si la
   compilación se rechaza no se crea el archivo.
+- Si la ruta ya existía y la compilación se rechaza, se conserva intacta y la CLI
+  avisa que no se actualizó. El archivo previo no representa esa compilación.
 - `--show-layout`: columnas Nombre, Clase, Tipo, Almacenamiento, Offset, Tamaño,
   Etiqueta, Nivel, Frame y offset en el entorno; después cada frame con los
   rangos `[offset..fin)` de sus slots, capturas y entorno de closure.
@@ -55,6 +61,9 @@ Pestañas: **Árbol**, **Semántica**, **Código TAC**, **Tabla extendida** y
 - Al iniciar se limpian árbol, semántica, TAC, tabla, frames y diagnósticos, y
   se deshabilitan el botón y la acción del menú hasta recibir el resultado
   (IDE-02, IDE-03). Un segundo clic mientras compila se ignora.
+- Cambiar el texto, abrir otro archivo o guardar como otro documento invalida
+  inmediatamente resultados y exportación. El worker captura la revisión de
+  documento; si ya cambió al recibir la señal, el resultado se descarta.
 - `CompilationWorker.run` llama a `compile_compiscript` y renderiza el árbol
   con Graphviz; el hilo de Qt solo recibe el bundle inmutable por la señal
   `completed` (o `failed` para errores de configuración o internos).
@@ -169,16 +178,15 @@ Preparación (una vez): `python -m pip install -r requirements.txt` y
 
 ## Limitaciones conocidas
 
-Heredadas del bloque 3 y visibles como diagnósticos explícitos (nunca TAC
-parcial):
+Decisiones conservadas del bloque 3:
 
-- `this` dentro de una función anidada en un método → `IRGEN-THIS-UNAVAILABLE`
-  (fixture `PIPE-04-this-en-funcion-anidada.cps`).
 - Acceso estático `Clase.campo` → `IRGEN-UNSUPPORTED-NODE`
   (`PIPE-04-error-generacion.cps`).
-- Una función sin capturas no puede llamar a una closure hermana que necesita
-  entorno → `IRGEN-ENV-UNAVAILABLE`.
 - try/catch es IR de alto nivel; métodos por tipo estático, sin vtables.
+
+Closures hermanas, `this` anidado y clases locales capturadas están cubiertos por
+el cierre. El fixture original de rechazo de `this` se convirtió en el positivo
+`CLS-04-this-en-funcion-anidada.cps`.
 
 Del bloque 4:
 

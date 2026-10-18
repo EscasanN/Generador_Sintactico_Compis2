@@ -7,6 +7,22 @@ anterior. El frontend conserva la responsabilidad de aceptar o rechazar el
 programa; el generador recibe únicamente un árbol válido, hechos semánticos y
 una tabla de símbolos persistente.
 
+El cierre final se documenta en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md). Codegen
+añade símbolos y scopes internos para receptores y constructores implícitos sin
+mutar el árbol de scopes semántico. Los layouts de clases se consultan por
+identidad; sus etiquetas únicas indexan la colección pública. Las referencias
+textuales ambiguas se rechazan.
+
+El análisis de capturas propaga dependencias de entorno hasta un punto fijo.
+Las instancias locales retienen sus entornos; los procedimientos de métodos
+incluyen el offset necesario para ligar también el entorno con `METHOD_REF`.
+El verificador comprueba firmas conocidas y prohíbe acceder directamente a otro
+frame. La validación de salidas no `void` ocurre antes de publicar IR.
+
+El worker del IDE captura una revisión de documento. Cambiar texto o identidad
+invalida resultados y exportación; señales atrasadas no sustituyen el documento
+actual. El resumen usa la ruta del resultado de compilación.
+
 ## Flujo completo
 
 ~~~text

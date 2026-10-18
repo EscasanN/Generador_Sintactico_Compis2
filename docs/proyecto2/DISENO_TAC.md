@@ -1,11 +1,12 @@
-# Diseño del lenguaje intermedio TAC — contrato del Bloque 1
+# Diseño del lenguaje intermedio TAC — contrato integrado
 
 ## Propósito y estado
 
-Este documento describe la representación y las APIs implementadas por Daniel
-en el Bloque 1. Los opcodes reservados para sentencias, objetos, listas y
-closures son parte del catálogo tipado; su lowering desde programas completos
-corresponde a los bloques posteriores.
+Este documento describe la IR integrada de los cuatro bloques, incluido el
+cierre de auditoría de Daniel. El núcleo y las expresiones son del Bloque 1;
+anotaciones y layouts, del Bloque 2; el lowering integral, del Bloque 3; y la
+presentación y exportación, del Bloque 4. Todos los opcodes del catálogo tienen
+forma estructurada y formato textual; el pipeline produce TAC verificado.
 
 El diseño prioriza:
 
@@ -30,7 +31,9 @@ El tipo del resultado está en su `Operand`. Cada instrucción conserva
 campos no usados contienen `None`, nunca una cadena ambigua. `Instruction`,
 `Operand`, `IRProcedure` e `IRProgram` son inmutables. Procedimientos y programa
 copian las secuencias recibidas a tuplas. Cada procedimiento conserva además
-`temporary_peak` para que el bloque de activaciones reserve sus slots.
+`temporary_peak` para reservar sus slots. Los métodos que reciben un entorno
+conservan `bound_environment_offset`: offset del entorno retenido en la instancia.
+El encabezado textual lo muestra como `[bound_env=N]`.
 
 Un operando tiene una clase explícita:
 
@@ -65,8 +68,8 @@ program
 
 Las funciones no se insertan dentro del flujo global mediante saltos
 artificiales. Cada función o método tiene una sección de procedimiento. Una
-función anidada también tiene etiqueta propia; al ejecutar su declaración se
-construye una closure que une esa etiqueta con el entorno de definición.
+función anidada también tiene etiqueta propia; al usarla como valor o invocarla
+con capturas se construye una closure que une etiqueta y entorno de definición.
 
 ## Catálogo mínimo de instrucciones
 
@@ -111,6 +114,13 @@ reciclar el mismo nombre mientras otra rama todavía puede usarlo.
 Los argumentos se evalúan de izquierda a derecha. Para métodos, closures y
 constructores pueden existir parámetros ocultos documentados: this y env.
 
+Una llamada directa cuenta todos los parámetros, incluidos los ocultos. El
+verificador contrasta ese número con `IRProcedure.parameters` si el destino está
+definido en el programa. Una función no `void` con salida alcanzable sin valor
+produce `IRGEN-MISSING-RETURN`, sin TAC; los bucles sin salida demostrable mediante
+saltos y condiciones booleanas inmediatas se aceptan. Su cierre estructural puede
+incluir un `return` vacío inalcanzable, nunca usado como valor implícito.
+
 ### Listas
 
 | Forma textual | Cuádruplo conceptual | Uso |
@@ -136,6 +146,17 @@ el layout y se materializará en un backend posterior. No se debe multiplicar el
 La creación de un objeto se traduce como reserva, paso implícito de this y
 llamada al constructor resuelto.
 
+Una clase local que necesita el entorno de definición reserva un slot oculto
+`$env`, después de sus campos propios y respetando el layout heredado. `new`
+guarda allí el entorno antes de llamar al constructor. Métodos y constructores
+lo reciben después de `this` y antes de los parámetros explícitos.
+
+`METHOD_REF` liga el receptor y, si el procedimiento tiene
+`bound_environment_offset`, también el entorno leído de ese slot de la instancia.
+Así `CLOSURE_CALL` solo cuenta argumentos explícitos, incluso para un método
+ligado que sobreviva al creador. Esta información está en la IR estructurada y
+no depende de reinterpretar el texto ni de un frame ya expirado.
+
 ### Closures y acceso no local
 
 | Forma textual | Cuádruplo conceptual | Uso |
@@ -149,10 +170,16 @@ llamada al constructor resuelto.
 El enlace de acceso no se confunde con el enlace de control. El primero sigue
 anidamiento léxico; el segundo identifica al caller dinámico.
 
+Las capturas son compartidas: el dueño y las closures leen y escriben la misma
+celda mediante `ENV_GET`/`ENV_SET`. La necesidad de `env` se propaga también por
+referencias a funciones hermanas y construcción de clases locales. Un `this`
+capturado es un símbolo interno asociado al método dueño; un miembro implícito
+usa el receptor de la declaración resuelta, incluso desde otra clase anidada.
+
 ### Excepciones de la gramática actual
 
 El mínimo oficial no exige try/catch, pero Compiscript ya lo acepta. Para no
-generar código incorrecto silenciosamente se reserva:
+generar código incorrecto silenciosamente se emiten:
 
 | Forma textual | Uso |
 |---|---|
@@ -162,6 +189,11 @@ generar código incorrecto silenciosamente se reserva:
 
 Estas operaciones son IR de alto nivel. Su implementación de runtime queda
 fuera de este proyecto.
+
+`TRY_BEGIN` tiene ruta normal y ruta excepcional al handler. La transferencia
+excepcional retira el manejador activado antes de entrar a `CATCH`. En la ruta
+normal, `TRY_END` lo retira explícitamente; `break`, `continue` y `return`
+retiran previamente solo los manejadores de los ámbitos que abandonan.
 
 ## Reglas de traducción
 
@@ -331,7 +363,7 @@ predeclaran, por lo que su etiqueta existe antes de generar el cuerpo.
 Una función anidada recibe un parámetro oculto env. Si captura x:
 
 ~~~text
-e0 = env_new 1
+e0 = env_new 16
 env_set e0, 0, x
 c0 = closure fn_interna, e0
 ~~~
@@ -339,11 +371,14 @@ c0 = closure fn_interna, e0
 Dentro de la función:
 
 ~~~text
-t0 = env_get env, 0, 0
+t0 = env_get env, 0:0
 ~~~
 
 Si la captura puede sobrevivir al frame creador, el entorno es un objeto de
 heap abstracto. El proyecto modela esa decisión; no implementa un recolector.
+El tamaño se expresa en bytes: una captura `integer` en 0 ocupa 4 bytes y el
+enlace de acceso se alinea en 8; el entorno completo mide 16 bytes. Los entornos
+retenidos por instancias se consideran de heap de manera conservadora.
 
 ### Objeto y constructor
 
@@ -397,6 +432,10 @@ Reglas:
 6. el resultado entregado al caller sigue activo hasta que este lo consume.
 7. el verificador rechaza doble liberación, uso después de liberar y dos valores
    vivos con el mismo nombre.
+
+Los slots de frame representan capacidad abstracta del pico, no un mapeo de
+registros físicos. Conservan nombres únicos; si el usuario declara `t0`, el slot
+temporal homónimo se muestra como `t0#2`, sin cambiar el `t0` de la IR.
 
 Ejemplo:
 
@@ -486,13 +525,17 @@ El verificador del Bloque 1 comprueba:
 - todo salto apunta a una etiqueta definida en el mismo procedimiento;
 - cada procedimiento termina con retorno o transferencia definitiva;
 - cantidad declarada de argumentos coherente con la secuencia de PARAM;
+- firma de procedimientos conocidos coherente con la llamada y sus ocultos;
+- ausencia de accesos directos a parámetros o locales de otro frame;
+- descriptor de método ligado coherente con `this`, seguido de `env`;
 - ubicación fuente presente en instrucciones derivadas del programa.
 
 La verificación de tamaños, alineación, solapamiento de offsets, tipos de
 argumentos de una función y enlaces de entornos pertenece a los bloques de
 layouts y lowering completo. `CALL` permite una etiqueta externa de runtime;
-el Bloque 1 comprueba forma y cantidad de argumentos, no vinculación de
-funciones.
+se conserva ese soporte externo. Para procedimientos incluidos en `IRProgram`
+también se comprueba la cantidad de parámetros reales; no se realiza enlace de
+bibliotecas externas ni ejecución del runtime.
 
 Los errores del verificador son fallos de compilación con categoría IR, no
 errores semánticos del usuario.

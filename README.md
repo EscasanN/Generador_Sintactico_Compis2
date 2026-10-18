@@ -69,7 +69,7 @@ tests/
 - Graphviz en `PATH` (opcional; solo para la imagen del árbol en el IDE).
 
 ```powershell
-git clone <url-del-repositorio>
+git clone --branch feature/proyecto2-codegen https://github.com/EscasanN/Generador_Sintactico_Compis2.git
 cd Generador_Sintactico_Compis2
 python -m pip install -r requirements.txt
 ```
@@ -90,6 +90,8 @@ python -m src.main
 2. **Compilar** (botón, `Ctrl+R` o `F5`). Compila el contenido actual del
    editor, aunque no esté guardado, en un hilo separado; el botón se deshabilita
    mientras compila y los resultados anteriores se limpian al empezar.
+   Editar o cambiar de documento invalida los resultados; una respuesta atrasada
+   del worker no se muestra como si perteneciera al documento actual.
 3. Pestañas de resultado:
    - **Árbol**: imagen Graphviz y árbol navegable.
    - **Semántica**: diagnósticos semánticos y tabla de símbolos por ámbito.
@@ -133,6 +135,10 @@ Códigos de salida:
 El IDE y la CLI muestran exactamente el mismo TAC porque ambos usan
 `compile_compiscript` y el mismo formato (`tac_document`).
 
+Si una exportación se rechaza, un `.tac` existente no se sobrescribe ni elimina:
+la CLI indica que no fue actualizado. Las funciones no `void` con una salida
+alcanzable sin valor se rechazan con `IRGEN-MISSING-RETURN`.
+
 ## Pruebas
 
 ```powershell
@@ -157,6 +163,8 @@ Programas preparados:
 
 - válido completo: `tests/cps/codegen/validos/DEMO-completa.cps`;
 - fallido: `tests/cps/codegen/invalidos/DEMO-fallida.cps`.
+- regresiones del cierre y guía ampliada:
+  [AUDITORIA_FINAL.md](docs/proyecto2/AUDITORIA_FINAL.md).
 
 ## Documentación
 

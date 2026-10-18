@@ -224,7 +224,7 @@ cubran todos los IDs de EXP, CTL, FUN, CLS, LST, TMP, PIPE-03/05 y EXT-01…07.
 | PIPE-01 | `codegen/test_pipeline.py` | I `PIPE-01-error-lexico.cps`, `PIPE-01-error-sintactico.cps` |
 | PIPE-02 | `codegen/test_pipeline.py` | I `PIPE-02-error-tipos.cps`, `DEMO-fallida.cps` |
 | PIPE-03 | `codegen/test_pipeline.py` | V `EXT-01-print-try.cps` |
-| PIPE-04 | `codegen/test_pipeline.py` | I `PIPE-04-error-generacion.cps`, `PIPE-04-this-en-funcion-anidada.cps` |
+| PIPE-04 | `codegen/test_pipeline.py`, `codegen/test_control_completion.py` | I `PIPE-04-error-generacion.cps`, `FUN-04-retorno-faltante.cps` |
 | PIPE-05 | `codegen/test_pipeline.py` | V `DEMO-completa.cps` (golden) |
 | OUT-01, OUT-02 | `test_main_cli.py` (`test_out_01_…`, `test_out_02_…`) | V `DEMO-completa.cps` |
 | OUT-03 | `gui/test_codegen_results.py` (`test_out_03_…`) | V `DEMO-completa.cps` |
@@ -245,6 +245,24 @@ cubran todos los IDs de EXP, CTL, FUN, CLS, LST, TMP, PIPE-03/05 y EXT-01…07.
 | EXT-05 | `codegen/test_objects.py` | V `CLS-06-herencia.cps` |
 | EXT-07 | `codegen/test_control_flow_lowering.py` | V `EXT-01-print-try.cps` |
 | EXT-08 | `codegen/test_pipeline.py` | I `PIPE-04-error-generacion.cps` |
+
+## Regresiones del cierre final
+
+La evidencia original se complementa con casos que fallaban pese a pasar la
+suite nominal; el registro de ejecución está en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
+
+| IDs | Regresión adicional | Evidencia |
+|---|---|---|
+| IR-06, FUN-03 | Firmas conocidas, accesos a otro frame y descriptor de método ligado | `codegen/test_final_compliance.py` |
+| EXP-07, EXT-03 | Conversión por rama del ternario mixto | `EXP-07-ternario-mixto.cps`, `codegen/test_final_compliance.py` |
+| TMP-05, RUN-04 | Identificadores t0/t1 no colisionan con slots | `TMP-05-identificadores-temporales.cps` |
+| CLS-01, SYM-04, SYM-06 | Clases homónimas y offsets de campos heredados | `codegen/test_final_compliance.py` |
+| FUN-07, FUN-08, RUN-03 | Dependencias de funciones hermanas y captura de this | `FUN-07-closures-hermanas.cps`, `CLS-04-this-en-funcion-anidada.cps` |
+| CLS-02, CLS-04, CLS-05 | Capturas en clase local y método ligado que escapa | `CLS-04-clase-local-capturada.cps` |
+| FUN-04, PIPE-04 | Salida no void sin valor rechazada sin TAC | `FUN-04-retorno-faltante.cps`, `codegen/test_control_completion.py` |
+| EXT-07, CTL-07, CTL-08 | Manejadores retirados en transferencias y CFG excepcional | `EXT-07-salidas-try.cps`, `codegen/test_control_completion.py` |
+| IDE-01, IDE-03 | Edición/apertura/guardar como durante worker; resultado obsoleto descartado | `gui/test_codegen_results.py` |
+| OUT-02 | Exportación rechazada preserva y advierte sobre archivo previo | `test_main_cli.py` |
 
 ## Comandos esperados
 
@@ -268,6 +286,7 @@ cumplirse todo lo siguiente:
 - las funciones anidadas usan entorno léxico;
 - la tabla extendida y frames son visibles;
 - IDE y CLI recorren el mismo pipeline;
-- una entrada inválida no produce ni conserva TAC;
+- una entrada inválida no produce TAC y el IDE no conserva TAC vigente; un
+  archivo exportado antes se preserva en disco con una advertencia de la CLI;
 - la documentación coincide con el comportamiento;
 - el historial identifica las contribuciones individuales.

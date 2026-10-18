@@ -38,7 +38,7 @@ Un hecho ausente lanza `MissingFactError` (subclase de `LookupError`), que
 Para `captured`, `depth` = saltos de enlace de acceso a partir del `env` recibido
 (0 = el entorno que creó la función que la encierra; 1 = un salto más) y `offset` = posición en ese entorno.
 
-**`RuntimeLayouts`**: `symbols` (`SymbolLayoutTable`), `classes` (por nombre),
+**`RuntimeLayouts`**: `symbols` (`SymbolLayoutTable`), `classes` (por etiqueta única),
 `frames`, `global_frame`; `frame_for(symbol)`, `frame_by_label`, `class_layout`,
 `with_temporary_peaks`, `finalize_temporaries(IRProgram)`.
 
@@ -86,7 +86,9 @@ SYM-01…SYM-06, RUN-01…RUN-04.
 
 ## Limitaciones conocidas
 
-- La variable capturada se copia al entorno (semántica por valor, como en `DISENO_TAC.md`);
-  mutaciones posteriores desde la closure no se reflejan en el dueño.
+- La limitación original de captura por valor quedó resuelta por el generador:
+  dueño y closures usan celdas compartidas del entorno. El cierre posterior
+  también propaga entornos entre funciones hermanas, captura receptores y retiene
+  entornos en instancias locales; véase [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
 - Los slots de temporales miden 8 bytes sin importar su tipo.
 - Los temporales del código global se reservan en `global_frame` con `global_peak`.

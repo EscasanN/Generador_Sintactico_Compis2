@@ -4,6 +4,9 @@ Entrega para el Bloque 4. A partir de un `.cps` aceptado, produce TAC verificado
 tabla extendida y los registros de activación. No presenta resultados en Qt ni en la
 CLI: eso lo consume Nelson mediante `compile_compiscript`.
 
+Los resultados de pruebas de este documento corresponden a la entrega original.
+El cierre posterior y sus regresiones están en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
+
 ## Archivos
 
 | Archivo | Contenido |
@@ -83,7 +86,8 @@ la API de bajo nivel que usan las pruebas.
 | `IRGEN-UNSUPPORTED-NODE` | Alternativa sin handler o construcción no soportada (acceso estático `C.campo`, clase usada como valor). |
 | `IRGEN-BREAK-OUTSIDE-LOOP` / `IRGEN-CONTINUE-OUTSIDE-LOOP` | `break`/`continue` sin bucle en el procedimiento actual. La semántica lo acepta dentro de una función declarada en un bucle. |
 | `IRGEN-ENV-UNAVAILABLE` | La función actual no recibe un `env` con el que alcanzar el entorno de una closure. |
-| `IRGEN-THIS-UNAVAILABLE` | `this` o un miembro sin `this` fuera de un método o constructor (por ejemplo, en una función anidada en un método). |
+| `IRGEN-THIS-UNAVAILABLE` | No existe un receptor léxico disponible; las funciones anidadas válidas sí lo capturan. |
+| `IRGEN-MISSING-RETURN` | Una función no void tiene una salida alcanzable sin devolver valor. |
 | `IRGEN-VOID-VALUE` | Una llamada void usada como valor. |
 | `IRGEN-MISSING-FACT` / `-SYMBOL` / `-FRAME` / `-LAYOUT` / `-LOCATION` | Falta un hecho de los bloques 1 o 2. |
 | `IRGEN-LAYOUT` | El modelo de memoria rechazó un frame (por ejemplo, menos slots que el pico). |
@@ -214,8 +218,8 @@ Ejemplo real de `foreach`:
   modificarlos (asignación, llamada o `new`).
 - **`switch` y `break`.** `break` y `continue` pertenecen al bucle más cercano, como en
   la semántica vigente. Los casos conservan la caída.
-- **Retorno faltante.** Una función no void cuyo final es alcanzable termina con un
-  `return` sin valor: no se inventa uno (pregunta pendiente en `REGLAS_Y_DECISIONES.md`).
+- **Retorno faltante.** El cierre final rechaza una salida alcanzable sin valor con
+  `IRGEN-MISSING-RETURN`. Se conserva el perfil semántico; la comprobación es de codegen.
 
 ## Pruebas
 
@@ -241,7 +245,7 @@ Casos negativos propios:
 - `break` dentro de una función declarada en un bucle;
 - `IRGEN-ENV-UNAVAILABLE`;
 - acceso estático `C.v`;
-- `this` en una función anidada;
+- retorno no void faltante (regresión agregada durante el cierre);
 - error del verificador;
 - `.cps` sintáctica y semánticamente inválidos.
 
@@ -281,17 +285,14 @@ Para Nelson:
 
 ## Limitaciones conocidas
 
-- **Llamada a una closure hermana.** Una función que no captura nada no recibe `env`.
-  Por eso no puede llamar a una función hermana que sí lo necesita: se reporta
-  `IRGEN-ENV-UNAVAILABLE`. El origen es que `needs_env` se calcula solo a partir de
-  variables capturadas, no de llamadas.
-- **`this` dentro de funciones anidadas en métodos.** No se captura y produce
-  `IRGEN-THIS-UNAVAILABLE`.
+- Las limitaciones originales de closures hermanas y `this` anidado quedaron
+  corregidas durante el cierre. También se retienen entornos de clases locales
+  y de métodos ligados; véase [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
 - **Acceso estático `C.campo`.** La semántica lo acepta, pero produce
   `IRGEN-UNSUPPORTED-NODE`.
-- **try/catch.** Es IR de alto nivel: el verificador no modela el salto implícito a
-  `Lcatch`. Puede fallar la verificación (con diagnóstico, nunca con TAC aceptado) si
-  el bloque `try` siempre transfiere control y la unión libera un temporal externo.
+- **try/catch.** Es IR de alto nivel. El cierre añadió la ruta excepcional del
+  verificador y la retirada de manejadores antes de abandonar un bloque protegido.
+  No implementa ejecución de excepciones en una máquina destino.
 - **Métodos.** Se resuelven por el tipo estático del receptor; no hay vtables.
 - **Conversiones.** int→float en aritmética mixta se hace con `cast`; no hay otras
   conversiones implícitas.

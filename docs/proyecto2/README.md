@@ -9,6 +9,9 @@ tabla de símbolos producidos por la entrega semántica.
 > y las entregas en bloque2-entrega.md, bloque3-entrega.md y
 > [bloque4-entrega.md](bloque4-entrega.md).
 
+El cierre posterior de regresiones, decisiones y validación de la integración
+está en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
+
 La fuente oficial es
 [proyecto2-compiladores.md](proyecto2-compiladores.md). La propuesta también
 incorpora los apuntes del curso sobre generación de código intermedio y

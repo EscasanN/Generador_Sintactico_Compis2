@@ -10,6 +10,12 @@ etiquetas y registros de activación.
 El plan conserva la entrega semántica calificada y agrega una fase nueva con
 contratos propios.
 
+El cierre de auditoría autorizado por Daniel se realiza en
+`fix/proyecto2-final-compliance`, desde la entrega completa del Bloque 4, para
+integrarse en `feature/proyecto2-codegen`. Su alcance, pruebas y decisiones están
+en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md); conserva la historia individual de los
+cuatro bloques.
+
 ## Estrategia de ejecución
 
 Se usan cuatro bloques secuenciales y cerrados:
