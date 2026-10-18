@@ -1090,4 +1090,3 @@ def _build_frame(
     )
     frame = builder.build(captures, environment, needs_env)
     return frame, builder.symbol_layouts
-

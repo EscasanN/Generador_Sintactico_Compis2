@@ -112,6 +112,10 @@ También se verificaron los códigos de salida de la CLI: demo completo, clase
 local capturada y closures hermanas terminan en 0; retorno faltante termina en
 1, informa `IRGEN-MISSING-RETURN` y deja stdout sin TAC.
 
+El merge local de integración `3547db8` volvió a pasar la suite completa:
+**852 passed en 29.96 s**. El cierre posterior únicamente normaliza dos finales
+de archivo heredados y registra este resultado; no cambia lógica ni pruebas.
+
 Para presentar:
 
 1. Abrir `DEMO-completa.cps` en el IDE; mostrar TAC, procedimientos, tabla

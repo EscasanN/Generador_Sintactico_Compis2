@@ -381,4 +381,3 @@ class SymbolLayoutTable:
             }
             for layout in self._layouts
         )
-
