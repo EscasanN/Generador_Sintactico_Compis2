@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QPixmap
+from PyQt6.QtGui import QAction, QCloseEvent, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Compiscript IDE")
+        self.setWindowTitle("Compiscript IDE[*]")
         self.setMinimumSize(1180, 760)
 
         self._g4_path = str(DEFAULT_GRAMMAR)
@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self._last_bundle: dict | None = None
         self._document_revision = 0
         self._document_snapshot: tuple[str | None, str] = (None, "")
+        self._saved_text = ""
         self._palette: Palette = LIGHT
 
         self._build_menu()
@@ -278,8 +279,22 @@ class MainWindow(QMainWindow):
         self._theme_btn.setText(
             "Modo claro" if palette.name == "dark" else "Modo oscuro"
         )
-        if self._last_bundle is not None:
-            self._render_bundle(self._last_bundle)
+        if self._results.toPlainText():
+            # Only recolor the summary's inline HTML. Rebuilding the bundle
+            # would reset tabs, searches, tree expansion and selections.
+            cursor = self._results.textCursor()
+            anchor, position = cursor.anchor(), cursor.position()
+            vertical = self._results.verticalScrollBar().value()
+            horizontal = self._results.horizontalScrollBar().value()
+            self._results.setHtml(
+                self._build_results_html(self._results.toPlainText().splitlines())
+            )
+            cursor = self._results.textCursor()
+            cursor.setPosition(anchor)
+            cursor.setPosition(position, cursor.MoveMode.KeepAnchor)
+            self._results.setTextCursor(cursor)
+            self._results.verticalScrollBar().setValue(vertical)
+            self._results.horizontalScrollBar().setValue(horizontal)
 
     def _toggle_theme(self) -> None:
         self._apply_theme(DARK if self._palette.name == "light" else LIGHT)
@@ -296,6 +311,8 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
+        if not self._confirm_document_replacement():
+            return
         path = self._ensure_cps_suffix(path)
         try:
             Path(path).write_text("", encoding="utf-8")
@@ -305,6 +322,7 @@ class MainWindow(QMainWindow):
         self._input_path = path
         self._active_file = path
         self._set_file_slot("input", "Compiscript", path)
+        self._saved_text = ""
         self._editor.clear()
         self._document_changed()
 
@@ -316,6 +334,8 @@ class MainWindow(QMainWindow):
             "Compiscript (*.cps);;Todos los archivos (*)",
         )
         if not path:
+            return
+        if not self._confirm_document_replacement():
             return
         if self._load_into_editor(path):
             self._set_file_slot("input", "Compiscript", path)
@@ -329,7 +349,7 @@ class MainWindow(QMainWindow):
 
     def _on_file_clicked(self, item: QListWidgetItem) -> None:
         if item.data(Qt.ItemDataRole.UserRole) == "input" and self._input_path:
-            self._load_into_editor(self._input_path)
+            self._editor.setFocus()
 
     def _load_into_editor(self, path: str) -> bool:
         try:
@@ -338,25 +358,28 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", str(exc))
             return False
         self._input_path = path
+        self._saved_text = text
         self._editor.setPlainText(text)
         self._active_file = path
         self._document_changed()
         return True
 
-    def _save_file(self) -> None:
+    def _save_file(self) -> bool:
         if self._active_file is None:
-            self._save_file_as()
-            return
+            return self._save_file_as()
         try:
             Path(self._active_file).write_text(
                 self._editor.toPlainText(), encoding="utf-8"
             )
         except OSError as exc:
             QMessageBox.critical(self, "Error", str(exc))
-            return
+            return False
+        self._saved_text = self._editor.toPlainText()
+        self._document_changed()
         self.statusBar().showMessage(f"Guardado: {self._active_file}")
+        return True
 
-    def _save_file_as(self) -> None:
+    def _save_file_as(self) -> bool:
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Guardar programa Compiscript",
@@ -364,22 +387,48 @@ class MainWindow(QMainWindow):
             "Compiscript (*.cps)",
         )
         if not path:
-            return
+            return False
         path = self._ensure_cps_suffix(path)
         try:
             Path(path).write_text(self._editor.toPlainText(), encoding="utf-8")
         except OSError as exc:
             QMessageBox.critical(self, "Error", str(exc))
-            return
+            return False
         self._input_path = path
         self._active_file = path
         self._set_file_slot("input", "Compiscript", path)
-
+        self._saved_text = self._editor.toPlainText()
         self._document_changed()
+        return True
+
+    def _confirm_document_replacement(self) -> bool:
+        """Permit replacing the buffer only after a successful user decision."""
+        if not self._editor.document().isModified():
+            return True
+        choice = QMessageBox.warning(
+            self, "Cambios sin guardar",
+            "El programa tiene cambios sin guardar. ¿Desea guardarlos?",
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if choice == QMessageBox.StandardButton.Save:
+            return self._save_file()
+        return choice == QMessageBox.StandardButton.Discard
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Do not discard an edited program when the window is closed."""
+        if self._confirm_document_replacement():
+            event.accept()
+        else:
+            event.ignore()
 
     def _document_changed(self) -> None:
         """Invalidate results when the buffer or its document identity changes."""
         snapshot = (self._input_path, self._editor.toPlainText())
+        modified = snapshot[1] != self._saved_text
+        self._editor.document().setModified(modified)
+        self.setWindowModified(modified)
         if snapshot == self._document_snapshot:
             return
         self._document_snapshot = snapshot

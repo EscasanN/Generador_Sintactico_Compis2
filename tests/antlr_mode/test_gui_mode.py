@@ -19,7 +19,7 @@ def test_main_window_is_configured_only_for_compiscript() -> None:
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     try:
-        assert window.windowTitle() == "Compiscript IDE"
+        assert window.windowTitle().startswith("Compiscript IDE")
         assert window._file_list.count() == 1
         assert Path(window._g4_path) == GRAMMAR
         assert Path(window._profile_path) == PROFILE

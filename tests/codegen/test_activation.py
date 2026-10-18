@@ -240,10 +240,11 @@ def test_method_frame_starts_with_a_hidden_this(compile_facts):
       function dobla(k: integer): integer { return this.x * k; }
     }
     """
-    _, facts = compile_facts(source)
+    run, facts = compile_facts(source)
     frame = facts.layouts.frame_by_label("P.dobla")
     assert [s.name for s in frame.hidden_parameters] == ["this"]
-    assert frame.slot("this").type == ClassType("P")
+    declared = run.semantic_result.symbol_table.global_scope.resolve_local("P")
+    assert frame.slot("this").type is declared.type
     assert frame.slot("this").offset == 32 and frame.slot("k").offset == 40
 
 
