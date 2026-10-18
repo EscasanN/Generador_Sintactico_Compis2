@@ -36,6 +36,7 @@ from src.codegen.activation import (
     lexical_level,
 )
 from src.codegen.contracts import Address, CodegenError, ValueRef
+from src.codegen.control_flow import can_fall_through
 from src.codegen.ir import OpCode, Operand, OperandKind
 from src.codegen.layout import StorageClass
 from src.semantic.diagnostics import SourceLocation
@@ -93,6 +94,7 @@ class CallableLowering:
         return_type: Type,
         body: ParseTreeNode | None,
         preamble: Callable[[ProcedureContext], None] | None = None,
+        *, bound_environment_offset: int | None = None,
     ) -> None:
         """Open a procedure, run its prologue and body, close it with a final return."""
         location = self.location(node)
@@ -105,11 +107,13 @@ class CallableLowering:
             for slot in frame.parameters
         )
         self.builder.begin_procedure(
-            Operand(OperandKind.LABEL, frame.label), (*hidden.values(), *declared)
+            Operand(OperandKind.LABEL, frame.label), (*hidden.values(), *declared),
+            bound_environment_offset=bound_environment_offset,
         )
         self.reachable = True
-        saved_targets = (self.break_targets, self.continue_targets)
+        saved_targets = (self.break_targets, self.continue_targets, self.handlers, self.loop_handler_depths)
         self.break_targets, self.continue_targets = [], []
+        self.handlers, self.loop_handler_depths = [], {}
         context = ProcedureContext(
             frame, scope, return_type, hidden, self._open_environment(frame, hidden, location)
         )
@@ -120,11 +124,16 @@ class CallableLowering:
             if body is not None:
                 self.lower_block(body)
             if self.reachable:
+                if return_type not in (VOID, UNKNOWN) and can_fall_through(self.builder.current_code):
+                    raise CodegenError(
+                        "IRGEN-MISSING-RETURN", f"{frame.label} can finish without returning {return_type}",
+                        location,
+                    )
                 self.builder.emit(OpCode.RETURN, location=location)
                 self.reachable = False
         finally:
             self.function_stack.pop()
-            self.break_targets, self.continue_targets = saved_targets
+            self.break_targets, self.continue_targets, self.handlers, self.loop_handler_depths = saved_targets
         if context.environment is not None:
             self.builder.temporaries.release(context.environment)
         self.builder.end_procedure()
@@ -170,7 +179,8 @@ class CallableLowering:
             if slot.symbol is not None:
                 address = self.facts.address_for(slot.symbol)
             else:
-                symbol = Symbol(slot.name, SymbolKind.PARAMETER, type_, False, location)
+                symbol = Symbol(slot.name, SymbolKind.PARAMETER, type_, False, location,
+                                {"codegen_hidden": True})
                 address = Address(
                     symbol, StorageClass.PARAMETER.value, slot.name, slot.offset, frame.label
                 )
@@ -195,11 +205,13 @@ class CallableLowering:
             )
         expression = self.child(node, "expression")
         if expression is None:
+            self.unwind_handlers(0, location)
             self.builder.emit(OpCode.RETURN, location=location)
         else:
             value = self.coerce(
                 self.lower_expression(expression), self.function_stack[-1].return_type, location
             )
+            self.unwind_handlers(0, location)
             self.builder.emit(OpCode.RETURN, value.operand, location=location)
         self.reachable = False
 
@@ -346,7 +358,7 @@ class CallableLowering:
         value = self.expressions.snapshot(
             self.coerce(self.lower_expression(value_node), symbol.type, location), location
         )
-        self.store_symbol(node, symbol, value, location)
+        self.store_symbol(target, symbol, value, location)
         return value
 
     # -- calls -------------------------------------------------------------------

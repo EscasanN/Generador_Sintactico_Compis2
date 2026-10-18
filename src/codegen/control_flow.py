@@ -27,11 +27,49 @@ from contextlib import contextmanager
 
 from src.antlr_mode.parse_tree import ParseTreeNode
 from src.codegen.contracts import CodegenError, ValueRef
-from src.codegen.ir import OpCode, Operand, OperandKind
+from src.codegen.ir import Instruction, OpCode, Operand, OperandKind
+from src.semantic.diagnostics import SourceLocation
 from src.semantic.types import BOOLEAN, INTEGER
 
 _FOR_WITH_CONDITION = frozenset({"ForCondNoUpdate", "ForCondUpdate"})
 _FOR_WITH_UPDATE = frozenset({"ForNoCondUpdate", "ForCondUpdate"})
+
+
+def can_fall_through(instructions: tuple[Instruction, ...]) -> bool:
+    """Whether entry can reach the end, accounting for immediate conditions.
+
+    This is validation, not optimization: it neither removes nor rewrites TAC.
+    Unknown conditions and exceptional transfers conservatively keep both paths.
+    """
+    labels = {str(i.result.value): n for n, i in enumerate(instructions)
+              if i.opcode is OpCode.LABEL and i.result is not None}
+    pending, seen = [0], set()
+    while pending:
+        index = pending.pop()
+        if index == len(instructions):
+            return True
+        if index in seen:
+            continue
+        seen.add(index)
+        item = instructions[index]
+        target = labels.get(str(item.result.value)) if item.result else None
+        if item.opcode is OpCode.RETURN:
+            continue
+        if item.opcode is OpCode.GOTO:
+            if target is not None:
+                pending.append(target)
+            continue
+        if item.opcode in (OpCode.IF_TRUE, OpCode.IF_FALSE):
+            if item.arg1.kind is OperandKind.CONSTANT and type(item.arg1.value) is bool:
+                taken = item.arg1.value == (item.opcode is OpCode.IF_TRUE)
+                pending.append(target if taken and target is not None else index + 1)
+                continue
+            if target is not None:
+                pending.append(target)
+        if item.opcode is OpCode.TRY_BEGIN and target is not None:
+            pending.append(target)
+        pending.append(index + 1)
+    return False
 
 
 class ControlFlowLowering:
@@ -54,11 +92,15 @@ class ControlFlowLowering:
         """Push a loop's destinations; they are popped even if lowering fails."""
         self.break_targets.append(exit_label)
         self.continue_targets.append(continue_label)
+        for target in (exit_label, continue_label):
+            self.loop_handler_depths[str(target.value)] = len(self.handlers)
         try:
             yield
         finally:
             self.break_targets.pop()
             self.continue_targets.pop()
+            for target in (exit_label, continue_label):
+                self.loop_handler_depths.pop(str(target.value))
 
     # -- conditionals ------------------------------------------------------------
 
@@ -218,7 +260,9 @@ class ControlFlowLowering:
             raise CodegenError(
                 "IRGEN-BREAK-OUTSIDE-LOOP", "break has no enclosing loop", self.location(node)
             )
-        self.jump(self.break_targets[-1], self.location(node))
+        target = self.break_targets[-1]
+        self.unwind_handlers(self.loop_handler_depths[str(target.value)], self.location(node))
+        self.jump(target, self.location(node))
 
     def lower_continue(self, node: ParseTreeNode) -> None:
         if not self.continue_targets:
@@ -227,7 +271,14 @@ class ControlFlowLowering:
                 "continue has no enclosing loop",
                 self.location(node),
             )
-        self.jump(self.continue_targets[-1], self.location(node))
+        target = self.continue_targets[-1]
+        self.unwind_handlers(self.loop_handler_depths[str(target.value)], self.location(node))
+        self.jump(target, self.location(node))
+
+    def unwind_handlers(self, retained: int, location: SourceLocation) -> None:
+        """Remove only the protected scopes abandoned by this transfer."""
+        for _ in self.handlers[retained:]:
+            self.builder.emit(OpCode.TRY_END, location=location)
 
     # -- exceptions --------------------------------------------------------------
 
@@ -240,7 +291,11 @@ class ControlFlowLowering:
         end = self.builder.labels.next("try_end")
         self.target(catch)
         self.builder.emit(OpCode.TRY_BEGIN, result=catch, location=location)
-        self.lower_block(protected)
+        self.handlers.append(catch)
+        try:
+            self.lower_block(protected)
+        finally:
+            self.handlers.pop()
         if self.reachable:
             self.builder.emit(OpCode.TRY_END, location=location)
         self.jump(end, location)

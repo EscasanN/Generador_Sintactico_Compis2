@@ -6,6 +6,7 @@ from collections import deque
 from dataclasses import dataclass
 
 from src.codegen.ir import IRProgram, Instruction, OpCode, Operand, OperandKind
+from src.codegen.contracts import Address
 from src.semantic.diagnostics import SourceLocation
 
 
@@ -104,6 +105,18 @@ class IRVerifier:
                     "IR-PROCEDURE-DUPLICATE", f"duplicate procedure {label}"
                 ))
             procedure_labels.add(label)
+            hidden = [
+                (index, getattr(parameter.value, "name", None))
+                for index, parameter in enumerate(procedure.parameters)
+                if getattr(getattr(parameter.value, "symbol", None), "metadata", {}).get("codegen_hidden")
+            ]
+            hidden_names = {name for _, name in hidden}
+            needs_binding = "this" in hidden_names and "env" in hidden_names
+            if (needs_binding != (procedure.bound_environment_offset is not None)
+                    or (needs_binding and hidden[:2] != [(0, "this"), (1, "env")])):
+                diagnostics.append(IRDiagnostic(
+                    "IR-METHOD-ENV", f"{label} has inconsistent bound-method environment metadata"
+                ))
         signatures = {str(p.label.value): len(p.parameters) for p in program.procedures}
         for unit in (program.global_code, *(p.instructions for p in program.procedures)):
             for item in unit:
@@ -140,6 +153,16 @@ class IRVerifier:
                     "IR-LOCATION", f"missing location in {unit} at {index}"
                 ))
             self._check_shape(item, diagnostics)
+            for operand in (item.arg1, item.arg2, item.result):
+                if operand is None or operand.kind is not OperandKind.SYMBOL:
+                    continue
+                address = operand.value
+                if (isinstance(address, Address) and address.storage in ("local", "captured", "parameter")
+                        and address.scope is not None and address.scope != unit):
+                    diagnostics.append(IRDiagnostic(
+                        "IR-FRAME-ACCESS", f"{unit} directly accesses the frame of {address.scope}",
+                        item.source_location,
+                    ))
             if item.opcode is OpCode.LABEL and item.result is not None:
                 name = str(item.result.value)
                 if name in labels:
@@ -347,6 +370,6 @@ class IRVerifier:
         if item.opcode is OpCode.GOTO:
             return (target,) if target is not None else ()
         following = (index + 1,) if index + 1 < length else ()
-        if item.opcode in (OpCode.IF_TRUE, OpCode.IF_FALSE) and target is not None:
+        if item.opcode in (OpCode.IF_TRUE, OpCode.IF_FALSE, OpCode.TRY_BEGIN) and target is not None:
             return following + (target,)
         return following

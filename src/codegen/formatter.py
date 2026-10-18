@@ -98,7 +98,11 @@ def format_program(program: IRProgram) -> str:
     sections.extend(f"    {format_instruction(item)}" for item in program.global_code)
     for procedure in program.procedures:
         parameters = ", ".join(format_operand(item) for item in procedure.parameters)
-        lines = [f"procedure {format_operand(procedure.label)}({parameters}):"]
+        binding = (
+            f" [bound_env={procedure.bound_environment_offset}]"
+            if procedure.bound_environment_offset is not None else ""
+        )
+        lines = [f"procedure {format_operand(procedure.label)}({parameters}){binding}:"]
         lines.extend(f"    {format_instruction(item)}" for item in procedure.instructions)
         sections.append("\n" + "\n".join(lines))
     return "\n".join(sections)

@@ -1,12 +1,16 @@
 """Regressions found in the final, cross-block delivery audit."""
 
+from dataclasses import replace
+
 import pytest
 
 from src.codegen.ir import IRProcedure, IRProgram, Instruction, OpCode, Operand, OperandKind
+from src.codegen.contracts import Address
 from src.codegen.pipeline import compile_compiscript
 from src.codegen.verifier import IRVerifier
 from src.semantic.diagnostics import SourceLocation
 from src.semantic.types import FLOAT, INTEGER
+from src.semantic.symbol_table import Symbol, SymbolKind
 
 
 def accepted(source):
@@ -171,3 +175,80 @@ def test_two_level_receiver_capture_preserves_the_access_chain():
     )
     frame = ir.layouts.frame_by_label("fn_C.f.g.h")
     assert [(c.symbol.name, c.depth) for c in frame.captures] == [("this", 1)]
+
+
+def test_nested_function_that_only_writes_a_bare_field_captures_this():
+    ir = accepted(
+        "class C { let x:integer=1; function f():integer { "
+        "function g() { x=2; } g(); return x; } } let c=new C(); let r=c.f();"
+    )
+    nested = ir.layouts.frame_by_label("fn_C.f.g")
+    assert nested.needs_env
+    code = next(p.instructions for p in ir.program.procedures if p.label.value == nested.label)
+    assert any(i.opcode is OpCode.FIELD_SET and i.arg1.kind is OperandKind.TEMPORARY for i in code)
+
+
+def test_bound_method_values_record_the_retained_environment_in_the_ir():
+    ir = accepted(
+        "function f():integer { let x:integer=7; class C { function m():integer { return x; } } "
+        "let c=new C(); let m=c.m; return m(); } let r=f();"
+    )
+    layout = next(iter(ir.layouts.classes.values()))
+    method = next(p for p in ir.program.procedures if p.label.value == "f.C.m")
+    assert method.bound_environment_offset == layout.environment_offset
+    assert method.bound_environment_offset is not None
+    assert "[bound_env=" in ir.text
+
+
+@pytest.mark.parametrize("member,call", [
+    ("let y:integer=x;", "c.y"),
+    ("function n():integer { return x; }", "c.n()"),
+    ("function n():integer { return m(); }", "c.n()"),
+    ("function n():integer { return (x=2); }", "c.n()"),
+])
+def test_nested_class_uses_the_receiver_of_the_resolved_outer_member(member, call):
+    ir = accepted(
+        "class A { let x:integer=7; function m():integer { return x; } "
+        f"function f():integer {{ class C {{ {member} }} let c=new C(); return {call}; }} }} "
+        "let a=new A(); let r=a.f();"
+    )
+    owner = ir.layouts.frame_by_label("A.f")
+    assert owner.environment is not None and owner.environment.slots[0].symbol.name == "this"
+
+
+def test_verifier_rejects_a_bound_method_missing_its_environment_descriptor():
+    ir = accepted(
+        "function f():integer { let x:integer=7; class C { function m():integer { return x; } } "
+        "let c=new C(); let m=c.m; return m(); } let r=f();"
+    )
+    broken = replace(ir.program, procedures=tuple(
+        replace(p, bound_environment_offset=None) if p.label.value == "f.C.m" else p
+        for p in ir.program.procedures
+    ))
+    assert "IR-METHOD-ENV" in {d.code for d in IRVerifier().verify(broken)}
+
+
+def test_verifier_rejects_foreign_frame_reads():
+    loc = SourceLocation(1, 1)
+    symbol = Symbol("x", SymbolKind.VARIABLE, INTEGER, True, loc)
+    address = Address(symbol, "local", "x", 32, "outer")
+    foreign = Operand(OperandKind.SYMBOL, address, INTEGER)
+    procedure = IRProcedure(Operand(OperandKind.LABEL, "inner"), (), (
+        Instruction(OpCode.RETURN, foreign, source_location=loc),
+    ))
+    assert "IR-FRAME-ACCESS" in {
+        d.code for d in IRVerifier().verify(IRProgram(procedures=(procedure,)))
+    }
+
+
+@pytest.mark.parametrize("order", [(1, 0, 2), (2, 0, 1), (0, 2, 1)])
+def test_verifier_requires_this_then_env_for_bound_methods(order):
+    ir = accepted(
+        "function f():integer { let x:integer=7; class C { function m(n:integer):integer { return x+n; } } "
+        "let c=new C(); let m=c.m; return m(1); } let r=f();"
+    )
+    broken = replace(ir.program, procedures=tuple(
+        replace(p, parameters=tuple(p.parameters[i] for i in order)) if p.label.value == "f.C.m" else p
+        for p in ir.program.procedures
+    ))
+    assert "IR-METHOD-ENV" in {d.code for d in IRVerifier().verify(broken)}

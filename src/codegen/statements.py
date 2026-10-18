@@ -127,20 +127,7 @@ class StatementLowering:
 
     def coerce(self, value: ValueRef, target: Type, location: SourceLocation) -> ValueRef:
         """Make an implicit integer→float widening explicit; other values pass through."""
-        if target != FLOAT or value.type != INTEGER:
-            return value
-        operand = value.operand
-        if operand.kind is OperandKind.CONSTANT and type(operand.value) is int:
-            return ValueRef(
-                Operand(OperandKind.CONSTANT, float(operand.value), FLOAT), FLOAT,
-                location=location,
-            )
-        result = self.builder.temporary(FLOAT)
-        self.builder.emit(
-            OpCode.CAST, operand, Operand(OperandKind.LABEL, "float"), result, location
-        )
-        value.release(self.builder, location)
-        return ValueRef(result, FLOAT, True, location)
+        return self.expressions.coerce(value, target, location)
 
     def lower_numeric_binary(self, node: ParseTreeNode) -> ValueRef:
         """Mixed integer/float operands are widened before the typed operation."""

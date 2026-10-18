@@ -91,6 +91,7 @@ class ObjectLowering:
         self.lower_procedure(
             node, frame, self.facts.scope_for(node), return_type,
             self.child(node, "block"), initialize if name == "constructor" else None,
+            bound_environment_offset=layout.environment_offset if frame.needs_env else None,
         )
 
     def _lower_implicit_constructor(self, node: ParseTreeNode, layout: ClassLayout) -> None:
@@ -101,6 +102,7 @@ class ObjectLowering:
         self.lower_procedure(
             node, frame, scope, VOID, None,
             lambda context: self._initialize_fields(layout, context, location),
+            bound_environment_offset=layout.environment_offset if frame.needs_env else None,
         )
 
     def _initialize_fields(
@@ -161,6 +163,14 @@ class ObjectLowering:
     def this_value(self, node: ParseTreeNode) -> ValueRef:
         context = self.function_stack[-1] if self.function_stack else None
         if context is not None:
+            binding = self.layouts.captures.receiver_bindings.get(id(node))
+            if binding is not None:
+                cell = self.environment_cell(node, binding)
+                if cell is not None and context.scope is not self.layouts.captures.owner_scope[id(binding)]:
+                    location = self.location(node)
+                    result = self.builder.temporary(binding.type)
+                    self.builder.emit(OpCode.ENV_GET, cell[0], cell[1], result, location)
+                    return ValueRef(result, binding.type, True, location)
             if "this" in context.hidden:
                 operand = context.hidden["this"]
                 type_ = self.initializer_owner.symbol.type if self.initializer_owner else operand.type

@@ -103,6 +103,8 @@ class CompiscriptCodeGenerator(
         self.expressions = ProgramExpressionLowerer(self)
         self.break_targets: list[Operand] = []
         self.continue_targets: list[Operand] = []
+        self.handlers: list[Operand] = []
+        self.loop_handler_depths: dict[str, int] = {}
         self.function_stack: list[ProcedureContext] = []
         self.class_stack: list[ClassLayout] = []
         self.initializer_owner: ClassLayout | None = None

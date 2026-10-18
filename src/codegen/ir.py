@@ -132,12 +132,16 @@ class IRProcedure:
     parameters: tuple[Operand, ...]
     instructions: tuple[Instruction, ...]
     temporary_peak: int = 0
+    bound_environment_offset: int | None = None
 
     def __post_init__(self) -> None:
         if self.label.kind is not OperandKind.LABEL:
             raise TypeError("procedure label must be a label operand")
         if type(self.temporary_peak) is not int or self.temporary_peak < 0:
             raise ValueError("temporary peak must be a nonnegative integer")
+        if self.bound_environment_offset is not None:
+            if type(self.bound_environment_offset) is not int or self.bound_environment_offset < 0:
+                raise ValueError("bound environment offset must be nonnegative bytes")
         object.__setattr__(self, "parameters", tuple(self.parameters))
         object.__setattr__(self, "instructions", tuple(self.instructions))
 

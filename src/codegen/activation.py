@@ -510,6 +510,7 @@ class CaptureAnalysis:
         scopes = tuple(symbol_table.iter_scopes())
         self.constructor_scopes: dict[int, Scope] = {}
         self.receivers: dict[int, Symbol] = {}
+        self.receiver_bindings: dict[int, Symbol] = {}
         self.effective_scopes = dict(annotations.scopes_by_node)
         for scope in scopes:
             if scope.kind is not ScopeKind.CLASS or scope.parent is None:
@@ -564,13 +565,24 @@ class CaptureAnalysis:
             node = nodes.get(node_id)
             user = enclosing_function(scope)
             if (getattr(node, "alternative", None) == "ThisExpr"
-                    or (getattr(node, "alternative", None) == "IdentifierExpr"
+                    or (getattr(node, "alternative", None) in ("IdentifierExpr", "SimpleAssignment")
                         and symbol is not None and symbol.kind in (SymbolKind.FIELD, SymbolKind.METHOD))):
+                declared_member = self.owner_scope.get(id(symbol))
+                desired_type = symbol.type if symbol and symbol.kind is SymbolKind.CLASS else None
+                if declared_member is not None and declared_member.kind is ScopeKind.CLASS:
+                    desired_type = declared_member.parent.resolve_local(declared_member.name).type
                 method = user
-                while method is not None and id(method) not in self.receivers:
+                while method is not None:
+                    receiver = self.receivers.get(id(method))
+                    candidate = receiver.type if receiver else None
+                    while isinstance(candidate, ClassType) and candidate is not desired_type:
+                        candidate = candidate.superclass
+                    if receiver is not None and (desired_type is None or candidate is desired_type):
+                        break
                     method = parent_function(method)
                 if method is not None:
                     symbol = self.receivers[id(method)]
+                    self.receiver_bindings[node_id] = symbol
             if symbol is None or symbol.kind not in (
                 SymbolKind.VARIABLE,
                 SymbolKind.CONSTANT,
