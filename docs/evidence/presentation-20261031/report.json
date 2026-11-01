@@ -1,0 +1,525 @@
+{
+  "timestamp": "2026-10-31T22:43:43.129533-06:00",
+  "stage": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd",
+  "database": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\database",
+  "installation": "venv sin paquetes globales; dependencias copiadas de distribuciones locales por bloqueo de PyPI",
+  "environment": {
+    "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+    "prefix": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-clean-20261031",
+    "base_prefix": "C:\\Python314",
+    "package": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-clean-20261031\\Lib\\site-packages\\sql_interpreter\\__init__.py",
+    "antlr": "4.13.2",
+    "qt": "6.11.0"
+  },
+  "checks": [
+    {
+      "case": "Entorno aislado",
+      "status": "PASS",
+      "details": {
+        "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+        "prefix": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-clean-20261031",
+        "base_prefix": "C:\\Python314",
+        "package": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-clean-20261031\\Lib\\site-packages\\sql_interpreter\\__init__.py",
+        "antlr": "4.13.2",
+        "qt": "6.11.0"
+      }
+    },
+    {
+      "case": "Dependencias",
+      "status": "PASS",
+      "details": "No broken requirements found."
+    },
+    {
+      "case": "Analizar sobre base inexistente",
+      "status": "PASS",
+      "details": "Aceptado; tokens/árbol/AST presentes; ningún archivo de base creado"
+    },
+    {
+      "case": "Tipos y esquema persistente",
+      "status": "PASS",
+      "details": [
+        [
+          1,
+          "Ana",
+          20,
+          90.0,
+          true,
+          "2004-02-29"
+        ],
+        [
+          2,
+          "Luis",
+          17,
+          75.0,
+          true,
+          "2009-05-12"
+        ],
+        [
+          3,
+          "María",
+          22,
+          null,
+          false,
+          "2004-08-03"
+        ],
+        [
+          4,
+          "Pedro",
+          19,
+          60.0,
+          true,
+          "2007-01-01"
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 1: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "María",
+          22
+        ],
+        [
+          "Ana",
+          20
+        ],
+        [
+          "Pedro",
+          19
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 2: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "Ana",
+          "Bases de datos",
+          80.0
+        ],
+        [
+          "Ana",
+          "Compiladores",
+          90.0
+        ],
+        [
+          "Luis",
+          "Compiladores",
+          70.0
+        ],
+        [
+          "María",
+          "Compiladores",
+          95.0
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 3: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          3,
+          3,
+          255.0,
+          85.0,
+          70.0,
+          95.0
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 4: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "Ana"
+        ],
+        [
+          "Luis"
+        ],
+        [
+          "María"
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 5: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "Pedro"
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 6: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "Ana"
+        ],
+        [
+          "Luis"
+        ],
+        [
+          "María"
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 7: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "Pedro"
+        ]
+      ]
+    },
+    {
+      "case": "Consulta 8: filtro/JOIN/agregación/subconsulta",
+      "status": "PASS",
+      "details": [
+        [
+          "María"
+        ]
+      ]
+    },
+    {
+      "case": "Índice antes/después y mantenimiento DML",
+      "status": "PASS",
+      "details": {
+        "before": {
+          "row_reads": 4,
+          "table_scans": 1,
+          "index_lookups": 0,
+          "row_writes": 0,
+          "index_writes": 0
+        },
+        "after": {
+          "row_reads": 1,
+          "table_scans": 0,
+          "index_lookups": 1,
+          "row_writes": 0,
+          "index_writes": 0
+        },
+        "post_update": [
+          [
+            "Ana",
+            21
+          ]
+        ],
+        "post_insert": [
+          [
+            "Ana"
+          ],
+          [
+            "Eva"
+          ]
+        ],
+        "post_delete": [
+          [
+            "Ana"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "Persistencia en proceso nuevo",
+      "status": "PASS",
+      "details": [
+        [
+          [
+            "Ana",
+            21
+          ]
+        ],
+        [
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            1
+          ]
+        ]
+      ]
+    },
+    {
+      "case": "Error controlado: lexer",
+      "status": "PASS",
+      "details": {
+        "stage": "LEXER",
+        "message": "token recognition error at: '@'",
+        "location": {
+          "line": 1,
+          "column": 8,
+          "end_line": null,
+          "end_column": null,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_lexer.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: parser",
+      "status": "PASS",
+      "details": {
+        "stage": "PARSER",
+        "message": "extraneous input 'FROM' expecting {'(', '*', '+', '-', 'DATE', 'NOT', 'NULL', 'EXISTS', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'TRUE', 'FALSE', DECIMAL, INTEGER, STRING, ID}",
+        "location": {
+          "line": 1,
+          "column": 8,
+          "end_line": null,
+          "end_column": null,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_parser.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: table",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Tabla inexistente: inexistente",
+        "location": {
+          "line": 1,
+          "column": 15,
+          "end_line": 1,
+          "end_column": 26,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_table.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: column",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Columna o alias inexistente: desconocida",
+        "location": {
+          "line": 1,
+          "column": 8,
+          "end_line": 1,
+          "end_column": 19,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_column.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: ambiguous",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Columna ambigua: id",
+        "location": {
+          "line": 1,
+          "column": 8,
+          "end_line": 1,
+          "end_column": 10,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_ambiguous.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: type",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Tipo incompatible en edad",
+        "location": {
+          "line": 1,
+          "column": 29,
+          "end_line": 1,
+          "end_column": 37,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_type.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: date",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Fecha inválida: 2023-02-29",
+        "location": {
+          "line": 1,
+          "column": 35,
+          "end_line": 1,
+          "end_column": 39,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_date.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: varchar",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "VARCHAR(20) excedido en nombre",
+        "location": {
+          "line": 1,
+          "column": 31,
+          "end_line": 1,
+          "end_column": 54,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_varchar.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: not_null",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "La columna nombre no admite NULL",
+        "location": {
+          "line": 1,
+          "column": 31,
+          "end_line": 1,
+          "end_column": 35,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_not_null.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: primary_key",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Restricción UNIQUE/PRIMARY KEY en id",
+        "location": {
+          "line": 1,
+          "column": 1,
+          "end_line": 1,
+          "end_column": 7,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_primary_key.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: index_duplicate",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Índice duplicado",
+        "location": {
+          "line": 1,
+          "column": 1,
+          "end_line": 1,
+          "end_column": 7,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_index_duplicate.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: index_missing",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Índice inexistente",
+        "location": {
+          "line": 1,
+          "column": 1,
+          "end_line": 1,
+          "end_column": 5,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_index_missing.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: scalar_columns",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "La subconsulta requiere exactamente una columna",
+        "location": {
+          "line": 1,
+          "column": 38,
+          "end_line": 1,
+          "end_column": 39,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_scalar_columns.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Error controlado: scalar_rows",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Subconsulta escalar retornó más de una fila",
+        "location": {
+          "line": 1,
+          "column": 38,
+          "end_line": 1,
+          "end_column": 39,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_scalar_rows.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Cardinalidad escalar en Analizar",
+      "status": "PASS",
+      "details": {
+        "stage": "SEMANTIC",
+        "message": "Subconsulta escalar retornó más de una fila",
+        "location": {
+          "line": 1,
+          "column": 43,
+          "end_line": 1,
+          "end_column": 44,
+          "source_path": "C:\\UVG\\Semestre8\\CC - Construccion de Compiladores\\Proyectos\\Proyecto2.1\\tmp\\presentation-run-x9mw7yrd\\sql\\error_scalar.sql"
+        },
+        "code": "SQL_ERROR"
+      }
+    },
+    {
+      "case": "Recuperación por índice con scan prohibido",
+      "status": "PASS",
+      "details": {
+        "row_reads": 1,
+        "table_scans": 0,
+        "index_lookups": 1,
+        "row_writes": 0,
+        "index_writes": 0
+      }
+    },
+    {
+      "case": "DROP INDEX y CREATE/INSERT/DROP TABLE",
+      "status": "PASS",
+      "details": "Aceptados; tablas principales conservadas"
+    },
+    {
+      "case": "GUI instalada: analizar/ejecutar/vistas",
+      "status": "PASS",
+      "details": {
+        "tokens": 21,
+        "tree": 1,
+        "ast": 1,
+        "result": "7"
+      }
+    },
+    {
+      "case": "Suite completa contra paquete instalado",
+      "status": "PASS",
+      "details": "144 passed in 20.27s"
+    }
+  ],
+  "passed": 33,
+  "failed": 0
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sql-interpreter-files"
+version = "1.0.0"
+description = "Interprete SQL educativo con almacenamiento propio en archivos"
+requires-python = ">=3.11"
+dependencies = ["antlr4-python3-runtime==4.13.2", "PyQt6>=6.7,<7"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+sql-files = "sql_interpreter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sql_interpreter = ["grammar/*.g4"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
