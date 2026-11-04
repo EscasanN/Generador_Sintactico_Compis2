@@ -175,6 +175,9 @@ Programas preparados:
 
 ## Documentación
 
+- [docs/proyecto3/README.md](docs/proyecto3/README.md): planificación de la
+  fase 3 MIPS para MARS, división en cuatro bloques y matrices por integrante.
+  **Estado: documentación preparada; backend MIPS pendiente de implementación.**
 - [docs/proyecto2/DISENO_TAC.md](docs/proyecto2/DISENO_TAC.md): lenguaje
   intermedio, instrucciones, supuestos y ejemplos de traducción.
 - [docs/proyecto2/ARQUITECTURA.md](docs/proyecto2/ARQUITECTURA.md): fases y
