@@ -1,8 +1,10 @@
 # Auditoría de integración y entrega MIPS
 
-**Estado: PENDIENTE.** Esta página define el cierre que el equipo completará
-después de implementar los cuatro bloques. No hay aquí un dictamen de backend
-funcional ni evidencia de pruebas MIPS ejecutadas.
+**Estado de integración global: PENDIENTE.** El bloque 1 de Daniel está
+aprobado con evidencia en [su entrega](entrega-bloque1-daniel.md): 985 pruebas
+aprobadas con MARS obligatorio, 80 nuevas. Esta página conserva el cierre global
+que se completará después de los cuatro bloques; no declara funcional el
+compilador MIPS completo.
 
 ## Registro del cierre
 
@@ -42,3 +44,8 @@ las pruebas afectadas hasta repetirlas.
 La revisión inicial de la base del Proyecto 2 tuvo 903 pruebas aprobadas y
 dos fallos del fixture local de listas; consta en [PLAN.md](PLAN.md). No
 trasladar ese resultado a la nueva fase ni afirmar una suite limpia sin repetirla.
+
+La corrección `f2f2a15` restauró el fixture con autorización del propietario.
+La base volvió a pasar 905 pruebas antes del desarrollo. El código completo
+del bloque 1 hasta `f580a20` pasó 985 pruebas, incluidas las de MARS, como
+registra su entrega; las puertas restantes permanecen pendientes.

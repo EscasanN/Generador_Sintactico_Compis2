@@ -13,13 +13,13 @@ Base inspeccionada: `feature/proyecto2-codegen`, commit `6791fef`.
 La etiqueta `entrega-semantica-100` conserva la entrega semántica.
 La rama de integración propuesta es `feature/proyecto3-mips`.
 
-- [ ] Resolver con su propietario el cambio local de `LST-01-listas.cps`; no descartarlo automáticamente ni regenerar su golden para esconder el fallo.
-- [ ] Registrar el tratamiento del enunciado raíz, recibido como archivo sin seguimiento, para que el checkout final incluya su fuente de requisitos.
-- [ ] Ejecutar `py -3.14 -m pytest tests -q` y registrar entorno, commit y resultado limpio.
+- [x] Restaurar el fixture completo de listas con autorización del propietario, conservando su golden: `f2f2a15`.
+- [x] Enunciado raíz incluido en la base publicada `82756c9`.
+- [x] Ejecutar regresión limpia antes de implementar: 905 pruebas aprobadas.
 - [ ] Confirmar gramática/perfil compatibles y conservar sus APIs y fingerprint.
 - [ ] Registrar autorización para cuatro integrantes en esta entrega; el enunciado indica tres.
-- [ ] Obtener MARS 4.5 de su distribución oficial y registrar procedencia y SHA-256 del JAR.
-- [ ] Aprobar [DISENO_MIPS.md](DISENO_MIPS.md) y sus contratos antes del primer handoff.
+- [x] Obtener MARS 4.5 y registrar procedencia/hash en la entrega de Daniel.
+- [x] Congelar diseño y contratos del bloque 1 tras implementación y revisión técnica.
 
 La revisión inicial ejecutó 905 pruebas: 903 aprobadas y dos fallos asociados
 al fixture local reducido. Su versión de Git satisface ambas comprobaciones.
@@ -29,13 +29,13 @@ Este resultado histórico **no es una aceptación limpia de la nueva fase**.
 
 ### 1. Daniel Chet
 
-- [ ] Implementar modelos, diagnósticos, emisor y etiquetas MIPS deterministas.
-- [ ] Congelar protocolos de layout, llamadas y registro de handlers de opcodes.
-- [ ] Implementar `getReg()`, banco flotante, respaldos, derrames y barreras.
-- [ ] Traducir escalares, conversiones, saltos y `RELEASE`.
-- [ ] Implementar auxiliares mínimos de heap, impresión escalar y terminación.
-- [ ] Implementar adaptador MARS con ensamblado, ejecución y límites.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE1_DANIEL.md) y el handoff.
+- [x] Implementar modelos, diagnósticos, emisor y etiquetas MIPS deterministas.
+- [x] Congelar protocolos de layout, llamadas y registro de handlers de opcodes.
+- [x] Implementar `getReg()`, banco flotante, respaldos, derrames y barreras.
+- [x] Traducir escalares, conversiones, saltos y `RELEASE`.
+- [x] Implementar auxiliares mínimos de heap, impresión escalar y terminación.
+- [x] Implementar adaptador MARS con ensamblado, ejecución y límites.
+- [x] Completar [su matriz](MATRIZ_BLOQUE1_DANIEL.md) y [el handoff](entrega-bloque1-daniel.md).
 
 **Puerta 1:** IR de prueba ejecutada en MARS con números, ramas, bucles y
 derrames forzados; interfaces de los siguientes bloques documentadas y estables.

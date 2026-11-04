@@ -1,5 +1,9 @@
 # Arquitectura prevista del backend MIPS
 
+Estado: los componentes de Daniel del bloque 1 están implementados; los de
+los bloques 2 a 4 siguen previstos. Sus contratos y reproducción están en
+[entrega-bloque1-daniel.md](entrega-bloque1-daniel.md).
+
 ## Flujo de datos
 
 ```text

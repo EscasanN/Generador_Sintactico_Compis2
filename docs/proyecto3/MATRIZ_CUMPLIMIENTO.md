@@ -2,8 +2,10 @@
 
 ## Regla de aceptación
 
-Estado inicial de todas las filas: **PENDIENTE**. Los nombres de pruebas,
-módulos y fixtures en estas matrices son entregables por crear.
+Estado: **bloque 1 aprobado**, bloques 2 a 4 y aceptación global pendientes.
+La matriz de Daniel enlaza evidencia implementada y ejecutada; las rutas de
+los demás bloques siguen siendo entregables por crear. Ver
+[la entrega de Daniel](entrega-bloque1-daniel.md).
 
 Una fila cambia a APROBADO solo cuando existen sus pruebas versionadas,
 se ejecutan con éxito sobre el commit declarado y se registra la evidencia.

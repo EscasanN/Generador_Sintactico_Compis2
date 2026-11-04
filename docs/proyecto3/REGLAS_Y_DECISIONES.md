@@ -41,9 +41,9 @@ impresión y excepciones se definen en [DISENO_MIPS.md](DISENO_MIPS.md).
 | Tema | Responsable | Condición de cierre |
 |---|---|---|
 | Equipo de cuatro en esta fase | Equipo | Referencia a autorización del profesor y fecha. La autorización histórica se comprueba antes de darla por extensible. |
-| Base de pruebas | Daniel / propietario del cambio | Resolver el fixture local de listas y registrar suite limpia. |
-| Enunciado reproducible | Equipo | Asegurar que la fuente raíz acompaña el checkout de entrega. |
-| MARS disponible | Daniel | Procedencia oficial, versión, hash y prueba de ejecución. |
+| Base de pruebas | Daniel / propietario del cambio | CERRADO: fixture restaurado en `f2f2a15`; 905 pruebas base y 985 con bloque 1 aprobadas. |
+| Enunciado reproducible | Equipo | CERRADO: fuente raíz versionada en la base `82756c9`. |
+| MARS disponible | Daniel | CERRADO para bloque 1: procedencia, hash y ejecución en su entrega; repetir instalación en presentación. |
 | Semántica externa más específica | Equipo | Si el profesor exige otra ABI o regla runtime, registrar respuesta, ajustar diseño y pruebas antes de congelar el bloque afectado. |
 
 La comprobación de cuatro integrantes es documental y no impide preparar esta

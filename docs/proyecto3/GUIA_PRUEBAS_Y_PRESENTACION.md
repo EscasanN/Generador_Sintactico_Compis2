@@ -2,9 +2,11 @@
 
 ## Estado de los comandos
 
-El backend y los tests descritos están pendientes de implementación.
-Los comandos siguientes son el contrato de aceptación que deben habilitar los
-bloques. La suite existente se ejecuta hoy con `py -3.14 -m pytest tests -q`.
+El núcleo y las pruebas del bloque 1 están implementados; los fixtures `.cps`
+MIPS y consumidores CLI/IDE aquí descritos siguen previstos para los bloques
+posteriores. Hoy se ejecuta la puerta del núcleo con
+`py -3.14 -m pytest tests/mips --require-mars -q` y la regresión con
+`py -3.14 -m pytest tests --require-mars -q`. Ver [la entrega](entrega-bloque1-daniel.md).
 
 ## Preparación del entorno de aceptación
 

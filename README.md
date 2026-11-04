@@ -173,11 +173,29 @@ Programas preparados:
 - regresiones del cierre y guía ampliada:
   [AUDITORIA_FINAL.md](docs/proyecto2/AUDITORIA_FINAL.md).
 
+## Núcleo MIPS de la fase 3
+
+El bloque 1 incorpora emisión MIPS32, registros con derrames, operaciones
+escalares y ejecución en MARS 4.5. El pipeline completo desde `.cps`, llamadas,
+runtime compuesto y pestañas MIPS del IDE se implementarán en los bloques siguientes.
+
+Con Java y el JAR oficial configurado, se puede ejecutar el ejemplo de IR manual:
+
+```powershell
+$env:MARS_JAR = 'C:\ruta\Mars4_5.jar'
+py -3.14 -m scripts.demo_mips_core --output output/mips/demo.asm
+py -3.14 -m pytest tests/mips --require-mars -q
+```
+
+El ejemplo imprime `30`. Instalación, hash y contratos para el siguiente bloque:
+[entrega de Daniel](docs/proyecto3/entrega-bloque1-daniel.md).
+
 ## Documentación
 
 - [docs/proyecto3/README.md](docs/proyecto3/README.md): planificación de la
   fase 3 MIPS para MARS, división en cuatro bloques y matrices por integrante.
-  **Estado: documentación preparada; backend MIPS pendiente de implementación.**
+  **Estado: núcleo del bloque 1 implementado; bloques 2 a 4 pendientes.**
+  Ver [entrega de Daniel](docs/proyecto3/entrega-bloque1-daniel.md).
 - [docs/proyecto2/DISENO_TAC.md](docs/proyecto2/DISENO_TAC.md): lenguaje
   intermedio, instrucciones, supuestos y ejemplos de traducción.
 - [docs/proyecto2/ARQUITECTURA.md](docs/proyecto2/ARQUITECTURA.md): fases y

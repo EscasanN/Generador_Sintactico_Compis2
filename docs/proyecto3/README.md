@@ -4,9 +4,13 @@ Esta entrega agrega generación y ejecución de MIPS al compilador Compiscript.
 La meta es cubrir la rúbrica completa y conservar las construcciones que ya
 acepta el Proyecto 2. El simulador acordado es **MARS 4.5**.
 
-**Estado: planificación preparada; backend, pruebas MIPS e integración pendientes.**
-Los comandos y las rutas de implementación de esta carpeta son objetivos de
-trabajo, no capacidades que ya tenga la rama actual.
+**Estado: bloque 1 implementado y aprobado; bloques 2 a 4 pendientes.**
+El núcleo de Daniel se ejecuta con IR manual y MARS; el pipeline completo
+`.cps` → MIPS y su IDE todavía corresponden a los siguientes bloques.
+Los comandos de esas etapas siguen siendo objetivos de implementación.
+
+Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
+con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
 
 La fuente de requisitos es [Proyecto_Fase3_Compiladores.md](../../Proyecto_Fase3_Compiladores.md).
 La carpeta histórica [docs/phase3](../phase3/README.md) corresponde al análisis

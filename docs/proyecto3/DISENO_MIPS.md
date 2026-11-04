@@ -101,7 +101,7 @@ incoherente; preserva valores frente a helpers y evaluación con efectos.
 - `$t0` a `$t7`: registros asignables para enteros/referencias.
 - `$t8`, `$t9`: auxiliares del emisor; no alojan valores persistentes.
 - `$f2/$f3`, `$f4/$f5`, `$f6/$f7`, `$f8/$f9`, `$f10/$f11`: banco asignable de dobles.
-- `$f0/$f1`: retorno; `$f12/$f13`: syscalls; `$f14/$f15`, `$f16/$f17`: auxiliares.
+- `$f0/$f1`: retorno; `$f12/$f13`: syscalls; `$f14/$f15`, `$f16/$f17`: auxiliares. El módulo flotante reserva además `$f18/$f19` a `$f24/$f25` para reducción binaria; no son asignables.
 - `$s0` a `$s7`: preservados por callee; inicialmente no asignables. No usarlos como scratch.
 - `$a0`–`$a3`, `$v0/$v1`, `$ra`, `$sp`, `$fp`, `$at`, `$gp`, `$k0/$k1`: reservados según su función; `$at` pertenece al ensamblador.
 
