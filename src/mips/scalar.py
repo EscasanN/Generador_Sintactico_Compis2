@@ -33,7 +33,7 @@ class ScalarLowerer:
             self.emit(instruction, context)
 
     def _label(self, name: str, context: EmissionContext) -> str:
-        key = id(context.emitter), context.procedure, name
+        key = context.emitter, context.procedure, name
         if key not in self._labels:
             self._labels[key] = context.emitter.label(name)
         return self._labels[key]

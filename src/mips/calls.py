@@ -49,7 +49,7 @@ class CallingConvention:
         self.plan = plan
         self.loader = loader
         self._pending: dict[str, list[Operand]] = {}
-        self._epilogues: dict[tuple[int, str], str] = {}
+        self._epilogues: dict[tuple[MipsEmitter, str], str] = {}
 
     # -- handler protocol ---------------------------------------------------------
 
@@ -132,7 +132,7 @@ class CallingConvention:
             out.emit('sw', '$t8', f'{ACCESS_LINK_OFFSET}($fp)')
 
     def _epilogue(self, context: EmissionContext) -> str:
-        key = id(context.emitter), context.procedure
+        key = context.emitter, context.procedure
         if key not in self._epilogues:
             self._epilogues[key] = context.emitter.label('epilogue')
         return self._epilogues[key]
