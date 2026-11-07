@@ -43,12 +43,12 @@ No necesita el pipeline `.cps` nuevo para cerrar.
 
 ### 2. Nadissa Vela
 
-- [ ] Construir layouts físicos por identidad de símbolo y por procedimiento.
-- [ ] Implementar argumentos, prólogos, epílogos y retorno único.
-- [ ] Probar llamadas directas, indirectas, recursión y valores vivos.
-- [ ] Implementar entornos, closures escapadas y métodos ligados, incluidos auxiliares de heap propios.
-- [ ] Cubrir capturas compartidas y enlace léxico a varios niveles.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE2_NADISSA.md) y el handoff.
+- [x] Construir layouts físicos por identidad de símbolo y por procedimiento.
+- [x] Implementar argumentos, prólogos, epílogos y retorno único.
+- [x] Probar llamadas directas, indirectas, recursión y valores vivos.
+- [x] Implementar entornos, closures escapadas y métodos ligados, incluidos auxiliares de heap propios.
+- [x] Cubrir capturas compartidas y enlace léxico a varios niveles.
+- [x] Completar [su matriz](MATRIZ_BLOQUE2_NADISSA.md) y [el handoff](entrega-bloque2-nadissa.md); falta la revisión independiente de la puerta (revision realizada por Dulce previo a desarrollar).
 
 **Puerta 2:** llamadas y closures verificadas en MARS con IR manual tipada,
 sin depender de que existan listas, objetos completos o excepciones del bloque 3.

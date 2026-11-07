@@ -2,10 +2,11 @@
 
 ## Regla de aceptación
 
-Estado: **bloque 1 aprobado**, bloques 2 a 4 y aceptación global pendientes.
-La matriz de Daniel enlaza evidencia implementada y ejecutada; las rutas de
-los demás bloques siguen siendo entregables por crear. Ver
-[la entrega de Daniel](entrega-bloque1-daniel.md).
+Estado: **bloque 1 aprobado**, **bloque 2 implementado (revisión pendiente)**, bloques 3 y 4
+y aceptación global pendientes. Las matrices de Daniel y Nadissa enlazan evidencia
+implementada y ejecutada; las rutas de los demás bloques siguen siendo entregables por
+crear. Ver [la entrega de Daniel](entrega-bloque1-daniel.md) y
+[la de Nadissa](entrega-bloque2-nadissa.md).
 
 Una fila cambia a APROBADO solo cuando existen sus pruebas versionadas,
 se ejecutan con éxito sobre el commit declarado y se registra la evidencia.

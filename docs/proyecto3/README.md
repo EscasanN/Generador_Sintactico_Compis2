@@ -4,13 +4,15 @@ Esta entrega agrega generación y ejecución de MIPS al compilador Compiscript.
 La meta es cubrir la rúbrica completa y conservar las construcciones que ya
 acepta el Proyecto 2. El simulador acordado es **MARS 4.5**.
 
-**Estado: bloque 1 implementado y aprobado; bloques 2 a 4 pendientes.**
-El núcleo de Daniel se ejecuta con IR manual y MARS; el pipeline completo
-`.cps` → MIPS y su IDE todavía corresponden a los siguientes bloques.
-Los comandos de esas etapas siguen siendo objetivos de implementación.
+**Estado: bloque 1 aprobado; bloque 2 implementado (revisión pendiente); bloques 3 y 4 pendientes.**
+El núcleo de Daniel y las llamadas, entornos y closures de Nadissa se ejecutan con IR
+manual y MARS; el pipeline completo `.cps` → MIPS y su IDE corresponden a los bloques
+3 y 4. Los comandos de esas etapas siguen siendo objetivos de implementación.
 
 Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
 con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
+Ver [entrega del bloque 2](entrega-bloque2-nadissa.md): 1050 pruebas aprobadas con
+MARS obligatorio (65 nuevas): ABI, recursión, closures escapadas y métodos ligados.
 
 La fuente de requisitos es [Proyecto_Fase3_Compiladores.md](../../Proyecto_Fase3_Compiladores.md).
 La carpeta histórica [docs/phase3](../phase3/README.md) corresponde al análisis
@@ -44,6 +46,7 @@ de invariantes; un archivo ensamblador por sí solo no demuestra cumplimiento.
 | [MATRIZ_CUMPLIMIENTO.md](MATRIZ_CUMPLIMIENTO.md) | Rúbrica y condiciones globales de aceptación. |
 | [MATRIZ_BLOQUE1_DANIEL.md](MATRIZ_BLOQUE1_DANIEL.md) | Núcleo, registros, números y simulador. |
 | [MATRIZ_BLOQUE2_NADISSA.md](MATRIZ_BLOQUE2_NADISSA.md) | ABI, llamadas, closures y métodos ligados. |
+| [entrega-bloque2-nadissa.md](entrega-bloque2-nadissa.md) | Handoff, evidencia y reproducción del bloque 2. |
 | [MATRIZ_BLOQUE3_DULCE.md](MATRIZ_BLOQUE3_DULCE.md) | Runtime, objetos, listas, excepciones y pipeline. |
 | [MATRIZ_BLOQUE4_NELSON.md](MATRIZ_BLOQUE4_NELSON.md) | IDE, CLI y entrega reproducible. |
 | [GUIA_PRUEBAS_Y_PRESENTACION.md](GUIA_PRUEBAS_Y_PRESENTACION.md) | Casos, comandos de aceptación y demostración. |

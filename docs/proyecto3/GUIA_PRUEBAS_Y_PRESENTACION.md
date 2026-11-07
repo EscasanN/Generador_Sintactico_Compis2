@@ -2,7 +2,7 @@
 
 ## Estado de los comandos
 
-El núcleo y las pruebas del bloque 1 están implementados; los fixtures `.cps`
+El núcleo y las pruebas de los bloques 1 y 2 están implementados; los fixtures `.cps`
 MIPS y consumidores CLI/IDE aquí descritos siguen previstos para los bloques
 posteriores. Hoy se ejecuta la puerta del núcleo con
 `py -3.14 -m pytest tests/mips --require-mars -q` y la regresión con
