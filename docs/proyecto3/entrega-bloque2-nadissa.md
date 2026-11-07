@@ -131,10 +131,10 @@ ignorarse y que cada programa válido del Proyecto 2 tiene plan físico completo
 | Comprobación | Resultado |
 |---|---|
 | Base (bloque 1 aprobado) | 985 pruebas |
-| Puerta del bloque, Python 3.14.7 | **36 passed** en 43.7 s |
-| `tests/mips --require-mars`, Python 3.14.7 | **145 passed** en 155.1 s, sin skips |
-| `tests --require-mars`, Python 3.14.7 | **1050 passed** en 211.6 s, 0 fallos, 0 errores, 0 skips (65 nuevas) |
-| Los mismos tres comandos, Python 3.11.3 | 36, 145 y 1050 passed (24.4 s, 92.6 s y 114.3 s) |
+| Puerta del bloque, Python 3.14.7 | **37 passed** en 47.7 s |
+| `tests/mips --require-mars`, Python 3.14.7 | **146 passed** en 148.1 s, sin skips |
+| `tests --require-mars`, Python 3.14.7 | **1051 passed** en 183.0 s, 0 fallos, 0 errores, 0 skips (66 nuevas) |
+| Los mismos tres comandos, Python 3.11.3, antes de INC-B2-04 | 36, 145 y 1050 passed (24.4 s, 92.6 s y 114.3 s) |
 | `compileall`, `git diff --check` | Sin errores |
 
 Se usó el árbol de trabajo del autor, no un checkout limpio. Los logs locales están en
@@ -156,6 +156,7 @@ tamaño que no compartían direcciones, valores simétricos que no distinguían 
 |---|---|---|---|
 | INC-B2-01 | Alta (durante el desarrollo) | La llamada indirecta con máscara 3 caía en la variante de máscara 0 (faltaba el salto). La detectó METHOD-01 en MARS. | Corregida y cubierta |
 | INC-B2-02 | Media | El allocator de Daniel rechaza literales de cadena en `PARAM`; su materialización pertenece al bloque 3. | Punto de extensión `loader` y prueba; pendiente su proveedor real |
+| INC-B2-04 | Media (latente) | Al revisar el bloque 1 se vio que un lease liberado en las dos ramas de un `if` terminaba su vida en el primer `RELEASE`, y su celda podía reutilizarse mientras la otra rama aún lo usaba. Ningún programa actual genera ese patrón (0 de 78). | Corregida: la vida acaba en la última aparición; `test_abi_01_lease_released_in_both_branches_keeps_its_cell_until_the_last_release` |
 | INC-B2-03 | Baja | El equipo solo tenía Python 3.11 y la documentación exige 3.14. | Cerrada: 3.14.7 instalado y suite completa verde en ambas versiones |
 
 ## Limitaciones

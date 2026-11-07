@@ -190,11 +190,13 @@ class PhysicalFrame:
 def _temporary_intervals(instructions: Sequence[Instruction]) -> dict[tuple[int, int], list]:
     """lease -> [type, first, last]; unreleased leases live until the unit ends.
 
+    A released lease lives until its *last* occurrence: each branch may release
+    it separately, so the first RELEASE does not end the other branch's use.
     A lease reaching into a loop is extended to the loop's back edge so no slot
     is shared with a value that is still needed in the next iteration.
     """
     spans: dict[tuple[int, int], list] = {}
-    released: dict[tuple[int, int], int] = {}
+    released: set[tuple[int, int]] = set()
     labels: dict[str, int] = {}
     for index, item in enumerate(instructions):
         if item.opcode is OpCode.LABEL and item.result is not None:
@@ -209,10 +211,11 @@ def _temporary_intervals(instructions: Sequence[Instruction]) -> dict[tuple[int,
             span[2] = index
         if item.opcode is OpCode.RELEASE and item.arg1 is not None \
                 and item.arg1.kind is OperandKind.TEMPORARY:
-            released.setdefault(item.arg1.lease, index)
+            released.add(item.arg1.lease)
     last = len(instructions)
     for lease, span in spans.items():
-        span[2] = released.get(lease, last)
+        if lease not in released:
+            span[2] = last
     loops = [(labels[str(i.result.value)], index) for index, i in enumerate(instructions)
              if i.opcode in (OpCode.GOTO, OpCode.IF_TRUE, OpCode.IF_FALSE, OpCode.TRY_BEGIN)
              and i.result is not None and labels.get(str(i.result.value), index + 1) <= index]

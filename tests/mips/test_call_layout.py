@@ -313,3 +313,27 @@ def test_abi_01_contracts_and_opcode_ownership():
     assert CALL_OPCODES == {OpCode.PARAM, OpCode.CALL, OpCode.CLOSURE_CALL, OpCode.RETURN}
     assert ENV_OPCODES == {OpCode.ENV_NEW, OpCode.ENV_SET, OpCode.ENV_GET, OpCode.CLOSURE,
                            OpCode.METHOD_REF}
+
+
+def test_abi_01_lease_released_in_both_branches_keeps_its_cell_until_the_last_release():
+    """A RELEASE in one branch does not end the lifetime seen by the other branch."""
+    m = Model()
+    g = m.global_
+    flag = m.static('flag', BOOLEAN)
+    kept = g.copy(const(5), g.tmp())
+    other, end = label('other'), label('end')
+    g.emit(O.IF_FALSE, flag, None, other)
+    g.release(kept)                               # first branch: done with it
+    late = g.copy(const(9), g.tmp())              # would happily take a freed cell
+    g.release(late)
+    g.emit(O.GOTO, None, None, end)
+    g.emit(O.LABEL, None, None, other)
+    g.copy(kept, g.tmp())                         # second branch: still needs it
+    g.release(kept)
+    g.emit(O.LABEL, None, None, end)
+    spans = _temporary_intervals(g.instructions)
+    assert spans[kept.lease][2] == max(i for i, item in enumerate(g.instructions)
+                                       if item.arg1 is not None and item.arg1.lease == kept.lease)
+    program, layouts, _ = m.build()
+    frame = PhysicalLayoutPlan.build(program, layouts).frame('global')
+    assert frame.temporaries[kept.lease].offset != frame.temporaries[late.lease].offset

@@ -30,7 +30,7 @@ py -3.14 -m pytest tests/mips/test_call_layout.py tests/mips/test_calls.py tests
 py -3.14 -m pytest tests/mips --require-mars -q
 ```
 
-Resultado: 36 pruebas de la puerta, 145 en `tests/mips` y 1050 en `tests`, sin
+Resultado: 37 pruebas de la puerta, 146 en `tests/mips` y 1051 en `tests`, sin
 skips (detalle en la entrega). Un resultado numérico correcto no basta para
 CALL-03: se comprueba la restauración de `$sp`, `$fp` y `$s0`–`$s7`, y un canario
 en el stack.

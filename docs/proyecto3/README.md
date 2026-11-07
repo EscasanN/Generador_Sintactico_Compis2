@@ -11,8 +11,8 @@ manual y MARS; el pipeline completo `.cps` → MIPS y su IDE corresponden a los 
 
 Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
 con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
-Ver [entrega del bloque 2](entrega-bloque2-nadissa.md): 1050 pruebas aprobadas con
-MARS obligatorio (65 nuevas): ABI, recursión, closures escapadas y métodos ligados.
+Ver [entrega del bloque 2](entrega-bloque2-nadissa.md): 1051 pruebas aprobadas con
+MARS obligatorio (66 nuevas): ABI, recursión, closures escapadas y métodos ligados.
 
 La fuente de requisitos es [Proyecto_Fase3_Compiladores.md](../../Proyecto_Fase3_Compiladores.md).
 La carpeta histórica [docs/phase3](../phase3/README.md) corresponde al análisis
