@@ -16,6 +16,7 @@ class MipsEmitter:
         self.source_map: dict[int, SourceLocation] = {}
         self._serial = 0
         self._constants: dict[bytes, str] = {}
+        self._strings: dict[bytes, str] = {}  # apart: 8 string bytes can equal a double's bits
 
     def label(self, hint: str = 'label') -> str:
         name = f'_m{self._serial}_{hint.encode("utf-8").hex()}'
@@ -52,10 +53,16 @@ class MipsEmitter:
         return self._constants[bits]
 
     def ascii(self, value: str) -> str:
-        label = self.label('ascii')
-        self.define(label)
-        self.data.append(f'{label}: .byte ' + ', '.join(str(x) for x in value.encode('ascii') + b'\0'))
-        return label
+        try:
+            text = value.encode('ascii') + b'\0'
+        except UnicodeEncodeError as error:
+            raise MipsError('MIPS-NON-ASCII', repr(value)) from error
+        if text not in self._strings:
+            label = self.label('ascii')
+            self.define(label)
+            self.data.append(f'{label}: .byte ' + ', '.join(str(x) for x in text))
+            self._strings[text] = label
+        return self._strings[text]
 
     def load(self, register: str, location: MachineLocation) -> None:
         mnemonic = {1: 'lbu', 4: 'lw', 8: 'l.d'}[location.width]
