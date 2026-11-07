@@ -1,0 +1,4 @@
+{
+  "compile": {"accepted": true, "stage": null, "code": null},
+  "execution": {"exit_code": 1, "stdout": "antes\nRuntimeError: INDEX_OUT_OF_RANGE\n", "runtime_code": "INDEX_OUT_OF_RANGE"}
+}

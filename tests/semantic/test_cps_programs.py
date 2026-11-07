@@ -196,11 +196,12 @@ def test_every_cps_demonstration_is_executed_by_this_suite() -> None:
         | {"demostracion-invalida.cps"}
     )
     # tests/cps/codegen/ tiene su propio inventario en
-    # tests/codegen/test_codegen_fixtures.py (Proyecto 2).
+    # tests/codegen/test_codegen_fixtures.py (Proyecto 2) y tests/cps/mips/ en
+    # tests/mips/test_mips_pipeline.py (Proyecto 3).
     discovered = {
         path.relative_to(CPS_ROOT).as_posix()
         for path in CPS_ROOT.rglob("*.cps")
-        if path.relative_to(CPS_ROOT).parts[0] != "codegen"
+        if path.relative_to(CPS_ROOT).parts[0] not in ("codegen", "mips")
     }
 
     assert discovered == registered

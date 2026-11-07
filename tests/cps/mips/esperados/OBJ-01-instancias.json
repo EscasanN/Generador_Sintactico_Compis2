@@ -1,0 +1,8 @@
+{
+  "compile": {"accepted": true, "stage": null, "code": null},
+  "execution": {
+    "exit_code": 0,
+    "stdout": "7\n30\npp\ntrue\n3.0\ntrue\n[object]\nlectura NULL_ACCESS\nescritura NULL_ACCESS\nmetodo NULL_ACCESS\n",
+    "runtime_code": null
+  }
+}
