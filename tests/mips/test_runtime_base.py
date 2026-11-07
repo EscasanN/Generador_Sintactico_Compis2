@@ -65,3 +65,45 @@ def test_heap_reservations_are_distinct_and_preserve_live_values(execute_scalar)
 
     lines, _ = execute_scalar([ins(O.COPY, c(41), result=live)], runtime=TwoAllocations())
     assert lines == ['177041']
+
+
+def test_large_reservation_fits_the_default_step_limit(compile_scalar, mars):
+    from src.mips.runtime_base import BaseRuntime
+    from src.mips.simulator import run_mars
+
+    class LargeList(BaseRuntime):
+        def exit(self, context, code):
+            if code == 0:
+                self.allocate(context, 160_000)
+            super().exit(context, code)
+
+    assembly, _ = compile_scalar([], runtime=LargeList())
+    assert run_mars(assembly, mars).status == 'success'
+
+
+@pytest.mark.parametrize('size', [0, 1, 7, 8, 9, 17, 24, 4097])
+def test_cleared_area_stays_inside_its_reservation(execute_scalar, size):
+    """Prints the misalignment and whether the cleared doublewords pass the heap break."""
+    from src.mips.runtime_base import BaseRuntime
+    rounded = (size + 7) // 8 * 8
+
+    class Check(BaseRuntime):
+        def exit(self, context, code):
+            if code == 0:
+                out = context.emitter
+                self.allocate(context, 4)   # would leave the break misaligned without rounding
+                out.emit('move', '$s0', self.allocate(context, size))
+                out.emit('andi', '$a0', '$s0', '7')
+                out.emit('li', '$v0', '1')
+                out.emit('syscall')
+                out.emit('li', '$a0', '0')
+                out.emit('li', '$v0', '9')
+                out.emit('syscall')
+                out.emit('addiu', '$t0', '$s0', str(rounded))
+                out.emit('sltu', '$a0', '$v0', '$t0')
+                out.emit('li', '$v0', '1')
+                out.emit('syscall')
+            super().exit(context, code)
+
+    lines, _ = execute_scalar([], runtime=Check())
+    assert lines == ['00']
