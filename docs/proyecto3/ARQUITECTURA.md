@@ -1,10 +1,12 @@
 # Arquitectura prevista del backend MIPS
 
-Estado: los componentes de Daniel (bloque 1) y de Nadissa (bloque 2: `layout`,
-`calls`, `environments`) están implementados; los de los bloques 3 y 4 siguen
+Estado: los componentes de Daniel (bloque 1), de Nadissa (bloque 2: `layout`,
+`calls`, `environments`) y de Dulce (bloque 3: `runtime`, `lists`, `objects`,
+`exceptions`, `generator`, `pipeline`) están implementados; los del bloque 4 siguen
 previstos. Sus contratos y reproducción están en
-[entrega-bloque1-daniel.md](entrega-bloque1-daniel.md) y
-[entrega-bloque2-nadissa.md](entrega-bloque2-nadissa.md).
+[entrega-bloque1-daniel.md](entrega-bloque1-daniel.md),
+[entrega-bloque2-nadissa.md](entrega-bloque2-nadissa.md) y
+[entrega-bloque3-dulce.md](entrega-bloque3-dulce.md).
 
 ## Flujo de datos
 
@@ -26,7 +28,10 @@ resolver símbolos. Consume `IntermediateCodeResult.program`, sus layouts y
 los tipos de los operandos. El backend no modifica esos objetos ni la tabla
 semántica. El formato TAC previo sigue siendo una vista del IR.
 
-## Interfaces públicas por implementar
+## Interfaces públicas
+
+`generate_mips` y `compile_to_mips` están implementadas (bloque 3) junto con
+`run_mips(compilation, config)`, que ejecuta solo una compilación aceptada.
 
 ```python
 generate_mips(intermediate_result: IntermediateCodeResult) -> MipsGenerationResult

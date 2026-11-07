@@ -56,12 +56,12 @@ Los receptores de prueba pueden ser regiones de memoria preparadas por el harnes
 
 ### 3. Dulce Ambrosio
 
-- [ ] Implementar cadenas, listas, objetos, herencia e inicializadores.
-- [ ] Completar runtime de errores y desenrollado de excepciones.
-- [ ] Integrar todo el catálogo de opcodes y las llamadas externas permitidas.
-- [ ] Implementar generación integral y `compile_to_mips` conservando las APIs previas.
-- [ ] Probar `.cps` por dominio con salida esperada y rechazo por fase.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE3_DULCE.md) y el handoff.
+- [x] Implementar cadenas, listas, objetos, herencia e inicializadores.
+- [x] Completar runtime de errores y desenrollado de excepciones.
+- [x] Integrar todo el catálogo de opcodes y las llamadas externas permitidas.
+- [x] Implementar generación integral y `compile_to_mips` conservando las APIs previas.
+- [x] Probar `.cps` por dominio con salida esperada y rechazo por fase.
+- [x] Completar [su matriz](MATRIZ_BLOQUE3_DULCE.md) y [el handoff](entrega-bloque3-dulce.md); falta la revisión independiente de la puerta.
 
 **Puerta 3:** todos los opcodes emitidos por el compilador tienen traducción
 y evidencia; programas `.cps` completos se ejecutan por la API Python en MARS.

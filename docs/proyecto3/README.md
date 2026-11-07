@@ -4,10 +4,10 @@ Esta entrega agrega generación y ejecución de MIPS al compilador Compiscript.
 La meta es cubrir la rúbrica completa y conservar las construcciones que ya
 acepta el Proyecto 2. El simulador acordado es **MARS 4.5**.
 
-**Estado: bloque 1 aprobado; bloque 2 implementado (revisión pendiente); bloques 3 y 4 pendientes.**
-El núcleo de Daniel y las llamadas, entornos y closures de Nadissa se ejecutan con IR
-manual y MARS; el pipeline completo `.cps` → MIPS y su IDE corresponden a los bloques
-3 y 4. Los comandos de esas etapas siguen siendo objetivos de implementación.
+**Estado: bloque 1 aprobado; bloques 2 y 3 implementados (revisión pendiente); bloque 4 pendiente.**
+El núcleo de Daniel, las llamadas, entornos y closures de Nadissa y el runtime completo
+con el pipeline `.cps` → MIPS de Dulce se ejecutan en MARS (`compile_to_mips`). La CLI y
+el IDE corresponden al bloque 4; sus comandos siguen siendo objetivos de implementación.
 
 Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
 con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
@@ -15,6 +15,8 @@ Ver [entrega del bloque 2](entrega-bloque2-nadissa.md): 1051 pruebas aprobadas c
 MARS obligatorio (66 nuevas): ABI, recursión, closures escapadas y métodos ligados.
 Las [incidencias del bloque 1](entrega-bloque1-daniel.md#incidencias-tras-la-entrega) ya están
 corregidas sobre esta rama: 1072 pruebas aprobadas con MARS obligatorio (21 nuevas).
+Ver [entrega del bloque 3](entrega-bloque3-dulce.md): cadenas, listas, objetos, excepciones,
+`generate_mips` y `compile_to_mips`, con 17 fixtures `.cps` ejecutados en MARS.
 
 La fuente de requisitos es [Proyecto_Fase3_Compiladores.md](../../Proyecto_Fase3_Compiladores.md).
 La carpeta histórica [docs/phase3](../phase3/README.md) corresponde al análisis
@@ -50,6 +52,7 @@ de invariantes; un archivo ensamblador por sí solo no demuestra cumplimiento.
 | [MATRIZ_BLOQUE2_NADISSA.md](MATRIZ_BLOQUE2_NADISSA.md) | ABI, llamadas, closures y métodos ligados. |
 | [entrega-bloque2-nadissa.md](entrega-bloque2-nadissa.md) | Handoff, evidencia y reproducción del bloque 2. |
 | [MATRIZ_BLOQUE3_DULCE.md](MATRIZ_BLOQUE3_DULCE.md) | Runtime, objetos, listas, excepciones y pipeline. |
+| [entrega-bloque3-dulce.md](entrega-bloque3-dulce.md) | Handoff, evidencia, incidencias y reproducción del bloque 3. |
 | [MATRIZ_BLOQUE4_NELSON.md](MATRIZ_BLOQUE4_NELSON.md) | IDE, CLI y entrega reproducible. |
 | [GUIA_PRUEBAS_Y_PRESENTACION.md](GUIA_PRUEBAS_Y_PRESENTACION.md) | Casos, comandos de aceptación y demostración. |
 | [PLANTILLA_ENTREGA_BLOQUE.md](PLANTILLA_ENTREGA_BLOQUE.md) | Evidencia que debe registrar cada responsable. |
