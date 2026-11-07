@@ -163,3 +163,27 @@ de la regresión previa; no se atribuye a esta entrega un ensayo humano del IDE.
 **Puerta 1 aprobada.** Se entrega la rama para revisión e integración en
 `feature/proyecto3-mips`. Nadissa debe crear su rama desde esa integración
 aceptada; no desde el commit de planificación que carece de estos módulos.
+
+## Incidencias tras la entrega
+
+Nadissa Vela revisó el bloque sobre `74aa81f` y encontró estas incidencias, que no
+bloqueaban la puerta. Se reabrió la puerta 1 y se corrigieron sobre la rama del
+bloque 2, porque INC-B1-01 depende de INC-B2-04. Responsable: Daniel Chet.
+
+| ID | Gravedad | Reproducción e impacto | Corrección y regresión |
+|---|---|---|---|
+| INC-B1-01 | Media (latente) | Un lease liberado en cada rama de un `if` se rechazaba con `MIPS-TEMPORARY-RELEASED`, aunque `IRVerifier` lo acepta. Ningún programa aceptado genera hoy ese patrón. | `ce143d2`: el contrato acepta el patrón y los liberados se olvidan solo en `LABEL`. `test_reg_03_lease_released_on_each_path_runs`, `test_reg_03_use_after_release_is_rejected_across_a_conditional_jump`, `test_abi_01_lease_released_on_each_path_keeps_its_value_in_mars` |
+| INC-B1-02 | Media | `allocate` costaba 7 pasos de MARS por byte: una reserva de 160 KB agotaba el límite de 1 000 000 de pasos. Afectaba a las listas del bloque 3. | `5323f4f`: limpieza por palabras dobles, 1 paso por byte. 800 KB terminan; 1 MB todavía agota el límite. `test_large_reservation_fits_the_default_step_limit`, `test_cleared_area_stays_inside_its_reservation` |
+| INC-B1-03 | Baja | `MipsEmitter.ascii` duplicaba cadenas en `.data` y lanzaba `UnicodeEncodeError` con texto no ASCII. | `8fd2690`: caché propio y diagnóstico `MIPS-NON-ASCII`. `test_ascii_reuses_equal_strings`, `test_ascii_and_double_with_the_same_bytes_keep_separate_labels`, `test_non_ascii_text_is_a_backend_diagnostic` |
+| INC-B1-04 | Baja | `ScalarLowerer._label` usaba `id()` del emisor como clave; un `id` reciclado podía devolver etiquetas de otro emisor. | `69a934f`: la clave es el emisor. `test_labels_are_not_shared_when_an_emitter_id_is_recycled` |
+
+Comprobaciones repetidas con Python 3.14.7 y MARS 4.5 sobre `69a934f`:
+
+| Comprobación | Resultado |
+|---|---|
+| `tests --require-mars` | **1072 passed**, sin skips (21 nuevas sobre las 1051 del bloque 2) |
+| `compileall` de backend, tests y scripts | Sin errores |
+| `git diff --check 59457cf 69a934f` | Sin errores |
+| `scripts.demo_mips_core` | Salida `30` y código 0 |
+
+Queda pendiente que otro integrante reproduzca la puerta y registre el dictamen.
