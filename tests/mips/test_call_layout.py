@@ -337,3 +337,22 @@ def test_abi_01_lease_released_in_both_branches_keeps_its_cell_until_the_last_re
     program, layouts, _ = m.build()
     frame = PhysicalLayoutPlan.build(program, layouts).frame('global')
     assert frame.temporaries[kept.lease].offset != frame.temporaries[late.lease].offset
+
+
+@pytest.mark.parametrize('taken,expected', [(True, ['5']), (False, ['9', '5'])])
+def test_abi_01_lease_released_on_each_path_keeps_its_value_in_mars(mars, taken, expected):
+    """In the other branch a new temporary must not overwrite the kept lease's cell."""
+    m = Model()
+    g = m.global_
+    flag = m.static('flag', BOOLEAN)
+    g.copy(const(taken, BOOLEAN), flag)
+    kept = g.copy(const(5), g.tmp())
+    other, end = label('other'), label('end')
+    g.emit(O.IF_FALSE, flag, None, other)
+    g.show(kept)
+    g.emit(O.GOTO, None, None, end)
+    g.emit(O.LABEL, None, None, other)
+    g.show(g.copy(const(9), g.tmp()))
+    g.show(kept)
+    g.emit(O.LABEL, None, None, end)
+    assert lines(m, mars) == expected

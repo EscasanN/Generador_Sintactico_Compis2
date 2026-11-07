@@ -100,3 +100,40 @@ def test_disjoint_leases_can_reuse_one_slot_with_different_types(execute_scalar)
                ins(O.COPY, c(9), result=third)]
     lines, _ = execute_scalar(program, [kept_int, kept_float, third], resolver_factory=CoalescedResolver)
     assert lines == ['7', '2.5', '9']
+
+
+def _released_in_both_branches(taken):
+    from src.codegen.ir import Operand, OperandKind
+    from src.semantic.types import BOOLEAN
+    flag, kept, out = t(0, BOOLEAN), t(1), t(2)
+    other, end = Operand(OperandKind.LABEL, 'other'), Operand(OperandKind.LABEL, 'end')
+    return [ins(O.COPY, c(taken, BOOLEAN), result=flag), ins(O.COPY, c(5), result=kept),
+            ins(O.IF_FALSE, flag, result=other),
+            ins(O.ADD, kept, c(1), out), ins(O.RELEASE, kept), ins(O.GOTO, result=end),
+            ins(O.LABEL, result=other),
+            ins(O.ADD, kept, c(2), out), ins(O.RELEASE, kept),
+            ins(O.LABEL, result=end)], out
+
+
+@pytest.mark.parametrize('gpr_count', [8, 2])
+@pytest.mark.parametrize('taken,expected', [(True, '6'), (False, '7')])
+def test_reg_03_lease_released_on_each_path_runs(execute_scalar, taken, expected, gpr_count):
+    program, out = _released_in_both_branches(taken)
+    lines, _ = execute_scalar(program, [out], gpr_count=gpr_count)
+    assert lines == [expected]
+
+
+def test_reg_03_use_after_release_is_rejected_across_a_conditional_jump(compile_scalar, monkeypatch):
+    """Only a label forgets releases: a jump's register barrier continues the same path."""
+    from src.codegen.ir import Operand, OperandKind
+    from src.codegen.verifier import IRVerifier
+    from src.mips.diagnostics import MipsError
+    from src.semantic.types import BOOLEAN
+    monkeypatch.setattr(IRVerifier, 'verify', lambda self, program: ())
+    flag, kept, out = t(0, BOOLEAN), t(1), t(2)
+    skip = Operand(OperandKind.LABEL, 'skip')
+    program = [ins(O.COPY, c(True, BOOLEAN), result=flag), ins(O.COPY, c(5), result=kept),
+               ins(O.RELEASE, kept), ins(O.IF_FALSE, flag, result=skip),
+               ins(O.COPY, kept, result=out), ins(O.LABEL, result=skip)]
+    with pytest.raises(MipsError, match='TEMPORARY-RELEASED'):
+        compile_scalar(program)
