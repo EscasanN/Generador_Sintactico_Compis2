@@ -158,6 +158,7 @@ tamaño que no compartían direcciones, valores simétricos que no distinguían 
 | INC-B2-02 | Media | El allocator de Daniel rechaza literales de cadena en `PARAM`; su materialización pertenece al bloque 3. | Punto de extensión `loader` y prueba; pendiente su proveedor real |
 | INC-B2-04 | Media (latente) | Al revisar el bloque 1 se vio que un lease liberado en las dos ramas de un `if` terminaba su vida en el primer `RELEASE`, y su celda podía reutilizarse mientras la otra rama aún lo usaba. Ningún programa actual genera ese patrón (0 de 78). | Corregida: la vida acaba en la última aparición; `test_abi_01_lease_released_in_both_branches_keeps_its_cell_until_the_last_release` |
 | INC-B2-03 | Baja | El equipo solo tenía Python 3.11 y la documentación exige 3.14. | Cerrada: 3.14.7 instalado y suite completa verde en ambas versiones |
+| INC-B2-05 | Baja | `CallingConvention._epilogue` usaba `id()` del emisor como clave, igual que INC-B1-04. La corrigió Daniel Chet con el acuerdo de Nadissa. | Corregida en `52ce06b`: `test_epilogues_are_not_shared_when_an_emitter_id_is_recycled` |
 
 ## Limitaciones
 
