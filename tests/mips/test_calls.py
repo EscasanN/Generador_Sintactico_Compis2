@@ -343,3 +343,15 @@ def test_call_01_argument_loader_hook_for_values_the_allocator_cannot_load(mars)
         return None
 
     assert lines(m, mars, loader=loader) == ['99']
+
+
+def test_epilogues_are_not_shared_when_an_emitter_id_is_recycled(monkeypatch):
+    from types import SimpleNamespace
+    from src.mips.calls import CallingConvention
+    from src.mips.emitter import MipsEmitter
+    monkeypatch.setattr('src.mips.calls.id', lambda _: 0, raising=False)
+    handler = CallingConvention(None)
+    first, second = MipsEmitter(), MipsEmitter()
+    first.label('shifts the serial')
+    name = handler._epilogue(SimpleNamespace(emitter=first, procedure='f'))
+    assert handler._epilogue(SimpleNamespace(emitter=second, procedure='f')) != name

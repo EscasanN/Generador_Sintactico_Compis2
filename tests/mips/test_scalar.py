@@ -147,3 +147,15 @@ def test_invalid_literal_has_located_backend_diagnostic(compile_scalar, value, t
     with pytest.raises(MipsError) as caught:
         compile_scalar([ins(O.COPY, c(value, type_), result=t(0, type_))])
     assert caught.value.diagnostic.location.line == 1
+
+
+def test_labels_are_not_shared_when_an_emitter_id_is_recycled(monkeypatch):
+    from types import SimpleNamespace
+    from src.mips.emitter import MipsEmitter
+    from src.mips.scalar import ScalarLowerer
+    monkeypatch.setattr('src.mips.scalar.id', lambda _: 0, raising=False)
+    lowerer = ScalarLowerer()
+    first, second = MipsEmitter(), MipsEmitter()
+    first.label('shifts the serial')
+    name = lowerer._label('end', SimpleNamespace(emitter=first, procedure='global'))
+    assert lowerer._label('end', SimpleNamespace(emitter=second, procedure='global')) != name
