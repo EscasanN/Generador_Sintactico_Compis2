@@ -54,6 +54,8 @@ class ScalarLowerer:
                 regs.invalidate()
                 label = self._label(str(result.value), context)
                 if op is O.LABEL:
+                    # Text order stops being execution order here; IRVerifier checks each path.
+                    regs.released.clear()
                     out.mark(label)
                 elif op is O.GOTO:
                     out.branch('b', label)
