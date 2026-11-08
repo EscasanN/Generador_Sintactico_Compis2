@@ -1,9 +1,12 @@
-"""IDE de Compiscript: editar, guardar y compilar programas ``.cps``.
+"""IDE de Compiscript: editar, guardar, compilar a TAC/MIPS y ejecutar en MARS.
 
-La compilación (sintaxis, semántica, generación de TAC y verificación) se
-ejecuta en ``CompilationWorker`` fuera del hilo de Qt mediante la misma API
-pública que usa la CLI: ``compile_compiscript``. La ventana solo presenta el
-resultado inmutable que entrega el worker; nunca construye ni modifica IR.
+La compilación (sintaxis, semántica, TAC verificado y ensamblador MIPS) se
+ejecuta en ``CompilationWorker`` y la ejecución explícita en MARS en
+``ExecutionWorker``, ambos fuera del hilo de Qt y con las mismas APIs públicas
+que usa la CLI (``compile_compiscript``/``generate_mips`` y la ejecución de
+``src.mips_consumer``). Cada resultado viaja con la revisión del documento que
+lo originó; uno de una revisión anterior se descarta. La ventana solo presenta
+resultados inmutables: nunca construye ni modifica IR o ensamblador.
 """
 
 from __future__ import annotations
@@ -41,6 +44,13 @@ from src.gui.codegen_results import (
     TacView,
     collect_diagnostics,
     use_code_font,
+)
+from src.gui.mips_results import (
+    STAGE_NAMES_MIPS,
+    ExecutionPanel,
+    MipsView,
+    PhysicalLayoutPanel,
+    mips_diagnostic_lines,
 )
 from src.gui.parse_tree_view import build_tree_widget
 from src.gui.semantic_results import SemanticResultsPanel
@@ -85,6 +95,9 @@ class CompilationWorker(QThread):
             from src.codegen.pipeline import compile_compiscript
             from src.semantic.antlr_adapter import SemanticAdapterError
 
+            from src.mips.generator import generate_mips
+            from src.mips.models import MipsCompilationResult
+
             try:
                 compilation = compile_compiscript(
                     self.input_text,
@@ -95,6 +108,12 @@ class CompilationWorker(QThread):
             except (AntlrModeError, GrammarInfoError, SemanticAdapterError) as exc:
                 self.failed.emit(str(exc))
                 return
+            # Same composition as ``compile_to_mips``: the backend only runs on
+            # an accepted TAC, and the grammar/profile chosen by the window apply.
+            mips_compilation = MipsCompilationResult(
+                compilation,
+                generate_mips(compilation.intermediate_result) if compilation.accepted else None,
+            )
             syntax_result = compilation.syntax_result
             tree_image = None
             tree_error = None
@@ -111,6 +130,7 @@ class CompilationWorker(QThread):
                 {
                     "mode": "compile",
                     "compilation": compilation,
+                    "mips_compilation": mips_compilation,
                     "result": syntax_result,
                     "semantic_result": compilation.semantic_result,
                     "tree_image": tree_image,
@@ -122,6 +142,37 @@ class CompilationWorker(QThread):
             import traceback
 
             self.failed.emit(traceback.format_exc())
+
+
+class ExecutionWorker(QThread):
+    """Ejecuta en MARS fuera del hilo de Qt; ``request_cancel`` termina Java (IDE-03)."""
+
+    completed = pyqtSignal(object, int)
+
+    def __init__(self, assembly: str, config: object, document_revision: int) -> None:
+        super().__init__()
+        from src.mips_consumer import CancellableMarsRun
+
+        self.document_revision = document_revision
+        self._run = CancellableMarsRun(assembly, config)
+
+    @property
+    def cancel_requested(self) -> bool:
+        return self._run.cancelled
+
+    def request_cancel(self) -> None:
+        self._run.cancel()
+
+    def run(self) -> None:
+        try:
+            result = self._run.run()
+        except Exception as exc:  # pragma: no cover - defensa ante fallos inesperados
+            from src.mips.diagnostics import MipsDiagnostic
+            from src.mips.models import MipsExecutionResult
+
+            result = MipsExecutionResult('tool_error', diagnostics=(
+                MipsDiagnostic('MIPS-TOOL-MISSING', repr(exc), phase='tool'),))
+        self.completed.emit(result, self.document_revision)
 
 
 class MainWindow(QMainWindow):
@@ -137,6 +188,9 @@ class MainWindow(QMainWindow):
         self._input_path: str | None = None
         self._active_file: str | None = None
         self._worker: CompilationWorker | None = None
+        self._execution_worker: ExecutionWorker | None = None
+        self._compile_pending = False
+        self._mips_compilation: object | None = None
         self._last_bundle: dict | None = None
         self._document_revision = 0
         self._document_snapshot: tuple[str | None, str] = (None, "")
@@ -174,6 +228,19 @@ class MainWindow(QMainWindow):
         self._export_action.setEnabled(False)
         self._export_action.triggered.connect(self._export_tac)
         run_menu.addAction(self._export_action)
+        run_menu.addSeparator()
+        self._run_mips_action = QAction("Ejecutar en MARS", self)
+        self._run_mips_action.setShortcuts(["Ctrl+Shift+R", "F6"])
+        self._run_mips_action.triggered.connect(self._run_execution)
+        run_menu.addAction(self._run_mips_action)
+        self._cancel_action = QAction("Cancelar ejecución", self)
+        self._cancel_action.setShortcut("Ctrl+.")
+        self._cancel_action.triggered.connect(self._cancel_execution)
+        run_menu.addAction(self._cancel_action)
+        self._export_mips_action = QAction("Exportar MIPS…", self)
+        self._export_mips_action.setShortcut("Ctrl+Shift+E")
+        self._export_mips_action.triggered.connect(self._export_mips)
+        run_menu.addAction(self._export_mips_action)
 
         view_menu = self.menuBar().addMenu("&Vista")
         theme_action = QAction("Cambiar tema", self)
@@ -204,6 +271,14 @@ class MainWindow(QMainWindow):
         )
         self._run_btn.clicked.connect(self._run_compilation)
         toolbar.addWidget(self._run_btn)
+        self._execute_btn = QPushButton("Ejecutar en MARS")
+        self._execute_btn.setToolTip("Ejecuta el MIPS de la compilación vigente (F6)")
+        self._execute_btn.clicked.connect(self._run_execution)
+        toolbar.addWidget(self._execute_btn)
+        self._cancel_btn = QPushButton("Cancelar")
+        self._cancel_btn.setToolTip("Termina la ejecución de MARS en curso")
+        self._cancel_btn.clicked.connect(self._cancel_execution)
+        toolbar.addWidget(self._cancel_btn)
         toolbar.addStretch()
 
         configuration = QLabel(
@@ -259,6 +334,18 @@ class MainWindow(QMainWindow):
         self._layout_panel = LayoutPanel()
         self._tabs.addTab(self._layout_panel, "Tabla extendida")
 
+        self._mips_view = MipsView()
+        self._mips_view.export_button.clicked.connect(self._export_mips)
+        self._tabs.addTab(self._mips_view, "MIPS")
+
+        self._physical_panel = PhysicalLayoutPanel()
+        self._tabs.addTab(self._physical_panel, "Frames MIPS")
+
+        self._execution_panel = ExecutionPanel()
+        self._execution_panel.run_button.clicked.connect(self._run_execution)
+        self._execution_panel.cancel_button.clicked.connect(self._cancel_execution)
+        self._tabs.addTab(self._execution_panel, "Ejecución MARS")
+
         self._summary = QSplitter(Qt.Orientation.Vertical)
         self._results = QTextEdit()
         self._results.setReadOnly(True)
@@ -268,8 +355,9 @@ class MainWindow(QMainWindow):
         self._summary.setSizes([300, 260])
         self._tabs.addTab(self._summary, "Resumen")
         splitter.addWidget(self._tabs)
-        splitter.setSizes([520, 660])
+        splitter.setSizes([480, 700])
         root.addWidget(splitter, 1)
+        self._refresh_actions()
 
     def _apply_theme(self, palette: Palette) -> None:
         self._palette = palette
@@ -432,11 +520,22 @@ class MainWindow(QMainWindow):
         return choice == QMessageBox.StandardButton.Discard
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        """Do not discard an edited program when the window is closed."""
-        if self._confirm_document_replacement():
-            event.accept()
-        else:
+        """Keep unsaved work; stop MARS and wait for workers before Qt destroys them."""
+        if not self._confirm_document_replacement():
             event.ignore()
+            return
+        self.shutdown_workers()
+        event.accept()
+
+    def shutdown_workers(self) -> None:
+        """Cancel MARS (terminating Java) and wait for both workers to finish."""
+        execution = self._execution_worker
+        if execution is not None and execution.isRunning():
+            execution.request_cancel()
+            execution.wait()
+        compilation = self._worker
+        if compilation is not None and compilation.isRunning():
+            compilation.wait()
 
     def _document_changed(self) -> None:
         """Invalidate results when the buffer or its document identity changes."""
@@ -448,6 +547,10 @@ class MainWindow(QMainWindow):
             return
         self._document_snapshot = snapshot
         self._document_revision += 1
+        execution = self._execution_worker
+        if execution is not None and execution.isRunning():
+            # Its result belongs to the previous revision and will be discarded.
+            execution.request_cancel()
         self._clear_results()
         self._tac_view.set_compilation(None)
         self._layout_panel.set_compilation(None)
@@ -457,7 +560,7 @@ class MainWindow(QMainWindow):
 
     def _run_compilation(self) -> None:
         """Compila el contenido actual del editor, aunque no esté guardado."""
-        if self._worker is not None and self._worker.isRunning():
+        if self._compiling() or self._executing():
             return
         source = self._editor.toPlainText()
         self._run_btn.setEnabled(False)
@@ -476,7 +579,9 @@ class MainWindow(QMainWindow):
             lambda message, revision=self._document_revision: self._on_compilation_error(message, revision)
         )
         self._worker = worker
+        self._compile_pending = True
         worker.start()
+        self._refresh_actions()
 
     def _clear_results(self) -> None:
         """Ningún resultado anterior queda visible como si fuera actual (IDE-03)."""
@@ -488,20 +593,68 @@ class MainWindow(QMainWindow):
         self._diagnostics.set_compilation(None)
         self._results.clear()
         self._export_action.setEnabled(False)
+        self._mips_compilation = None
+        self._mips_view.show_pending()
+        self._physical_panel.show_pending()
+        self._execution_panel.reset("Compile el programa vigente para poder ejecutarlo.")
+        self._refresh_actions()
+
+    def _compiling(self) -> bool:
+        # A flag, not isRunning(): the result signal is queued after run() ends.
+        return self._compile_pending
+
+    def _executing(self) -> bool:
+        return self._execution_worker is not None and self._execution_worker.isRunning()
+
+    def _refresh_actions(self) -> None:
+        """Compile, run, cancel and export depend on the current revision and workers."""
+        compiling, executing = self._compiling(), self._executing()
+        runnable = (
+            self._mips_compilation is not None
+            and self._mips_compilation.accepted
+            and not compiling
+            and not executing
+        )
+        exportable = self._mips_compilation is not None and self._mips_compilation.accepted
+        for widget in (self._run_btn, self._compile_action):
+            widget.setEnabled(not compiling and not executing)
+        for widget in (self._execute_btn, self._run_mips_action,
+                       self._execution_panel.run_button):
+            widget.setEnabled(runnable)
+        for widget in (self._cancel_btn, self._cancel_action,
+                       self._execution_panel.cancel_button):
+            widget.setEnabled(executing)
+        self._export_mips_action.setEnabled(exportable)
 
     def _finish_run(self) -> None:
-        self._run_btn.setEnabled(True)
-        self._compile_action.setEnabled(True)
+        self._refresh_actions()
 
     def _on_finished(self, bundle: dict) -> None:
-        self._finish_run()
+        self._compile_pending = False
         revision = bundle.get("document_revision")
         if revision is not None and revision != self._document_revision:
+            self._finish_run()
             self.statusBar().showMessage("Resultado descartado: el documento cambió durante la compilación.")
             return
         self._last_bundle = bundle
+        self._mips_compilation = bundle.get("mips_compilation")
         self._render_bundle(bundle)
+        self._finish_run()
         compilation = bundle["compilation"]
+        mips_compilation = self._mips_compilation
+        if mips_compilation is not None and mips_compilation.accepted:
+            mips_stats = mips_compilation.mips.statistics
+            self.statusBar().showMessage(
+                f"Compilación aceptada: {compilation.intermediate_result.statistics['instructions']} "
+                f"instrucciones TAC y {mips_stats['instructions']} MIPS "
+                f"({mips_stats['spills']} derrames). Puede ejecutar en MARS."
+            )
+            self._tabs.setCurrentWidget(self._mips_view)
+            return
+        if compilation.accepted and mips_compilation is not None:
+            self.statusBar().showMessage("TAC aceptado, pero la generación MIPS fue rechazada.")
+            self._tabs.setCurrentWidget(self._summary)
+            return
         if compilation.accepted:
             stats = compilation.intermediate_result.statistics
             self.statusBar().showMessage(
@@ -520,6 +673,7 @@ class MainWindow(QMainWindow):
         self._tabs.setCurrentWidget(self._summary)
 
     def _on_compilation_error(self, message: str, revision: int) -> None:
+        self._compile_pending = False
         if revision != self._document_revision:
             self._finish_run()
             self.statusBar().showMessage("Resultado descartado: el documento cambió durante la compilación.")
@@ -564,6 +718,9 @@ class MainWindow(QMainWindow):
         self._export_action.setEnabled(
             compilation is not None and compilation.accepted
         )
+        mips_compilation = bundle.get("mips_compilation")
+        self._mips_view.set_compilation(mips_compilation)
+        self._physical_panel.set_compilation(mips_compilation)
 
         lines = [
             "=" * 70,
@@ -598,6 +755,7 @@ class MainWindow(QMainWindow):
                     f"{diagnostic.message}"
                 )
         lines.extend(self._codegen_summary(compilation))
+        lines.extend(self._mips_summary(bundle.get("mips_compilation")))
         if bundle.get("tree_error"):
             lines.append(f"[!] Árbol: {bundle['tree_error']}")
 
@@ -641,6 +799,98 @@ class MainWindow(QMainWindow):
                 )
                 lines.append(f"Resultado  : REJECT — fase {stage}; sin TAC")
         return lines
+
+    @staticmethod
+    def _mips_summary(mips_compilation: object | None) -> list[str]:
+        if mips_compilation is None:
+            return []
+        if mips_compilation.mips is None:
+            return ["MIPS       : no generado (falló una fase anterior)"]
+        if mips_compilation.accepted:
+            stats = mips_compilation.mips.statistics
+            return [
+                "MIPS       : ACCEPT (ensamblador completo para MARS 4.5)",
+                f"Estadísticas MIPS: {stats['instructions']} instrucciones, "
+                f"{stats['frames']} frames, {stats['stack_bytes']} bytes de pila, "
+                f"{stats['spills']} derrames, {stats['reloads']} recargas",
+            ]
+        stage = STAGE_NAMES_MIPS["mips"]
+        return [
+            "MIPS       : ERRORES DE GENERACIÓN",
+            *mips_diagnostic_lines(mips_compilation),
+            f"Resultado  : REJECT — fase {stage}; sin ensamblador",
+        ]
+
+    # -------------------------------------------------------------- execution
+
+    def _run_execution(self) -> None:
+        """Ejecuta en MARS solo el MIPS de la revisión vigente (IDE-03, IDE-04)."""
+        compilation = self._mips_compilation
+        if compilation is None or not compilation.accepted or self._compiling() or self._executing():
+            return
+        from src.mips_consumer import default_mars_config
+
+        try:
+            config = default_mars_config()
+        except ValueError as exc:
+            self._execution_panel.reset(f"Configuración de MARS inválida: {exc}")
+            return
+        self._execution_panel.set_jar(config.jar)
+        self._execution_panel.show_running()
+        worker = ExecutionWorker(compilation.mips.assembly, config, self._document_revision)
+        worker.completed.connect(self._on_execution_finished)
+        self._execution_worker = worker
+        worker.start()
+        self._refresh_actions()
+        self._tabs.setCurrentWidget(self._execution_panel)
+        self.statusBar().showMessage("Ejecutando en MARS…")
+
+    def _cancel_execution(self) -> None:
+        worker = self._execution_worker
+        if worker is not None and worker.isRunning():
+            worker.request_cancel()
+            self.statusBar().showMessage("Cancelando la ejecución de MARS…")
+
+    def _on_execution_finished(self, result: object, revision: int) -> None:
+        worker = self._execution_worker
+        if worker is not None and worker.isRunning():
+            worker.wait()
+        self._refresh_actions()
+        if revision != self._document_revision or self._mips_compilation is None:
+            self.statusBar().showMessage(
+                "Ejecución descartada: el documento cambió mientras se ejecutaba."
+            )
+            return
+        self._execution_panel.set_result(result)
+        self._refresh_actions()
+        from src.mips_consumer import execution_summary
+
+        self.statusBar().showMessage(f"MARS: {execution_summary(result)}")
+
+    def _export_mips(self) -> None:
+        compilation = self._mips_compilation
+        if compilation is None or not compilation.accepted or not self._mips_view.has_tac():
+            QMessageBox.information(
+                self, "Sin MIPS", "Compile un programa válido antes de exportar el ensamblador."
+            )
+            return
+        suggested = (
+            str(Path(self._input_path).with_suffix(".asm")) if self._input_path else ""
+        )
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar ensamblador MIPS", suggested, "MIPS (*.asm *.s);;Texto (*.txt)"
+        )
+        if not path:
+            return
+        if compilation is not self._mips_compilation:
+            self.statusBar().showMessage("Exportación cancelada: el documento cambió.")
+            return
+        try:
+            target = self._mips_view.export(path)
+        except OSError as exc:
+            QMessageBox.critical(self, "Error", f"No se exportó el ensamblador: {exc}")
+            return
+        self.statusBar().showMessage(f"MIPS exportado: {target}")
 
     def _export_tac(self) -> None:
         if not self._tac_view.has_tac():
@@ -698,6 +948,8 @@ class MainWindow(QMainWindow):
         self._clear_results()
         self._tac_view.set_compilation(None)
         self._layout_panel.set_compilation(None)
+        self._mips_view.set_compilation(None)
+        self._physical_panel.set_compilation(None)
         self.statusBar().showMessage("Error interno durante la compilación.")
         escaped = html.escape(message)
         self._results.setHtml(
@@ -715,4 +967,4 @@ def launch_gui() -> None:
     sys.exit(application.exec())
 
 
-__all__ = ["CompilationWorker", "MainWindow", "launch_gui"]
+__all__ = ["CompilationWorker", "ExecutionWorker", "MainWindow", "launch_gui"]
