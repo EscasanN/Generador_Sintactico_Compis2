@@ -2,7 +2,9 @@
 
 ## Contratos antes de programar
 
-El código descrito es trabajo futuro. Leer primero [PLAN.md](PLAN.md),
+Los bloques 1, 2 y 3 ya están implementados; ver [su entrega](entrega-bloque1-daniel.md),
+[la del bloque 2](entrega-bloque2-nadissa.md) y [la del bloque 3](entrega-bloque3-dulce.md).
+El bloque 4 sigue siendo trabajo futuro. Leer primero [PLAN.md](PLAN.md),
 [ARQUITECTURA.md](ARQUITECTURA.md), [DISENO_MIPS.md](DISENO_MIPS.md) y la
 matriz propia. El IR y layouts existentes están en `src/codegen/`; el backend
 nuevo se alojará en `src/mips/`. No modificar la gramática para traducir TAC.

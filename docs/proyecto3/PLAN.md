@@ -13,13 +13,13 @@ Base inspeccionada: `feature/proyecto2-codegen`, commit `6791fef`.
 La etiqueta `entrega-semantica-100` conserva la entrega semántica.
 La rama de integración propuesta es `feature/proyecto3-mips`.
 
-- [ ] Resolver con su propietario el cambio local de `LST-01-listas.cps`; no descartarlo automáticamente ni regenerar su golden para esconder el fallo.
-- [ ] Registrar el tratamiento del enunciado raíz, recibido como archivo sin seguimiento, para que el checkout final incluya su fuente de requisitos.
-- [ ] Ejecutar `py -3.14 -m pytest tests -q` y registrar entorno, commit y resultado limpio.
+- [x] Restaurar el fixture completo de listas con autorización del propietario, conservando su golden: `f2f2a15`.
+- [x] Enunciado raíz incluido en la base publicada `82756c9`.
+- [x] Ejecutar regresión limpia antes de implementar: 905 pruebas aprobadas.
 - [ ] Confirmar gramática/perfil compatibles y conservar sus APIs y fingerprint.
 - [ ] Registrar autorización para cuatro integrantes en esta entrega; el enunciado indica tres.
-- [ ] Obtener MARS 4.5 de su distribución oficial y registrar procedencia y SHA-256 del JAR.
-- [ ] Aprobar [DISENO_MIPS.md](DISENO_MIPS.md) y sus contratos antes del primer handoff.
+- [x] Obtener MARS 4.5 y registrar procedencia/hash en la entrega de Daniel.
+- [x] Congelar diseño y contratos del bloque 1 tras implementación y revisión técnica.
 
 La revisión inicial ejecutó 905 pruebas: 903 aprobadas y dos fallos asociados
 al fixture local reducido. Su versión de Git satisface ambas comprobaciones.
@@ -29,13 +29,13 @@ Este resultado histórico **no es una aceptación limpia de la nueva fase**.
 
 ### 1. Daniel Chet
 
-- [ ] Implementar modelos, diagnósticos, emisor y etiquetas MIPS deterministas.
-- [ ] Congelar protocolos de layout, llamadas y registro de handlers de opcodes.
-- [ ] Implementar `getReg()`, banco flotante, respaldos, derrames y barreras.
-- [ ] Traducir escalares, conversiones, saltos y `RELEASE`.
-- [ ] Implementar auxiliares mínimos de heap, impresión escalar y terminación.
-- [ ] Implementar adaptador MARS con ensamblado, ejecución y límites.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE1_DANIEL.md) y el handoff.
+- [x] Implementar modelos, diagnósticos, emisor y etiquetas MIPS deterministas.
+- [x] Congelar protocolos de layout, llamadas y registro de handlers de opcodes.
+- [x] Implementar `getReg()`, banco flotante, respaldos, derrames y barreras.
+- [x] Traducir escalares, conversiones, saltos y `RELEASE`.
+- [x] Implementar auxiliares mínimos de heap, impresión escalar y terminación.
+- [x] Implementar adaptador MARS con ensamblado, ejecución y límites.
+- [x] Completar [su matriz](MATRIZ_BLOQUE1_DANIEL.md) y [el handoff](entrega-bloque1-daniel.md).
 
 **Puerta 1:** IR de prueba ejecutada en MARS con números, ramas, bucles y
 derrames forzados; interfaces de los siguientes bloques documentadas y estables.
@@ -43,12 +43,12 @@ No necesita el pipeline `.cps` nuevo para cerrar.
 
 ### 2. Nadissa Vela
 
-- [ ] Construir layouts físicos por identidad de símbolo y por procedimiento.
-- [ ] Implementar argumentos, prólogos, epílogos y retorno único.
-- [ ] Probar llamadas directas, indirectas, recursión y valores vivos.
-- [ ] Implementar entornos, closures escapadas y métodos ligados, incluidos auxiliares de heap propios.
-- [ ] Cubrir capturas compartidas y enlace léxico a varios niveles.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE2_NADISSA.md) y el handoff.
+- [x] Construir layouts físicos por identidad de símbolo y por procedimiento.
+- [x] Implementar argumentos, prólogos, epílogos y retorno único.
+- [x] Probar llamadas directas, indirectas, recursión y valores vivos.
+- [x] Implementar entornos, closures escapadas y métodos ligados, incluidos auxiliares de heap propios.
+- [x] Cubrir capturas compartidas y enlace léxico a varios niveles.
+- [x] Completar [su matriz](MATRIZ_BLOQUE2_NADISSA.md) y [el handoff](entrega-bloque2-nadissa.md); falta la revisión independiente de la puerta (revision realizada por Dulce previo a desarrollar).
 
 **Puerta 2:** llamadas y closures verificadas en MARS con IR manual tipada,
 sin depender de que existan listas, objetos completos o excepciones del bloque 3.
@@ -56,23 +56,23 @@ Los receptores de prueba pueden ser regiones de memoria preparadas por el harnes
 
 ### 3. Dulce Ambrosio
 
-- [ ] Implementar cadenas, listas, objetos, herencia e inicializadores.
-- [ ] Completar runtime de errores y desenrollado de excepciones.
-- [ ] Integrar todo el catálogo de opcodes y las llamadas externas permitidas.
-- [ ] Implementar generación integral y `compile_to_mips` conservando las APIs previas.
-- [ ] Probar `.cps` por dominio con salida esperada y rechazo por fase.
-- [ ] Completar [su matriz](MATRIZ_BLOQUE3_DULCE.md) y el handoff.
+- [x] Implementar cadenas, listas, objetos, herencia e inicializadores.
+- [x] Completar runtime de errores y desenrollado de excepciones.
+- [x] Integrar todo el catálogo de opcodes y las llamadas externas permitidas.
+- [x] Implementar generación integral y `compile_to_mips` conservando las APIs previas.
+- [x] Probar `.cps` por dominio con salida esperada y rechazo por fase.
+- [x] Completar [su matriz](MATRIZ_BLOQUE3_DULCE.md) y [el handoff](entrega-bloque3-dulce.md); falta la revisión independiente de la puerta.
 
 **Puerta 3:** todos los opcodes emitidos por el compilador tienen traducción
 y evidencia; programas `.cps` completos se ejecutan por la API Python en MARS.
 
 ### 4. Nelson Escalante
 
-- [ ] Integrar generación y ejecución explícita en IDE y CLI.
-- [ ] Mostrar/exportar `.asm`, salida, errores, estado y layouts MIPS físicos.
-- [ ] Conservar seguridad del documento, invalidación de resultados y workers Qt.
-- [ ] Consolidar fixtures, oráculos, instalación y guías de defensa.
-- [ ] Ejecutar desde checkout limpio y completar [su matriz](MATRIZ_BLOQUE4_NELSON.md).
+- [x] Integrar generación y ejecución explícita en IDE y CLI.
+- [x] Mostrar/exportar `.asm`, salida, errores, estado y layouts MIPS físicos.
+- [x] Conservar seguridad del documento, invalidación de resultados y workers Qt.
+- [x] Consolidar fixtures, oráculos, instalación y guías de defensa.
+- [x] Ejecutar desde checkout limpio y completar [su matriz](MATRIZ_BLOQUE4_NELSON.md) y [el handoff](entrega-bloque4-nelson.md); falta que otro integrante repita el checkout limpio y el ensayo visible.
 - [ ] Registrar aceptación conjunta en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
 
 **Puerta 4:** demostración reproducible desde una ventana y desde CLI,

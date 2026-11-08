@@ -1,5 +1,14 @@
 # Arquitectura prevista del backend MIPS
 
+Estado: los componentes de Daniel (bloque 1), de Nadissa (bloque 2: `layout`,
+`calls`, `environments`) y de Dulce (bloque 3: `runtime`, `lists`, `objects`,
+`exceptions`, `generator`, `pipeline`) y de Nelson (bloque 4: CLI, IDE y
+`src/mips_consumer.py`) están implementados. Sus contratos y reproducción están en
+[entrega-bloque1-daniel.md](entrega-bloque1-daniel.md),
+[entrega-bloque2-nadissa.md](entrega-bloque2-nadissa.md),
+[entrega-bloque3-dulce.md](entrega-bloque3-dulce.md) y
+[entrega-bloque4-nelson.md](entrega-bloque4-nelson.md).
+
 ## Flujo de datos
 
 ```text
@@ -20,7 +29,10 @@ resolver símbolos. Consume `IntermediateCodeResult.program`, sus layouts y
 los tipos de los operandos. El backend no modifica esos objetos ni la tabla
 semántica. El formato TAC previo sigue siendo una vista del IR.
 
-## Interfaces públicas por implementar
+## Interfaces públicas
+
+`generate_mips` y `compile_to_mips` están implementadas (bloque 3) junto con
+`run_mips(compilation, config)`, que ejecuta solo una compilación aceptada.
 
 ```python
 generate_mips(intermediate_result: IntermediateCodeResult) -> MipsGenerationResult
@@ -82,7 +94,15 @@ src/mips/
   exceptions.py                  manejadores y errores runtime — Dulce
   generator.py, pipeline.py       composición y API integral — Dulce
 src/gui/mips_results.py           presentación Qt — Nelson
+src/mips_consumer.py              utilidades sin Qt de CLI/IDE — Nelson
 ```
+
+`src/mips_consumer.py` no genera código: escribe exportaciones de forma atómica,
+resuelve `MARS_JAR`, nombra las ranuras de `PhysicalLayoutPlan` y ofrece
+`CancellableMarsRun`, que repite las dos invocaciones y la clasificación de
+`run_mars` pero termina el árbol de procesos de Java al cancelar o al agotar el
+tiempo. CLI e IDE lo usan para ejecutar; la paridad con `run_mars` se prueba en
+`tests/mips/test_mips_fixtures.py` (ver INC-B4-01 en la entrega del bloque 4).
 
 `__init__.py` será mínimo. El backend y el adaptador MARS no dependen de Qt.
 Los módulos de runtime emiten ensamblador requerido una sola vez por unidad;

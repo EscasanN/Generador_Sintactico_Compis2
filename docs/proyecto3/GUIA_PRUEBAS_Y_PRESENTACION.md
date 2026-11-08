@@ -2,9 +2,11 @@
 
 ## Estado de los comandos
 
-El backend y los tests descritos están pendientes de implementación.
-Los comandos siguientes son el contrato de aceptación que deben habilitar los
-bloques. La suite existente se ejecuta hoy con `py -3.14 -m pytest tests -q`.
+Los cuatro bloques están implementados: backend, fixtures `.cps` MIPS con oráculos,
+CLI (`--emit-mips`, `--show-mips-layout`, `--run-mips`) e IDE (pestañas MIPS, Frames
+MIPS y Ejecución MARS). Los programas de la demostración propuesta existen en
+`tests/cps/mips/` con sus oráculos. Comandos y ensayo registrados en
+[la entrega del bloque 4](entrega-bloque4-nelson.md).
 
 ## Preparación del entorno de aceptación
 

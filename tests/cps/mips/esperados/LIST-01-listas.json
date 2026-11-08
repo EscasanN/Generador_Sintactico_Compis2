@@ -1,0 +1,8 @@
+{
+  "compile": {"accepted": true, "stage": null, "code": null},
+  "execution": {
+    "exit_code": 0,
+    "stdout": "6\n0\n5\n10\n3.75\nfalse\ntrue\nuno!\n9\n[list]\nINDEX_OUT_OF_RANGE\nINDEX_OUT_OF_RANGE\nstore INDEX_OUT_OF_RANGE\nNULL_ACCESS\n15\n",
+    "runtime_code": null
+  }
+}

@@ -112,6 +112,7 @@ global:
     t5 = t0 == 1
     release t0
     ifFalse t5 goto if_end7
+    release t5
     goto foreach_next5
     if_end7:
     release t5
@@ -165,6 +166,7 @@ global:
     t5 = t1 == 3
     release t1
     ifFalse t5 goto if_end16
+    release t5
     goto for_end15
     if_end16:
     release t5

@@ -93,7 +93,7 @@ class ControlFlowLowering:
         self.break_targets.append(exit_label)
         self.continue_targets.append(continue_label)
         for target in (exit_label, continue_label):
-            self.loop_handler_depths[str(target.value)] = len(self.handlers)
+            self.loop_handler_depths[str(target.value)] = (len(self.handlers), len(self.held))
         try:
             yield
         finally:
@@ -101,6 +101,16 @@ class ControlFlowLowering:
             self.continue_targets.pop()
             for target in (exit_label, continue_label):
                 self.loop_handler_depths.pop(str(target.value))
+
+    @contextmanager
+    def holding(self, *values: ValueRef | None) -> Iterator[None]:
+        """Values live until a join: a break/continue that skips the join releases them."""
+        depth = len(self.held)
+        self.held.extend(value for value in values if value is not None)
+        try:
+            yield
+        finally:
+            del self.held[depth:]
 
     # -- conditionals ------------------------------------------------------------
 
@@ -113,11 +123,12 @@ class ControlFlowLowering:
         end = labels.next("if_end")
         otherwise = otherwise or end
         self.branch_false(condition.operand, otherwise, location)
-        self.lower_block(blocks[0])
-        if len(blocks) == 2:
-            self.jump(end, location)
-            self.mark(otherwise, location)
-            self.lower_block(blocks[1])
+        with self.holding(condition):
+            self.lower_block(blocks[0])
+            if len(blocks) == 2:
+                self.jump(end, location)
+                self.mark(otherwise, location)
+                self.lower_block(blocks[1])
         self.mark(end, location)
         self.settle(condition, location)
 
@@ -146,12 +157,13 @@ class ControlFlowLowering:
             value.release(self.builder, case_location)
             self.branch_true(matched.operand, label, case_location)
         self.jump(default_label or end, location)
-        for case, label in cases:
-            self.mark(label, self.location(case))
-            self._lower_statements(case)
-        if default is not None and default_label is not None:
-            self.mark(default_label, self.location(default))
-            self._lower_statements(default)
+        with self.holding(discriminant, matched):
+            for case, label in cases:
+                self.mark(label, self.location(case))
+                self._lower_statements(case)
+            if default is not None and default_label is not None:
+                self.mark(default_label, self.location(default))
+                self._lower_statements(default)
         self.mark(end, location)
         self.settle(matched, location)
         self.settle(discriminant, location)
@@ -260,9 +272,7 @@ class ControlFlowLowering:
             raise CodegenError(
                 "IRGEN-BREAK-OUTSIDE-LOOP", "break has no enclosing loop", self.location(node)
             )
-        target = self.break_targets[-1]
-        self.unwind_handlers(self.loop_handler_depths[str(target.value)], self.location(node))
-        self.jump(target, self.location(node))
+        self.leave_to(self.break_targets[-1], self.location(node))
 
     def lower_continue(self, node: ParseTreeNode) -> None:
         if not self.continue_targets:
@@ -271,9 +281,17 @@ class ControlFlowLowering:
                 "continue has no enclosing loop",
                 self.location(node),
             )
-        target = self.continue_targets[-1]
-        self.unwind_handlers(self.loop_handler_depths[str(target.value)], self.location(node))
-        self.jump(target, self.location(node))
+        self.leave_to(self.continue_targets[-1], self.location(node))
+
+    def leave_to(self, target: Operand, location: SourceLocation) -> None:
+        """break/continue: release what open if/switch hold, retire handlers, jump."""
+        handlers, held = self.loop_handler_depths[str(target.value)]
+        if self.reachable:
+            for value in self.held[held:]:
+                if value.owns_temporary:
+                    self.builder.emit(OpCode.RELEASE, value.operand, location=location)
+        self.unwind_handlers(handlers, location)
+        self.jump(target, location)
 
     def unwind_handlers(self, retained: int, location: SourceLocation) -> None:
         """Remove only the protected scopes abandoned by this transfer."""

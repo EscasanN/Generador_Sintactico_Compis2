@@ -14,6 +14,7 @@ global:
     t3 = t2 == 2
     release t2
     ifFalse t3 goto if_end2
+    release t3
     goto while_cond0
     if_end2:
     release t3
@@ -21,6 +22,7 @@ global:
     t3 = t2 == 8
     release t2
     ifFalse t3 goto if_end3
+    release t3
     goto while_end1
     if_end3:
     release t3
@@ -38,6 +40,7 @@ global:
     t1 = t0 == 1
     release t0
     ifFalse t1 goto if_end7
+    release t1
     goto do_cond5
     if_end7:
     release t1
@@ -64,6 +67,7 @@ global:
     t4 = t0 == 1
     release t0
     ifFalse t4 goto if_end14
+    release t4
     goto for_end13
     if_end14:
     release t4
@@ -71,6 +75,7 @@ global:
     t4 = t0 == 1
     release t0
     ifFalse t4 goto if_end15
+    release t4
     goto for_update12
     if_end15:
     release t4
@@ -113,6 +118,7 @@ global:
     t1 = t2 > 2
     release t2
     ifFalse t1 goto if_end22
+    release t1
     goto for_end21
     if_end22:
     release t1

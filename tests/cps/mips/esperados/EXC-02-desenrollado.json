@@ -1,0 +1,8 @@
+{
+  "compile": {"accepted": true, "stage": null, "code": null},
+  "execution": {
+    "exit_code": 0,
+    "stdout": "entero DIV_ZERO\nmodulo DIV_ZERO\ndoble DIV_ZERO\nresto DIV_ZERO\nprofundo DIV_ZERO\nindice INDEX_OUT_OF_RANGE\ninterno DIV_ZERO\nexterno INDEX_OUT_OF_RANGE\ncapturado INDEX_OUT_OF_RANGE\n50\n5\n",
+    "runtime_code": null
+  }
+}
