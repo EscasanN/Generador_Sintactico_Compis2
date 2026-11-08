@@ -1,8 +1,8 @@
 # Matriz del bloque 4 de Nelson Escalante
 
 Responsable: Nelson Escalante. Estado: **APROBADO** en todas las filas; revisión de
-Daniel Chet el 2026-11-08 sobre `9d495ad`. Queda como acción humana la demo en una
-ventana visible. Evidencia y resultados en
+Daniel Chet el 2026-11-08 sobre `9d495ad`; demo en ventana visible ensayada el mismo día.
+Evidencia y resultados en
 [entrega-bloque4-nelson.md](entrega-bloque4-nelson.md#revisión-de-la-puerta).
 Dependencia: API completa y bloque 3 aprobado. Rúbrica: entrega funcional,
 ejecución y pruebas; este bloque no absorbe los pendientes de otros.
@@ -16,7 +16,7 @@ ejecución y pruebas; este bloque no absorbe los pendientes de otros.
 | CLI-01 | Opciones y flujos | `--emit-mips RUTA`, stdout y `--run-mips` producen los resultados documentados. | Opciones incompatibles y errores de E/S diagnosticados; rechazar ejecución con cualquiera de las exportaciones TAC/MIPS que reclame stdout, incluso combinando las tres. | `tests/test_main_mips_cli.py::test_cli_01_options_*` (15 casos, 8 combinaciones inválidas) | APROBADO |
 | CLI-02 | Estados y canales | Códigos 0/1/2; con exportación stdout contiene solo ASM, diagnósticos en stderr. | Rechazo conserva archivos existentes; error del programa y timeout no son éxito. | `tests/test_main_mips_cli.py::test_cli_02_exit_and_channels_*` (10 casos: rechazo por fase, runtime, pasos, timeout, MARS ausente, E/S) | APROBADO |
 | E2E-01 | Batería integral ejecutada | Cada `.cps` MIPS tiene esperado y se descubre automáticamente; resultados coinciden en API/CLI/IDE. | Falta de fixture, ID, oracle o simulador requerido impide aceptación. | `tests/mips/test_mips_fixtures.py::test_e2e_01_fixture_inventory` y `test_e2e_01_consumers_agree_with_api_and_oracle` (24 fixtures) | APROBADO |
-| DOC-01 | Instalación y defensa | Otro integrante reproduce desde checkout limpio usando README, JAR/hash y comandos registrados. | No depende de caches locales, rutas personales o archivos ignorados no descritos. | [entrega-bloque4-nelson.md](entrega-bloque4-nelson.md#instalación-y-ensayo-desde-checkout-limpio) y README principal | APROBADO (checkout limpio repetido en la revisión; falta la demo visible) |
+| DOC-01 | Instalación y defensa | Otro integrante reproduce desde checkout limpio usando README, JAR/hash y comandos registrados. | No depende de caches locales, rutas personales o archivos ignorados no descritos. | [entrega-bloque4-nelson.md](entrega-bloque4-nelson.md#instalación-y-ensayo-desde-checkout-limpio) y README principal | APROBADO (checkout limpio repetido en la revisión; demo visible ensayada el 2026-11-08) |
 | GIT-01 | Autoría verificable | Historial permite reconocer aportes propios de Daniel, Nadissa, Dulce y Nelson. | No commits compartidos ni autorización del profesor inventada. | Historial y referencias de las cuatro entregas; ACC-07 | APROBADO (cuatro autores, sin commits compartidos) |
 
 ## Evidencia y comando de puerta
