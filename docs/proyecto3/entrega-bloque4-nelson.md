@@ -8,8 +8,8 @@
 | Fecha y rama | 2026-11-07 — `feature/proyecto3-04-ide-delivery` |
 | Commit base aceptado | `e513934` (entrega del bloque 3 de Dulce, revisión de su puerta pendiente) |
 | Commits de implementación | `6ccd0cf` (CLI y `mips_consumer`), `a7643b5` (IDE), `da0dc9c` (fixtures y pruebas); la documentación va en el commit siguiente |
-| Commit implementado y revisado | **PENDIENTE** (lo registra el revisor al integrar; ver puerta) |
-| Revisor de la puerta | **PENDIENTE** |
+| Commit implementado y revisado | `8ade274` (entrega); revisado e integrado en `9d495ad` (`fix/proyecto3-final-compliance`) |
+| Revisor de la puerta | Daniel Chet, 2026-11-08 ([revisión](#revisión-de-la-puerta)) |
 | Python / Java / MARS y SHA-256 JAR | Python 3.14.3; Java 26.0.1 (Oracle, lanzador `javapath`); MARS 4.5, 4 169 142 bytes, `ac340b676ba2b62246b9df77e62f81ad4447bcfd329ab539716bcd09950b7096` (igual al de los bloques 1 a 3) |
 
 ## Cambios y contratos
@@ -78,7 +78,7 @@ Comando de cada fila: `py -3.14 -m pytest <prueba> --require-mars -q` con
 | CLI-02 | Estados y canales | Nelson | `test_cli_02_exit_and_channels_*` | rechazo léxico/semántico/TAC conserva `.asm` (1); `RuntimeError: DIV_ZERO` (1); límite de pasos (2); timeout 2 s (2); JAR ausente (2); fuente ilegible (2) | códigos y marcadores exactos | aprobado (10 casos) | IMPLEMENTADO |
 | E2E-01 | Batería integral | Nelson | `test_e2e_01_consumers_agree_with_api_and_oracle` (24 fixtures) | `test_e2e_01_fixture_inventory`: cabecera, IDs de las cuatro matrices, oráculo 1:1, programas de la demo, esquema del JSON | ASM API = CLI = IDE; salida CLI e IDE = oráculo; código 0/1 | aprobado (25 casos) | IMPLEMENTADO |
 | DOC-01 | Instalación y defensa | Nelson | [Instalación y ensayo](#instalación-y-ensayo-desde-checkout-limpio), README | copia sin `output/` ni cachés | suite completa en la copia | ver sección | IMPLEMENTADO (falta repetición por otro integrante) |
-| GIT-01 | Autoría verificable | Equipo | commits propios de este bloque | sin commits compartidos | historial por integrante | ver puerta | PENDIENTE (equipo) |
+| GIT-01 | Autoría verificable | Equipo | commits propios de este bloque | sin commits compartidos | historial por integrante | ver puerta | APROBADO: commits individuales de los cuatro integrantes, sin commits compartidos |
 
 ### Oráculos de los programas de la demostración
 
@@ -87,7 +87,7 @@ Escritos a mano antes de ejecutar; los siete coincidieron con MARS en la primera
 | Fixture | Esperado | Qué demuestra |
 |---|---|---|
 | `validos/DEMO-completa` | `30 120 11 12 75 Ana tiene saldo 14 3 capturado DIV_ZERO fin` | integral |
-| `validos/REG-presion` | `55 190 -5 20` | 23 derrames, llamada con valores vivos |
+| `validos/REG-presion` | `55 190 -5 20` | 29 derrames y 49 recargas, llamada con valores vivos |
 | `validos/CALL-recursion` | `120 55 true true 21 25` | recursión directa y mutua, 6 argumentos |
 | `validos/ENV-escape` | `1 2 2 101 3 101 40` | closure escapada, hermanas comparten, creadores independientes, dos niveles |
 | `validos/OBJ-herencia-local` | `7 30 23 23` | instancias, herencia local, método ligado escapado |
@@ -154,9 +154,9 @@ offscreen y no sustituyen ese ensayo humano.
 
 | ID | Gravedad | Descripción | Responsable | Estado |
 |---|---|---|---|---|
-| INC-B4-01 | Media | `src/mips/simulator.py::run_mars` usa `subprocess.run(timeout=…)`. En Windows, `java` suele ser el lanzador `C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`, que crea el `java.exe` real como hijo. Al expirar el timeout se mata solo el lanzador; el hijo conserva los pipes y `run_mars` espera hasta que MARS termina. Reproducción: bucle infinito, `MarsConfig(jar, timeout=2, step_limit=10**9)` → el resultado `timeout` llegó a los **190 s**. Los consumidores del bloque 4 no dependen de ello (`CancellableMarsRun` termina el árbol). | Daniel (simulador) | Abierta, reportada; mitigada en CLI/IDE |
+| INC-B4-01 | Media | `src/mips/simulator.py::run_mars` usa `subprocess.run(timeout=…)`. En Windows, `java` suele ser el lanzador `C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`, que crea el `java.exe` real como hijo. Al expirar el timeout se mata solo el lanzador; el hijo conserva los pipes y `run_mars` espera hasta que MARS termina. Reproducción: bucle infinito, `MarsConfig(jar, timeout=2, step_limit=10**9)` → el resultado `timeout` llegó a los **190 s**. Los consumidores del bloque 4 no dependen de ello (`CancellableMarsRun` termina el árbol). | Daniel (simulador) | Cerrada en `d2bc05e` (revisión): `run_mars` termina el árbol de procesos; regresión `test_timeout_terminates_the_java_child_of_a_launcher` |
 | INC-B4-02 | Baja | Durante el desarrollo, una prueba manual previa a la corrección dejó un MARS huérfano (`sm 1000000000`) que terminó solo; no quedaron procesos tras las suites (comprobado con `Get-CimInstance Win32_Process`). | Nelson | Cerrada |
-| INC-B3-01 | Media | `for` sin condición con `break` seguido de más código sigue rechazado por el TAC (Proyecto 2). Los fixtures del bloque 4 no lo usan. | Propietario del TAC | Abierta (heredada) |
+| INC-B3-01 | Media | `for` sin condición con `break` seguido de más código sigue rechazado por el TAC (Proyecto 2). Los fixtures del bloque 4 no lo usan. | Propietario del TAC | Cerrada en `be06c04` (revisión) |
 
 ## Puerta de aceptación
 
@@ -164,7 +164,38 @@ offscreen y no sustituyen ese ensayo humano.
 - [x] MARS real ejecutó los casos exigidos sin skips por dependencia.
 - [x] Regresión acumulada y formato del diff correctos.
 - [x] Contratos utilizables sin implementar pendientes de otros bloques (INC-B4-01 queda para Daniel).
-- [ ] Otro integrante reprodujo la puerta, el checkout limpio y la demo visible, y registró dictamen.
-- [ ] Commits de autoría individual identificables y commit final registrado arriba.
+- [x] Otro integrante reprodujo la puerta y el checkout limpio, y registró dictamen.
+- [ ] Demo en ventana visible de Windows repetida por otro integrante (acción humana pendiente).
+- [x] Commits de autoría individual identificables y commit final registrado arriba.
 
-Dictamen: **PENDIENTE**. Cambiar a APROBADO solo con fecha, commit y revisor.
+Dictamen: **APROBADO** (ver [la revisión](#revisión-de-la-puerta)).
+
+## Revisión de la puerta
+
+Revisión independiente de Daniel Chet el 2026-11-08 sobre la rama
+`fix/proyecto3-final-compliance`, que parte de la entrega del bloque 4 (`8fb4a47`).
+
+| Comprobación | Resultado |
+|---|---|
+| Entorno | Python 3.14.7, Java 21 (Temurin), MARS 4.5 con el JAR verificado (SHA-256 `ac340b67…7096`), Graphviz instalado |
+| Checkout limpio | `git worktree` de `origin/feature/proyecto3-04-ide-delivery` (sin `output/` ni cachés): `tests --require-mars` → **1263 passed**, 0 skips |
+| Suite completa tras las correcciones de integración (`9d495ad`) | `py -3.14 -m pytest tests --require-mars -q` → **1267 passed** en 544 s, 0 skips, 0 fallos; `git diff --check` sin errores |
+| Revisión de código | Línea por línea de los módulos del bloque y sus pruebas (detalle abajo) |
+
+Cambios hechos al integrar, con prueba nueva que falla sin el cambio:
+
+| Commit | Cambio | Prueba |
+|---|---|---|
+| `d2bc05e` | INC-B4-01: `run_mars` usa el ejecutor cancelable que termina el árbol de procesos; queda una sola implementación en `src/mips/simulator.py` (re-exportada por `src/mips_consumer.py`). | `test_simulator.py::test_timeout_terminates_the_java_child_of_a_launcher` (con el lanzador `javapath`: antes > 90 s y un `java.exe` huérfano, ahora ≈ 2 s) |
+| `be06c04` | INC-B3-01: `break`/`continue` liberan los valores que un `if` o `switch` mantiene hasta su unión; los dos TAC dorados afectados solo ganan esas instrucciones `release`. | `test_mips_pipeline.py::test_inc_b3_01_*` (8 y 2 registros, en MARS) |
+| `9d495ad` | Requisito del enunciado: `getReg` asigna `$s0`–`$s7` (preservados por el callee) a parámetros y locales de cada procedimiento y `$t` a temporales y globales; prólogo/epílogo los guardan y restauran y el registro de `try` (ahora de 72 bytes) los guarda para que `raise` los restaure. | `test_registers.py::test_reg_04_saved_registers_hold_procedure_variables`; los canarios de `$s0`–`$s7` existentes detectan quitar la restauración en `raise` |
+
+Revisión de código del bloque 4 sin defectos abiertos: la CLI usa la misma gramática y
+perfil que `compile_compiscript` (valores por defecto idénticos), valida combinaciones y
+escribe por temporal + `os.replace`; el IDE descarta resultados de revisiones anteriores,
+cancela MARS al editar y espera a los workers al cerrar. La vista de frames muestra ahora
+también el área de `$s` guardados.
+
+Dictamen: **APROBADO** — 2026-11-08, revisor Daniel Chet, commit `9d495ad`.
+Queda una sola acción humana: repetir la demostración en una ventana visible de Windows
+siguiendo [el ensayo](#ensayo-de-la-demostración); las pruebas Qt corrieron offscreen.

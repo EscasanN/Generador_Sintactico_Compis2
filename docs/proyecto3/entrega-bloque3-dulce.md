@@ -3,7 +3,8 @@
 Fecha: 2026-11-07. Rama: `feature/proyecto3-03-runtime-pipeline`, creada sobre la rama
 del bloque 2 (`feature/proyecto3-02-calls-environments`).
 Base de partida: `7bf0c56` (bloque 2 de Nadissa con las incidencias del bloque 1 corregidas).
-Commit implementado y revisado: **PENDIENTE** (se registra al integrar; ver puerta).
+Commit implementado: `a95da3d` (rebasado sobre `7bf0c56`); revisado e integrado en `9d495ad`
+(rama `fix/proyecto3-final-compliance`, ver [la revisión](#revisión-de-la-puerta)).
 
 ## Resultado y alcance
 
@@ -158,17 +159,16 @@ tras `lbu`) es un mutante equivalente: los bytes se cargan sin signo (0–255), 
 
 | ID | Gravedad | Descripción | Responsable | Estado |
 |---|---|---|---|---|
-| INC-B3-01 | Media | **Defecto del TAC del Proyecto 2** (`src/codegen/control_flow.py`): en un `for` **sin condición** (`for (;;)` o `for (; ; act)`), un `break` dentro de un `if` sale sin liberar el temporal de la condición del `if` (solo se libera en el camino que cae a `if_end`). Si después hay más código que reutiliza temporales en la misma unidad, `IRVerifier` rechaza un programa válido con `IR-TEMP-COLLISION` (fase `codegen`). Reproducción mínima: `let n: integer = 0; for (;;) { n = n + 1; if (n == 4) { break; } } let w: integer = 0; while (w < 2) { w = w + 1; }`. `while (true)` y los `for` con condición no lo presentan. No es del backend MIPS: el programa no llega a él. | Propietario del TAC del Proyecto 2 | Abierta, reportada; el fixture `PIPE-01-control-y-funciones` aísla esos `for` en funciones |
-| INC-B3-02 | Baja (entorno) | En este equipo no está instalado el ejecutable `dot` de Graphviz: `test_main_window_is_configured_only_for_compiscript`, `test_ide_04_and_05_compile_reports_categorized_diagnostics_with_location` y `test_ide_07_parse_tree_has_both_image_and_navigable_views` fallan con `ExecutableNotFound` igual que en la base, sin relación con este bloque. | Equipo (instalación) | Abierta; preexistente |
-| INC-B3-03 | Baja (entorno) | El equipo tiene Python 3.12.10 y Java 17; la documentación usa 3.14 y Java 21. La suite completa pasa en este entorno; repetir en 3.14 al integrar. | Revisor de la puerta | Abierta |
+| INC-B3-01 | Media | **Defecto del TAC del Proyecto 2** (`src/codegen/control_flow.py`): en un `for` **sin condición** (`for (;;)` o `for (; ; act)`), un `break` dentro de un `if` sale sin liberar el temporal de la condición del `if` (solo se libera en el camino que cae a `if_end`). Si después hay más código que reutiliza temporales en la misma unidad, `IRVerifier` rechaza un programa válido con `IR-TEMP-COLLISION` (fase `codegen`). Reproducción mínima: `let n: integer = 0; for (;;) { n = n + 1; if (n == 4) { break; } } let w: integer = 0; while (w < 2) { w = w + 1; }`. `while (true)` y los `for` con condición no lo presentan. No es del backend MIPS: el programa no llega a él. | Propietario del TAC del Proyecto 2 | Cerrada en `be06c04` (revisión): `break`/`continue` liberan lo que mantiene un `if`/`switch`; regresión `test_inc_b3_01_*` |
+| INC-B3-02 | Baja (entorno) | En este equipo no está instalado el ejecutable `dot` de Graphviz: `test_main_window_is_configured_only_for_compiscript`, `test_ide_04_and_05_compile_reports_categorized_diagnostics_with_location` y `test_ide_07_parse_tree_has_both_image_and_navigable_views` fallan con `ExecutableNotFound` igual que en la base, sin relación con este bloque. | Equipo (instalación) | Cerrada (entorno): con Graphviz instalado las tres pruebas pasan en la revisión |
+| INC-B3-03 | Baja (entorno) | El equipo tiene Python 3.12.10 y Java 17; la documentación usa 3.14 y Java 21. La suite completa pasa en este entorno; repetir en 3.14 al integrar. | Revisor de la puerta | Cerrada: la suite completa pasó en Python 3.14.7 y Java 21 en la revisión |
 | INC-B2-02 | Media | Literales de cadena en `PARAM` (bloque 2). | Dulce | Cerrada: `RuntimeRegisterAllocator` los materializa en cualquier operando |
 
 ## Limitaciones
 
 El heap no se libera (diseño). Las cadenas Unicode se imprimen por syscall 15; la salida
 gráfica de MARS con `-Dfile.encoding=UTF-8` no se ensayó en este bloque (la ejecución por
-terminal sí). Un `for` sin condición con `break` seguido de más código sigue rechazado por
-el TAC (INC-B3-01).
+terminal sí). El `for` sin condición con `break` (INC-B3-01) quedó corregido al integrar.
 
 ## Puerta de aceptación
 
@@ -176,7 +176,37 @@ el TAC (INC-B3-01).
 - [x] MARS real ejecutó los casos exigidos sin skips por dependencia.
 - [x] Regresión acumulada y formato del diff correctos (salvo INC-B3-02, preexistente y de entorno).
 - [x] Contratos utilizables por el siguiente bloque sin implementar pendientes propios.
-- [ ] Otro integrante reprodujo la puerta y registró dictamen.
-- [ ] Commits de autoría individual identificables y commit final registrado arriba.
+- [x] Otro integrante reprodujo la puerta y registró dictamen.
+- [x] Commits de autoría individual identificables y commit final registrado arriba.
 
-Dictamen: **PENDIENTE**. Cambiar a APROBADO solo con fecha, commit y revisor.
+Dictamen: **APROBADO** (ver [la revisión](#revisión-de-la-puerta)).
+
+## Revisión de la puerta
+
+Revisión independiente de Daniel Chet el 2026-11-08 sobre la rama
+`fix/proyecto3-final-compliance`, que parte de la entrega del bloque 4 (`8fb4a47`).
+
+| Comprobación | Resultado |
+|---|---|
+| Entorno | Python 3.14.7, Java 21 (Temurin), MARS 4.5 con el JAR verificado (SHA-256 `ac340b67…7096`), Graphviz instalado |
+| Checkout limpio | `git worktree` de `origin/feature/proyecto3-04-ide-delivery` (sin `output/` ni cachés): `tests --require-mars` → **1263 passed**, 0 skips |
+| Suite completa tras las correcciones de integración (`9d495ad`) | `py -3.14 -m pytest tests --require-mars -q` → **1267 passed** en 544 s, 0 skips, 0 fallos; `git diff --check` sin errores |
+| Revisión de código | Línea por línea de los módulos del bloque y sus pruebas (detalle abajo) |
+
+Cambios hechos al integrar, con prueba nueva que falla sin el cambio:
+
+| Commit | Cambio | Prueba |
+|---|---|---|
+| `d2bc05e` | INC-B4-01: `run_mars` usa el ejecutor cancelable que termina el árbol de procesos; queda una sola implementación en `src/mips/simulator.py` (re-exportada por `src/mips_consumer.py`). | `test_simulator.py::test_timeout_terminates_the_java_child_of_a_launcher` (con el lanzador `javapath`: antes > 90 s y un `java.exe` huérfano, ahora ≈ 2 s) |
+| `be06c04` | INC-B3-01: `break`/`continue` liberan los valores que un `if` o `switch` mantiene hasta su unión; los dos TAC dorados afectados solo ganan esas instrucciones `release`. | `test_mips_pipeline.py::test_inc_b3_01_*` (8 y 2 registros, en MARS) |
+| `9d495ad` | Requisito del enunciado: `getReg` asigna `$s0`–`$s7` (preservados por el callee) a parámetros y locales de cada procedimiento y `$t` a temporales y globales; prólogo/epílogo los guardan y restauran y el registro de `try` (ahora de 72 bytes) los guarda para que `raise` los restaure. | `test_registers.py::test_reg_04_saved_registers_hold_procedure_variables`; los canarios de `$s0`–`$s7` existentes detectan quitar la restauración en `raise` |
+
+Revisión de código del bloque 3 sin defectos abiertos: `runtime.py` (cadenas UTF-8,
+`concat`/`equals`/`compare`/`raise` solo usan registros reservados y comprueban `null`
+donde corresponde), `lists.py` (comparación sin signo de límites; `$t8`/`$t9` sobreviven
+a `guard` porque `flush` no usa auxiliares), `objects.py` (offset validado contra el
+layout por identidad), `exceptions.py` y `generator.py` (cobertura exacta de opcodes,
+sin ensamblador parcial). Observación menor sin impacto: `ExceptionHandler` depende de
+`ScalarLowerer._label`, método interno del bloque 1 (ya registrado como desviación).
+
+Dictamen: **APROBADO** — 2026-11-08, revisor Daniel Chet, commit `9d495ad`.

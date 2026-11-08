@@ -4,10 +4,12 @@ Esta entrega agrega generación y ejecución de MIPS al compilador Compiscript.
 La meta es cubrir la rúbrica completa y conservar las construcciones que ya
 acepta el Proyecto 2. El simulador acordado es **MARS 4.5**.
 
-**Estado: bloque 1 aprobado; bloques 2, 3 y 4 implementados (revisión pendiente).**
+**Estado: bloques 1, 3 y 4 aprobados; bloque 2 implementado (dictamen pendiente).**
 El núcleo de Daniel, las llamadas, entornos y closures de Nadissa y el runtime completo
 con el pipeline `.cps` → MIPS de Dulce se ejecutan en MARS (`compile_to_mips`). El
 bloque 4 los presenta en la CLI y el IDE; ver [su entrega](entrega-bloque4-nelson.md).
+La rama integrada es `feature/proyecto3-mips` (revisión en `fix/proyecto3-final-compliance`): 1267 pruebas aprobadas con MARS
+obligatorio. Ver [la auditoría contra el enunciado](AUDITORIA_FINAL.md).
 
 Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
 con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
