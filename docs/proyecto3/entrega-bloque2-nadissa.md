@@ -2,7 +2,8 @@
 
 Fecha: 2026-11-06. Rama: `feature/proyecto3-02-calls-environments`.
 Base de partida: `74aa81f` (bloque 1 de Daniel aprobado, rama `feature/proyecto3-01-mips-core`).
-Commit implementado y revisado: **PENDIENTE** (se registra al integrar; ver puerta).
+Commit implementado: `59457cf`; revisado integrado en `22e211e` (`feature/proyecto3-mips`,
+ver [la revisión](#revisión-de-la-puerta)).
 
 ## Resultado y alcance
 
@@ -155,7 +156,7 @@ tamaño que no compartían direcciones, valores simétricos que no distinguían 
 | ID | Gravedad | Descripción | Estado |
 |---|---|---|---|
 | INC-B2-01 | Alta (durante el desarrollo) | La llamada indirecta con máscara 3 caía en la variante de máscara 0 (faltaba el salto). La detectó METHOD-01 en MARS. | Corregida y cubierta |
-| INC-B2-02 | Media | El allocator de Daniel rechaza literales de cadena en `PARAM`; su materialización pertenece al bloque 3. | Punto de extensión `loader` y prueba; pendiente su proveedor real |
+| INC-B2-02 | Media | El allocator de Daniel rechaza literales de cadena en `PARAM`; su materialización pertenece al bloque 3. | Cerrada en el bloque 3: `RuntimeRegisterAllocator` materializa literales de cadena en cualquier operando |
 | INC-B2-04 | Media (latente) | Al revisar el bloque 1 se vio que un lease liberado en las dos ramas de un `if` terminaba su vida en el primer `RELEASE`, y su celda podía reutilizarse mientras la otra rama aún lo usaba. Ningún programa actual genera ese patrón (0 de 78). | Corregida: la vida acaba en la última aparición; `test_abi_01_lease_released_in_both_branches_keeps_its_cell_until_the_last_release` |
 | INC-B2-03 | Baja | El equipo solo tenía Python 3.11 y la documentación exige 3.14. | Cerrada: 3.14.7 instalado y suite completa verde en ambas versiones |
 | INC-B2-05 | Baja | `CallingConvention._epilogue` usaba `id()` del emisor como clave, igual que INC-B1-04. La corrigió Daniel Chet con el acuerdo de Nadissa. | Corregida en `69a934f`: `test_epilogues_are_not_shared_when_an_emitter_id_is_recycled` |
@@ -171,7 +172,40 @@ de padres léxicos requiere los scopes del Proyecto 2 o un mapa explícito.
 - [x] MARS real ejecutó los casos exigidos sin skips por dependencia.
 - [x] Regresión acumulada y formato del diff correctos.
 - [x] Contratos utilizables por el siguiente bloque sin implementar pendientes propios.
-- [ ] Otro integrante reprodujo la puerta y registró dictamen.
-- [ ] Commits de autoría individual identificables y commit final registrado arriba.
+- [x] Otro integrante reprodujo la puerta y registró dictamen.
+- [x] Commits de autoría individual identificables y commit final registrado arriba.
 
-Dictamen: **PENDIENTE**. Cambiar a APROBADO solo con fecha, commit y revisor.
+Dictamen: **APROBADO** (ver [la revisión](#revisión-de-la-puerta)).
+
+## Revisión de la puerta
+
+Revisión independiente de Daniel Chet el 2026-11-08 sobre `feature/proyecto3-mips`
+(`22e211e`, los cuatro bloques integrados), en la rama `fix/proyecto3-dictamen-bloque2`.
+
+| Comprobación | Resultado |
+|---|---|
+| Entorno | Python 3.14.7, Java 21 (Temurin), MARS 4.5 con el JAR verificado (SHA-256 `ac340b67…7096`) |
+| Puerta del bloque | `test_call_layout.py`, `test_calls.py`, `test_environments.py` y `test_call_integration.py` con `--require-mars` → **69 passed** en 63 s |
+| Suite completa sobre el código integrado | `py -3.14 -m pytest tests --require-mars -q` → **1267 passed**, 0 skips, 0 fallos (registrada en [la auditoría](AUDITORIA_FINAL.md)) |
+| Autoría | Cinco commits propios (`f85f1bb`, `04854d6`, `c27fd0d`, `f4ba93c`, `59457cf`), autora y committer Nadissa, sin coautorías |
+
+Revisión de código línea por línea, sin defectos abiertos:
+
+* `layout.py`: frames con encabezado de 32 bytes, locales alineados, celdas de
+  temporales reutilizadas por coloreo de intervalos (la vida llega a la última
+  aparición y se extiende hasta la arista de retorno de cada bucle), área de staging y
+  argumentos entrantes en `fp + F + 8*i`; `validate` rechaza solapamientos y frames
+  fuera del rango de 16 bits. `environment_access` recorre el `parent_offset` del
+  entorno de cada ancestro, nunca un offset universal.
+* `calls.py`: un epílogo por procedimiento; el caller reserva y libera exactamente
+  `8*n`; la llamada indirecta elige la variante por la máscara en tiempo de ejecución y
+  comprueba `null` y máscaras inválidas.
+* `environments.py`: entornos y descriptores en el heap (sobreviven al frame creador);
+  `ENV_GET`/`ENV_SET` usan solo `$t8`/`$t9`/`$f14` como auxiliares; `METHOD_REF`
+  comprueba el receptor nulo antes de leer su entorno ligado.
+
+`calls.py` cambió dos veces después de la entrega, ambas con prueba: la clave del
+epílogo (INC-B2-05, `69a934f`) y el guardado de `$s` en prólogo/epílogo (`9d495ad`,
+ver la revisión de los bloques 3 y 4). Los offsets de frame de este bloque no cambiaron.
+
+Dictamen: **APROBADO** — 2026-11-08, revisor Daniel Chet, commit `22e211e`.

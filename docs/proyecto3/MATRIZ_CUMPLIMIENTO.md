@@ -2,8 +2,8 @@
 
 ## Regla de aceptación
 
-Estado: **bloques 1, 3 y 4 aprobados**; **bloque 2 implementado (dictamen pendiente)**;
-aceptación global pendiente del dictamen del bloque 2 y de la demo visible
+Estado: **los cuatro bloques aprobados**; aceptación global pendiente solo de la
+demo en ventana visible
 (ver [la auditoría](AUDITORIA_FINAL.md)). Las cuatro matrices enlazan evidencia implementada y
 ejecutada con MARS. Ver [la entrega de Daniel](entrega-bloque1-daniel.md),
 [la de Nadissa](entrega-bloque2-nadissa.md), [la de Dulce](entrega-bloque3-dulce.md)
