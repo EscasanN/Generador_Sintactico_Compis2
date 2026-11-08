@@ -1,7 +1,7 @@
 # Auditoría de integración y entrega MIPS
 
-**Estado de integración global: LISTO PARA ENTREGA, salvo la demo en ventana visible**
-(ver [pendientes](#pendientes)).
+**Estado de integración global: COMPLETO.** Los cuatro bloques están aprobados y la demo
+en ventana visible quedó registrada; ver [pendientes](#pendientes) para el merge a `main`.
 Auditoría de Daniel Chet del 2026-11-08 sobre `fix/proyecto3-final-compliance`,
 contra el enunciado oficial *Proyecto Fase 3 — Generación de Código* (PDF del curso).
 
@@ -14,7 +14,7 @@ contra el enunciado oficial *Proyecto Fase 3 — Generación de Código* (PDF de
 | Python / Java / MARS y SHA-256 del JAR | Python 3.14.7; Java 21 (Temurin); MARS 4.5, `ac340b676ba2b62246b9df77e62f81ad4447bcfd329ab539716bcd09950b7096` |
 | Comandos de aceptación y logs | `py -3.14 -m pytest tests --require-mars -q` → **1267 passed** en 544 s, 0 skips; `git diff --check` limpio |
 | Regresión previa y suite MIPS requerida | Base del bloque 4 en checkout limpio: 1263 passed; `tests/mips --require-mars`: 328 passed |
-| Ensayo visible de IDE y MARS | PENDIENTE (las pruebas Qt corren offscreen) |
+| Ensayo visible de IDE y MARS | 8/8 pasos: ensayo visible ejecutado el 2026-11-08 sobre `a6827c5` en el escritorio de Windows (automatizado con Codex) y evidencia revisada por Daniel Chet ([registro](entrega-bloque4-nelson.md#ensayo-visible-registrado)) |
 | Checkout limpio repetido por otro integrante | Hecho por Daniel: `git worktree` sin `output/` ni cachés → 1263 passed |
 | Incidencias y dictamen final | INC-B3-01, INC-B3-02, INC-B3-03 e INC-B4-01 cerradas; sin incidencias abiertas en el código |
 
@@ -33,7 +33,7 @@ contra el enunciado oficial *Proyecto Fase 3 — Generación de Código* (PDF de
 | Entrada `.cps`; salida ASM y reporte de errores | `--emit-mips`, IDE con la pestaña MIPS y exportación; diagnósticos por fase con ubicación y códigos 0/1/2 | CLI-01, CLI-02, IDE-01, IDE-02 | Cumple |
 | Flujo ANTLR → semántica → TAC → MIPS → simulador | `compile_to_mips` reutiliza las fases 1 y 2 sin cambios | ACC-05, `test_pipe_01_every_accepted_project_program_generates_mips` | Cumple |
 | Batería de casos exitosos y fallidos | `tests/cps/mips/{validos,runtime,invalidos}` y 1267 pruebas automáticas | E2E-01, `--require-mars` sin skips | Cumple |
-| IDE para escribir y compilar | `py -3.14 -m src.main`: editor, TAC, MIPS, frames, ejecución y exportación | IDE-01 a IDE-04 (offscreen) | Cumple; falta el ensayo visible |
+| IDE para escribir y compilar | `py -3.14 -m src.main`: editor, TAC, MIPS, frames, ejecución y exportación | IDE-01 a IDE-04 (offscreen) y ensayo visible de 8 pasos | Cumple |
 | Commits individuales, sin commits compartidos | Fase 3: Daniel (Poposit) 14, Nadissa 5, Dulce 5, Nelson 4; autor = committer y sin `Co-Authored-By` | `git shortlog -sn 82756c9..9d495ad` | Cumple |
 | Documentación de arquitectura y de ejecución | `ARQUITECTURA.md`, `DISENO_MIPS.md`, README principal (instalación de MARS con hash, CLI, IDE y pruebas) | DOC-01 | Cumple |
 
@@ -42,14 +42,13 @@ pruebas (60) quedan vinculados a comportamiento ejecutado en MARS, no solo a dis
 
 ## Pendientes
 
-1. **Demo en ventana visible.** Otro integrante debe seguir el
-   [ensayo de la demostración](entrega-bloque4-nelson.md#ensayo-de-la-demostración)
-   en Windows con la interfaz visible.
-2. **Rama a evaluar.** Igual que en la fase 2, la revisión vive en
+1. **Rama a evaluar.** Igual que en la fase 2, la revisión vive en
    ramas `fix/proyecto3-*` que se integran en `feature/proyecto3-mips`; `main` sigue
    en el Proyecto 1 y no se integra hasta completar todo (decisión del equipo).
-3. Observación: el nombre de Git de Daniel es `Poposit`; conviene mencionarlo al
+2. Observación: el nombre de Git de Daniel es `Poposit`; conviene mencionarlo al
    presentar los aportes.
+3. Observación no bloqueante: Qt rechaza imágenes del árbol sintáctico de más de 256 MB
+   en programas grandes (solo la imagen de la pestaña Árbol; el árbol navegable sí carga).
 
 ## Lista de aceptación del equipo
 
@@ -63,7 +62,7 @@ pruebas (60) quedan vinculados a comportamiento ejecutado en MARS, no solo a dis
 - [x] CLI/IDE coherentes, exportación segura y resultados vigentes por revisión.
 - [x] MARS requerido disponible; cero skips de integración en aceptación.
 - [x] Suite previa limpia y gramática/perfil preservados.
-- [ ] Instalación y demostración repetidas desde checkout limpio (checkout hecho; falta la demo visible).
+- [x] Instalación y demostración repetidas desde checkout limpio.
 - [x] Aportes individuales, autorización de cuatro integrantes y enunciado disponibles.
 
 ## Interpretación del dictamen

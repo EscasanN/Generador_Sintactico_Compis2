@@ -127,9 +127,8 @@ sin `output/` ni cachés de ANTLR) y `MARS_JAR` al JAR verificado (ANTLR se desc
 294 s, 0 skips; `--run-mips` sobre `DEMO-completa` terminó en `success` y no quedó
 ningún proceso `java.exe`.
 
-**Pendiente:** que otro integrante repita este checkout limpio y la demostración
-en una ventana visible de Windows. Las pruebas Qt de este bloque corren en modo
-offscreen y no sustituyen ese ensayo humano.
+El checkout limpio lo repitió Daniel Chet en la revisión y la demostración se ensayó en
+una ventana visible (ver [el registro](#ensayo-visible-registrado)).
 
 ### Ensayo de la demostración
 
@@ -150,6 +149,30 @@ offscreen y no sustituyen ese ensayo humano.
    Con el límite por defecto, MARS termina antes con `step_limit`.
 8. CLI: `--emit-mips salida.asm --show-mips-layout --run-mips` sobre `DEMO-completa`.
 
+### Ensayo visible registrado
+
+Ensayo de los 8 pasos de arriba con el IDE en una ventana visible de Windows (sin
+`offscreen`), el 2026-11-08 sobre `a6827c5`; lo ejecutó Codex en el escritorio y Daniel
+Chet revisó la evidencia. Entorno: Python 3.14.7, Java 21.0.11 (Temurin), JAR de MARS con
+el SHA-256 verificado; `git status` vacío antes y después.
+
+| Paso | Resultado |
+|---|---|
+| 1. `DEMO-completa` | TAC, MIPS (1116 instrucciones, 8 frames, 38 derrames, 31 recargas) y Frames MIPS; `success` con la salida del oráculo; el `.asm` exportado da la misma salida en MARS fuera del IDE |
+| 2. `REG-presion` | 29 derrames y 49 recargas; `55 190 -5 20` |
+| 3. `CALL-recursion` | `120 55 true true 21 25`; `fn_sumarSeis` de 48 bytes, argumentos en `48($fp)`…`88($fp)` y `$s0`–`$s5` en `-8($fp)`…`-48($fp)` |
+| 4. `ENV-escape` / `OBJ-herencia-local` | `1 2 2 101 3 101 40` / `7 30 23 23` |
+| 5. `EXC-captura` | `capturado INDEX_OUT_OF_RANGE -1 modulo DIV_ZERO continua` |
+| 6. `ERROR-tipos` | Rechazo semántico con dos diagnósticos ubicados (5:1 y 6:1); MIPS vacío; Ejecutar, Buscar, Copiar y Exportar deshabilitados; al volver sin guardar a `DEMO-completa` se exporta solo el programa vigente |
+| 7. Cancelación | Con el bucle infinito la ventana se mueve y cambia de pestaña; Cancelar da `cancelled` (`MIPS-CANCELLED`) y no queda ningún `java.exe` de MARS |
+| 8. CLI | Código 0, la salida del oráculo entre los marcadores y `EJECUCIÓN: success`; el `.asm` de la CLI es idéntico byte a byte al exportado por el IDE (SHA-256 `42f2125e…78fe0`) |
+
+Evidencia (fuera de Git): `output/qa/proyecto3/demo/RESULTADOS.md`, capturas `paso-*.png`
+y el estado real de cada control en `paso-*.json`. Observación no bloqueante: Qt avisa que
+rechaza imágenes del árbol sintáctico de más de 256 MB (`QImageIOHandler … allocation
+limit`); afecta solo la imagen de la pestaña Árbol en programas grandes, no el árbol
+navegable, el TAC, el MIPS ni la ejecución.
+
 ## Incidencias
 
 | ID | Gravedad | Descripción | Responsable | Estado |
@@ -165,7 +188,7 @@ offscreen y no sustituyen ese ensayo humano.
 - [x] Regresión acumulada y formato del diff correctos.
 - [x] Contratos utilizables sin implementar pendientes de otros bloques (INC-B4-01 queda para Daniel).
 - [x] Otro integrante reprodujo la puerta y el checkout limpio, y registró dictamen.
-- [ ] Demo en ventana visible de Windows repetida por otro integrante (acción humana pendiente).
+- [x] Demo en ventana visible de Windows ([registro](#ensayo-visible-registrado)).
 - [x] Commits de autoría individual identificables y commit final registrado arriba.
 
 Dictamen: **APROBADO** (ver [la revisión](#revisión-de-la-puerta)).
@@ -197,5 +220,5 @@ cancela MARS al editar y espera a los workers al cerrar. La vista de frames mues
 también el área de `$s` guardados.
 
 Dictamen: **APROBADO** — 2026-11-08, revisor Daniel Chet, commit `9d495ad`.
-Queda una sola acción humana: repetir la demostración en una ventana visible de Windows
-siguiendo [el ensayo](#ensayo-de-la-demostración); las pruebas Qt corrieron offscreen.
+La demo en ventana visible quedó registrada el mismo día
+([registro](#ensayo-visible-registrado)).

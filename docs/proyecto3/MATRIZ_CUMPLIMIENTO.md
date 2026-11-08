@@ -2,8 +2,7 @@
 
 ## Regla de aceptación
 
-Estado: **los cuatro bloques aprobados**; aceptación global pendiente solo de la
-demo en ventana visible
+Estado: **los cuatro bloques aprobados y condiciones globales cumplidas**
 (ver [la auditoría](AUDITORIA_FINAL.md)). Las cuatro matrices enlazan evidencia implementada y
 ejecutada con MARS. Ver [la entrega de Daniel](entrega-bloque1-daniel.md),
 [la de Nadissa](entrega-bloque2-nadissa.md), [la de Dulce](entrega-bloque3-dulce.md)
@@ -49,11 +48,11 @@ tabla en una garantía de nota.
 | ACC-01 | Base y regresión | Suite previa limpia y misma gramática/perfil; cualquier fallo no explicado bloquea cierre. | Daniel / equipo | APROBADO: 1267 pruebas sobre `9d495ad`, 0 fallos |
 | ACC-02 | Cobertura del IR | Test `test_opcode_catalog_is_complete` compara handlers y enum; un opcode omitido no se ignora. | Dulce | APROBADO |
 | ACC-03 | Ejecución real | Aceptación con MARS requerido, todos los `.cps` MIPS ejecutados; skip por herramienta ausente bloquea cierre. | Nelson | APROBADO: `test_e2e_01_*` ejecuta los 24 fixtures por CLI e IDE con `--require-mars` |
-| ACC-04 | Evidencia por bloque | Cada ID enlaza prueba, esperado, comando y commit; archivo inexistente o prueba fallida revoca APROBADO. | Cada integrante | PENDIENTE |
+| ACC-04 | Evidencia por bloque | Cada ID enlaza prueba, esperado, comando y commit; archivo inexistente o prueba fallida revoca APROBADO. | Cada integrante | APROBADO: las cuatro entregas registran prueba, esperado, comando, commit y revisor por ID |
 | ACC-05 | Compilación compatible | Pruebas previas y opciones TAC conservadas; rechazo previo nunca produce MIPS. | Dulce / Nelson | APROBADO: `tests/test_main_cli.py` sin cambios y `test_cli_02_exit_and_channels_rejection_keeps_existing_files` |
-| ACC-06 | Entrega reproducible | Checkout limpio, JAR identificado por hash, README y demo reproducidos por otro integrante. | Nelson | PARCIAL: checkout limpio repetido por Daniel (1263 pruebas); falta la demo visible |
+| ACC-06 | Entrega reproducible | Checkout limpio, JAR identificado por hash, README y demo reproducidos por otro integrante. | Nelson | APROBADO: checkout limpio repetido por Daniel (1263 pruebas) y demo visible ensayada el 2026-11-08 |
 | ACC-07 | Autoría y modalidad | Commits propios de cuatro integrantes y autorización registrada; no inventar aprobación externa. | Equipo | APROBADO: commits propios de los cuatro integrantes, sin coautorías |
-| ACC-08 | Demostración final | Ensayo IDE y CLI con válido, inválido, runtime, recursión y spills; incidencias bloqueantes resueltas. | Equipo | PENDIENTE |
+| ACC-08 | Demostración final | Ensayo IDE y CLI con válido, inválido, runtime, recursión y spills; incidencias bloqueantes resueltas. | Equipo | APROBADO: los 8 pasos del ensayo visible (válido, inválido, runtime, recursión, spills, cancelación y CLI) sin incidencias bloqueantes |
 
 `ACC-*` registra condiciones globales y referencia las pruebas de los bloques;
 no exige duplicar las mismas pruebas con otro nombre.
