@@ -7,11 +7,16 @@ Uso:
     python -m src.main --cps programa.cps --emit-tac salida.tac
     python -m src.main --cps programa.cps --show-layout
     python -m src.main --cps programa.cps --syntax-only
+    python -m src.main --cps programa.cps --emit-mips [salida.asm]
+    python -m src.main --cps programa.cps --show-mips-layout
+    python -m src.main --cps programa.cps --run-mips
 
 Códigos de salida de ``--cps``:
-    0  compilación aceptada (TAC verificado por IRVerifier);
-    1  rechazo léxico, sintáctico, semántico o de generación de código;
-    2  error de lectura/escritura, configuración o dependencia.
+    0  compilación aceptada (y, con --run-mips, ejecución correcta en MARS);
+    1  rechazo léxico, sintáctico, semántico, de TAC o MIPS, o error del programa
+       en ejecución;
+    2  error de lectura/escritura, opciones incompatibles, herramienta ausente,
+       ensamblado rechazado por MARS, tiempo o límite de pasos agotado.
 """
 
 from __future__ import annotations
@@ -30,7 +35,8 @@ START_RULE = "program"
 
 USAGE = (
     "Uso: python -m src.main [--cps programa.cps "
-    "[--emit-tac [salida.tac]] [--show-layout] [--syntax-only]]"
+    "[--emit-tac [salida.tac]] [--show-layout] [--syntax-only] "
+    "[--emit-mips [salida.asm]] [--show-mips-layout] [--run-mips]]"
 )
 _EMIT_TO_STDOUT = "-"
 
@@ -60,6 +66,10 @@ def _use_utf8_output() -> None:
 def tac_document(tac: str) -> str:
     """El TAC tal como se imprime o se guarda: siempre termina en salto de línea."""
     return tac if not tac or tac.endswith("\n") else f"{tac}\n"
+
+
+# El ensamblador se imprime y exporta con la misma regla de salto de línea final.
+asm_document = tac_document
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -92,7 +102,45 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="ejecuta únicamente lexer y parser de ANTLR",
     )
+    parser.add_argument(
+        "--emit-mips",
+        nargs="?",
+        const=_EMIT_TO_STDOUT,
+        default=None,
+        metavar="RUTA",
+        help=(
+            "sin RUTA imprime solo el ensamblador MIPS en la salida estándar "
+            "(diagnósticos en stderr); con RUTA lo guarda en UTF-8/LF"
+        ),
+    )
+    parser.add_argument(
+        "--show-mips-layout",
+        action="store_true",
+        help="muestra el área estática y los frames físicos MIPS32",
+    )
+    parser.add_argument(
+        "--run-mips",
+        action="store_true",
+        help="ejecuta el programa en MARS 4.5 (MARS_JAR o output/mips/tools/Mars4_5.jar)",
+    )
     return parser
+
+
+def _option_conflict(options: argparse.Namespace) -> str | None:
+    """Mensaje de la combinación de opciones inválida, o ``None``."""
+    mips = options.emit_mips is not None or options.show_mips_layout or options.run_mips
+    if options.syntax_only and (options.emit_tac is not None or options.show_layout):
+        return "--syntax-only no genera TAC ni tabla extendida"
+    if options.syntax_only and mips:
+        return "--syntax-only no genera ni ejecuta MIPS"
+    if options.emit_tac == _EMIT_TO_STDOUT and options.emit_mips == _EMIT_TO_STDOUT:
+        return "--emit-tac y --emit-mips sin RUTA reclaman ambos la salida estándar"
+    if options.run_mips and _EMIT_TO_STDOUT in (options.emit_tac, options.emit_mips):
+        return (
+            "--run-mips no se puede combinar con una exportación a la salida estándar; "
+            "indique una RUTA para --emit-tac/--emit-mips"
+        )
+    return None
 
 
 def _run_cps_cli(arguments: Sequence[str]) -> int:
@@ -106,14 +154,16 @@ def _run_cps_cli(arguments: Sequence[str]) -> int:
         options = parser.parse_args(list(arguments))
     except SystemExit as exit_request:
         return int(exit_request.code or 0)
-    if options.syntax_only and (options.emit_tac is not None or options.show_layout):
-        print(
-            "ERROR — --syntax-only no genera TAC ni tabla extendida",
-            file=sys.stderr,
-        )
+    conflict = _option_conflict(options)
+    if conflict is not None:
+        print(f"ERROR — {conflict}", file=sys.stderr)
         return 2
+    mips_requested = (
+        options.emit_mips is not None or options.show_mips_layout or options.run_mips
+    )
     source_path = Path(options.source)
 
+    mips_result = None
     try:
         source = source_path.read_text(encoding="utf-8")
         if options.syntax_only:
@@ -123,14 +173,20 @@ def _run_cps_cli(arguments: Sequence[str]) -> int:
             print(f"{status} — análisis sintáctico de Compiscript")
             return 0 if syntax_result.accepted else 1
 
-        from src.codegen.pipeline import compile_compiscript
+        if mips_requested:
+            from src.mips.pipeline import compile_to_mips
 
-        result = compile_compiscript(
-            source,
-            source_path,
-            grammar_path=GRAMMAR_PATH,
-            profile_path=PROFILE_PATH,
-        )
+            mips_result = compile_to_mips(source, source_path)
+            result = mips_result.frontend
+        else:
+            from src.codegen.pipeline import compile_compiscript
+
+            result = compile_compiscript(
+                source,
+                source_path,
+                grammar_path=GRAMMAR_PATH,
+                profile_path=PROFILE_PATH,
+            )
     except (OSError, UnicodeError) as exc:
         print(f"ERROR — no se pudo leer el programa: {exc}", file=sys.stderr)
         return 2
@@ -138,30 +194,84 @@ def _run_cps_cli(arguments: Sequence[str]) -> int:
         print(f"ERROR — {exc}", file=sys.stderr)
         return 2
 
-    if options.emit_tac == _EMIT_TO_STDOUT:
-        # El TAC queda solo en stdout para poder redirigirlo a un archivo.
-        _print_report(result, sys.stderr, show_symbols=False, show_layout=options.show_layout)
-        if result.accepted:
-            sys.stdout.write(tac_document(result.tac))
-        return 0 if result.accepted else 1
+    # Una exportación sin RUTA reserva stdout para el texto exportado.
+    stdout_claimed = _EMIT_TO_STDOUT in (options.emit_tac, options.emit_mips)
+    stream = sys.stderr if stdout_claimed else sys.stdout
+    _print_report(
+        result,
+        stream,
+        show_symbols=not stdout_claimed,
+        show_layout=options.show_layout,
+        final_line=mips_result is None,
+    )
+    if mips_result is not None:
+        _print_mips_report(mips_result, stream, show_layout=options.show_mips_layout)
+    accepted = result.accepted if mips_result is None else mips_result.accepted
+    mips_accepted = mips_result is not None and mips_result.accepted
 
-    _print_report(result, sys.stdout, show_symbols=True, show_layout=options.show_layout)
-    if options.emit_tac is not None and result.accepted:
-        target = Path(options.emit_tac)
+    if options.emit_tac == _EMIT_TO_STDOUT and result.accepted:
+        sys.stdout.write(tac_document(result.tac))
+    if options.emit_mips == _EMIT_TO_STDOUT and mips_accepted:
+        sys.stdout.write(asm_document(mips_result.mips.assembly))
+    exports = (
+        (options.emit_tac, "TAC", result.accepted, lambda: tac_document(result.tac)),
+        (options.emit_mips, "MIPS", mips_accepted,
+         lambda: asm_document(mips_result.mips.assembly)),
+    )
+    for option, label, available, text in exports:
+        if option is None or option == _EMIT_TO_STDOUT:
+            continue
+        if not available:
+            if Path(option).exists():
+                print(
+                    f"El archivo {label} existente no se actualizó porque la compilación "
+                    f"fue rechazada: {option}",
+                    file=sys.stderr,
+                )
+            continue
+        from src.mips_consumer import write_text_safely
+
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            # LF explícito: el archivo es idéntico en Windows y en Linux.
-            target.write_text(tac_document(result.tac), encoding="utf-8", newline="\n")
+            # Archivo temporal + reemplazo: un fallo nunca destruye el archivo anterior.
+            target = write_text_safely(option, text())
         except OSError as exc:
-            print(f"ERROR — no se pudo guardar el TAC: {exc}", file=sys.stderr)
+            print(f"ERROR — no se pudo guardar el {label}: {exc}", file=sys.stderr)
             return 2
-        print(f"TAC guardado en: {target}")
-    elif options.emit_tac is not None and Path(options.emit_tac).exists():
-        print(
-            f"El archivo TAC existente no se actualizó porque la compilación fue rechazada: {options.emit_tac}",
-            file=sys.stderr,
-        )
-    return 0 if result.accepted else 1
+        print(f"{label} guardado en: {target}", file=stream)
+
+    if not accepted:
+        return 1
+    if options.run_mips:
+        return _run_in_mars(mips_result)
+    return 0
+
+
+def _run_in_mars(mips_result: object) -> int:
+    """Ejecuta en MARS; stdout recibe la salida del programa entre marcadores."""
+    from src.mips_consumer import (
+        CancellableMarsRun, default_mars_config, execution_exit_code, execution_summary,
+    )
+
+    try:
+        config = default_mars_config()
+    except ValueError as exc:
+        print(f"ERROR — configuración de MARS inválida: {exc}", file=sys.stderr)
+        return 2
+    print(f"Ejecutando en MARS ({config.jar})…")
+    # Mismo ejecutor que el IDE: igual clasificación que run_mars, pero el
+    # timeout termina el árbol de procesos de Java (INC-B4-01).
+    execution = CancellableMarsRun(mips_result.mips.assembly, config).run()
+    print("----- salida del programa (MARS) -----")
+    sys.stdout.write(execution.stdout)
+    if execution.stdout and not execution.stdout.endswith("\n"):
+        sys.stdout.write("\n")
+    print("----- fin de la salida -----")
+    for diagnostic in execution.diagnostics:
+        message = diagnostic.message.strip().splitlines()
+        detail = message[-1] if message else execution_summary(execution)
+        print(f"[ERROR][{diagnostic.phase}] {diagnostic.code}: {detail}", file=sys.stderr)
+    print(f"EJECUCIÓN: {execution_summary(execution)}")
+    return execution_exit_code(execution)
 
 
 # ---------------------------------------------------------------------- report
@@ -173,6 +283,7 @@ def _print_report(
     *,
     show_symbols: bool,
     show_layout: bool,
+    final_line: bool = True,
 ) -> None:
     """Diagnósticos de cada fase, tablas opcionales y la línea de estado final."""
     _print_syntax_diagnostics(result.syntax_result.diagnostics, stream)
@@ -189,16 +300,45 @@ def _print_report(
             _print_extended_table(intermediate.symbol_layouts.rows(), stream)
             _print_activation_records(intermediate.activation_records, stream)
         _print_statistics(intermediate.statistics, stream)
-        print("ACCEPT — análisis sintáctico, semántico y generación de TAC de Compiscript", file=stream)
+        if final_line:
+            print("ACCEPT — análisis sintáctico, semántico y generación de TAC de Compiscript",
+                  file=stream)
         return
     stage = _STAGE_NAMES.get(result.failed_stage, result.failed_stage)
-    print(f"REJECT — la compilación se detuvo en la fase {stage}; no se generó TAC", file=stream)
+    produced = "TAC" if final_line else "TAC ni MIPS"
+    print(f"REJECT — la compilación se detuvo en la fase {stage}; no se generó {produced}",
+          file=stream)
+
+
+def _print_mips_report(mips_result: object, stream: TextIO, *, show_layout: bool) -> None:
+    """Diagnósticos, layout físico, estadísticas y estado de la fase MIPS."""
+    if not mips_result.frontend.accepted:
+        return
+    from src.mips_consumer import describe_physical_layout, statistics_line
+
+    generation = mips_result.mips
+    for diagnostic in generation.diagnostics:
+        location = diagnostic.location
+        position = f"{location.line}:{location.column}" if location is not None else "-:-"
+        print(f"[ERROR][{diagnostic.phase}] {position} {diagnostic.code}: {diagnostic.message}",
+              file=stream)
+    if mips_result.accepted:
+        if show_layout:
+            for line in describe_physical_layout(mips_result):
+                print(line, file=stream)
+        print(statistics_line(generation.statistics), file=stream)
+        print("ACCEPT — análisis sintáctico, semántico y generación de TAC y MIPS de Compiscript",
+              file=stream)
+        return
+    print("REJECT — la compilación se detuvo en la fase de generación MIPS; "
+          "no se generó ensamblador", file=stream)
 
 
 _STAGE_NAMES = {
     "syntax": "sintáctica",
     "semantic": "semántica",
     "codegen": "de generación de código",
+    "mips": "de generación MIPS",
 }
 
 
