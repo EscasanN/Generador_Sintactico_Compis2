@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-07. Rama: `feature/proyecto3-03-runtime-pipeline`, creada sobre la rama
 del bloque 2 (`feature/proyecto3-02-calls-environments`).
-Base de partida: `86fda60` (bloque 2 de Nadissa con las incidencias del bloque 1 corregidas).
+Base de partida: `7bf0c56` (bloque 2 de Nadissa con las incidencias del bloque 1 corregidas).
 Commit implementado y revisado: **PENDIENTE** (se registra al integrar; ver puerta).
 
 ## Resultado y alcance
@@ -132,7 +132,7 @@ Todas las pruebas están en `tests/mips/` y se ejecutaron con MARS obligatorio.
 
 | Comprobación | Resultado |
 |---|---|
-| Base (`86fda60`), Python 3.12.10, `tests --require-mars` | 1069 passed, 3 failed en 190.6 s (los tres por falta del ejecutable `dot` de Graphviz; ver INC-B3-02) |
+| Base (`7bf0c56`), Python 3.12.10, `tests --require-mars` | 1069 passed, 3 failed en 190.6 s (los tres por falta del ejecutable `dot` de Graphviz; ver INC-B3-02) |
 | Puerta del bloque (5 archivos nuevos), `--require-mars` | **126 passed** en 70 s, sin skips |
 | `tests/mips --require-mars` (bloques 1, 2 y 3, árbol final) | **293 passed** en 195.8 s, sin skips |
 | `tests --require-mars` con el bloque | **1195 passed, 3 failed** en 244.1 s: los mismos 3 fallos de Graphviz de la base; 0 regresiones, 0 skips, 126 pruebas nuevas |
