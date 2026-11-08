@@ -1,22 +1,22 @@
 # Matriz del bloque 2 de Nadissa Vela
 
-Responsable: Nadissa Vela. Estado: **IMPLEMENTADO** en todas las filas; la puerta
-queda **pendiente de revisión independiente** y del commit final
-(ver [la entrega](entrega-bloque2-nadissa.md)).
+Responsable: Nadissa Vela. Estado: **APROBADO** en todas las filas; revisión de
+Daniel Chet el 2026-11-08 sobre `22e211e`
+(ver [la entrega](entrega-bloque2-nadissa.md#revisión-de-la-puerta)).
 Dependencia: bloque 1 aprobado. Rúbrica principal: llamadas/retornos (20 puntos).
 Pruebas implementadas dentro de `tests/mips/`, usando IR manual tipada y MARS.
 
 | ID | Requisito | Caso positivo y esperado | Caso negativo o invariante | Prueba | Estado |
 |---|---|---|---|---|---|
-| ABI-01 | Layout físico completo | Frames de dos funciones con shadowing tienen direcciones distintas, alineación y slots completos. | Tamaño insuficiente, solapamiento, símbolo de otro frame o enlace inexistente se rechaza. | `test_call_layout.py::test_abi_01_frame_mapping` | IMPLEMENTADO |
-| CALL-01 | Paquete de argumentos | Cero, uno, seis argumentos y mezcla entero/doble/referencia llegan en orden; suma de 1 a 6 retorna 21. | Aridad o firma inválida y `PARAM` incompleto se rechazan; no reevaluar argumentos al llamar. | `test_calls.py::test_call_01_arguments` | IMPLEMENTADO |
-| CALL-02 | Retorno y epílogo | `void`, entero 42, doble 2.5 y referencia conservan valor; todos los caminos vuelven al caller. | Firma/representación incompatible rechazada; retorno no omite restauraciones. | `test_calls.py::test_call_02_returns` | IMPLEMENTADO |
-| CALL-03 | Preservación entre llamadas | `f() + g()` y llamada con operandos vivos, enteros/dobles y spills, producen esperado; `$sp` antes/después idéntico. | Canarios en stack, `$fp` y `$s0`–`$s7` intactos; helpers no invalidan valores sin guardarlos. | `test_calls.py::test_call_03_preservation` | IMPLEMENTADO |
-| CALL-04 | Recursión directa y mutua | Factorial de 5 retorna 120; Fibonacci de 8 retorna 21; par/impar mutuos terminan correctamente. | Activaciones no comparten locales ni dirección de retorno. | `test_calls.py::test_call_04_recursion` | IMPLEMENTADO |
-| ENV-01 | Acceso léxico | Lectura/escritura a profundidad 0, 1 y 2 refleja los cambios en la declaración correcta. | No seguir enlace de control ni asumir un parent-offset universal. | `test_environments.py::test_env_01_lexical_links` | IMPLEMENTADO |
-| ENV-02 | Closure escapada | Contador retornado produce 1 y luego 2 tras terminar la función creadora. | No lee slots de un frame expirado; llamada indirecta nula produce interfaz de error. | `test_environments.py::test_env_02_escape` | IMPLEMENTADO |
-| ENV-03 | Compartir capturas y propagar dependencias | Dos hermanas modifican el mismo contador; hermana que solo llama otra recibe entorno necesario. | Dos invocaciones distintas del creador mantienen contadores independientes. | `test_environments.py::test_env_03_shared_capture` | IMPLEMENTADO |
-| METHOD-01 | Método ligado | Receptor y entorno capturado se conservan tras el creador; misma variable pasa de función global a método con entorno usando receptor de prueba. | Máscara runtime agrega `this`, luego `env`; no duplicar ocultos ni deducirlos del tipo fuente. Rechazar máscara inválida. | `test_environments.py::test_method_01_bound_call` | IMPLEMENTADO |
+| ABI-01 | Layout físico completo | Frames de dos funciones con shadowing tienen direcciones distintas, alineación y slots completos. | Tamaño insuficiente, solapamiento, símbolo de otro frame o enlace inexistente se rechaza. | `test_call_layout.py::test_abi_01_frame_mapping` | APROBADO |
+| CALL-01 | Paquete de argumentos | Cero, uno, seis argumentos y mezcla entero/doble/referencia llegan en orden; suma de 1 a 6 retorna 21. | Aridad o firma inválida y `PARAM` incompleto se rechazan; no reevaluar argumentos al llamar. | `test_calls.py::test_call_01_arguments` | APROBADO |
+| CALL-02 | Retorno y epílogo | `void`, entero 42, doble 2.5 y referencia conservan valor; todos los caminos vuelven al caller. | Firma/representación incompatible rechazada; retorno no omite restauraciones. | `test_calls.py::test_call_02_returns` | APROBADO |
+| CALL-03 | Preservación entre llamadas | `f() + g()` y llamada con operandos vivos, enteros/dobles y spills, producen esperado; `$sp` antes/después idéntico. | Canarios en stack, `$fp` y `$s0`–`$s7` intactos; helpers no invalidan valores sin guardarlos. | `test_calls.py::test_call_03_preservation` | APROBADO |
+| CALL-04 | Recursión directa y mutua | Factorial de 5 retorna 120; Fibonacci de 8 retorna 21; par/impar mutuos terminan correctamente. | Activaciones no comparten locales ni dirección de retorno. | `test_calls.py::test_call_04_recursion` | APROBADO |
+| ENV-01 | Acceso léxico | Lectura/escritura a profundidad 0, 1 y 2 refleja los cambios en la declaración correcta. | No seguir enlace de control ni asumir un parent-offset universal. | `test_environments.py::test_env_01_lexical_links` | APROBADO |
+| ENV-02 | Closure escapada | Contador retornado produce 1 y luego 2 tras terminar la función creadora. | No lee slots de un frame expirado; llamada indirecta nula produce interfaz de error. | `test_environments.py::test_env_02_escape` | APROBADO |
+| ENV-03 | Compartir capturas y propagar dependencias | Dos hermanas modifican el mismo contador; hermana que solo llama otra recibe entorno necesario. | Dos invocaciones distintas del creador mantienen contadores independientes. | `test_environments.py::test_env_03_shared_capture` | APROBADO |
+| METHOD-01 | Método ligado | Receptor y entorno capturado se conservan tras el creador; misma variable pasa de función global a método con entorno usando receptor de prueba. | Máscara runtime agrega `this`, luego `env`; no duplicar ocultos ni deducirlos del tipo fuente. Rechazar máscara inválida. | `test_environments.py::test_method_01_bound_call` | APROBADO |
 
 ## Evidencia y comando de puerta
 
@@ -44,5 +44,5 @@ en el stack.
 - [x] Helpers de entornos y callable descriptors listos para reutilizar en objetos
   (`allocate_descriptor`, `fill_descriptor`).
 - [x] Pruebas y evidencia sin depender de módulos futuros.
-- [ ] Registro por ID con el commit final en [la entrega](entrega-bloque2-nadissa.md):
-  faltan el commit y el revisor.
+- [x] Registro por ID con el commit final en [la entrega](entrega-bloque2-nadissa.md):
+  `22e211e`, revisor Daniel Chet.

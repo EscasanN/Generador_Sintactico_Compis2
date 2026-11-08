@@ -1,7 +1,7 @@
 # Auditoría de integración y entrega MIPS
 
-**Estado de integración global: LISTO PARA ENTREGA, salvo dos acciones del equipo**
-(dictamen del bloque 2 y demo en ventana visible; ver [pendientes](#pendientes)).
+**Estado de integración global: LISTO PARA ENTREGA, salvo la demo en ventana visible**
+(ver [pendientes](#pendientes)).
 Auditoría de Daniel Chet del 2026-11-08 sobre `fix/proyecto3-final-compliance`,
 contra el enunciado oficial *Proyecto Fase 3 — Generación de Código* (PDF del curso).
 
@@ -10,7 +10,7 @@ contra el enunciado oficial *Proyecto Fase 3 — Generación de Código* (PDF de
 | Dato | Resultado |
 |---|---|
 | Commit de integración evaluado | `9d495ad` (rama `fix/proyecto3-final-compliance`, sobre la entrega del bloque 4) |
-| Entregas individuales y revisiones | Bloque 1 APROBADO; bloque 2 implementado (dictamen pendiente); bloques 3 y 4 APROBADOS el 2026-11-08 |
+| Entregas individuales y revisiones | Los cuatro bloques APROBADOS: bloque 1 en su entrega; bloques 2, 3 y 4 el 2026-11-08 (revisor Daniel Chet) |
 | Python / Java / MARS y SHA-256 del JAR | Python 3.14.7; Java 21 (Temurin); MARS 4.5, `ac340b676ba2b62246b9df77e62f81ad4447bcfd329ab539716bcd09950b7096` |
 | Comandos de aceptación y logs | `py -3.14 -m pytest tests --require-mars -q` → **1267 passed** en 544 s, 0 skips; `git diff --check` limpio |
 | Regresión previa y suite MIPS requerida | Base del bloque 4 en checkout limpio: 1263 passed; `tests/mips --require-mars`: 328 passed |
@@ -42,20 +42,18 @@ pruebas (60) quedan vinculados a comportamiento ejecutado en MARS, no solo a dis
 
 ## Pendientes
 
-1. **Dictamen del bloque 2 (Nadissa).** Su entrega sigue en "revisión pendiente". Sus
-   pruebas pasan dentro de las 1267, pero falta registrar el dictamen.
-2. **Demo en ventana visible.** Otro integrante debe seguir el
+1. **Demo en ventana visible.** Otro integrante debe seguir el
    [ensayo de la demostración](entrega-bloque4-nelson.md#ensayo-de-la-demostración)
    en Windows con la interfaz visible.
-3. **Rama a evaluar.** Igual que en la fase 2, la revisión vive en
-   `fix/proyecto3-final-compliance` y se integra en `feature/proyecto3-mips`; `main` sigue
-   en el Proyecto 1.
-4. Observación: el nombre de Git de Daniel es `Poposit`; conviene mencionarlo al
+2. **Rama a evaluar.** Igual que en la fase 2, la revisión vive en
+   ramas `fix/proyecto3-*` que se integran en `feature/proyecto3-mips`; `main` sigue
+   en el Proyecto 1 y no se integra hasta completar todo (decisión del equipo).
+3. Observación: el nombre de Git de Daniel es `Poposit`; conviene mencionarlo al
    presentar los aportes.
 
 ## Lista de aceptación del equipo
 
-- [ ] Puertas de Daniel, Nadissa, Dulce y Nelson aprobadas sobre commits identificados (falta la de Nadissa).
+- [x] Puertas de Daniel, Nadissa, Dulce y Nelson aprobadas sobre commits identificados.
 - [x] Todos los IDs y ACC-01 a ACC-08 con evidencia localizable.
 - [x] Rúbrica 20/20/60 vinculada a comportamiento ejecutado, no solo diseño.
 - [x] Todos los opcodes y capacidades acordadas cubiertos; ninguna omisión silenciosa.
