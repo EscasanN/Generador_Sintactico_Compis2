@@ -68,11 +68,11 @@ y evidencia; programas `.cps` completos se ejecutan por la API Python en MARS.
 
 ### 4. Nelson Escalante
 
-- [ ] Integrar generación y ejecución explícita en IDE y CLI.
-- [ ] Mostrar/exportar `.asm`, salida, errores, estado y layouts MIPS físicos.
-- [ ] Conservar seguridad del documento, invalidación de resultados y workers Qt.
-- [ ] Consolidar fixtures, oráculos, instalación y guías de defensa.
-- [ ] Ejecutar desde checkout limpio y completar [su matriz](MATRIZ_BLOQUE4_NELSON.md).
+- [x] Integrar generación y ejecución explícita en IDE y CLI.
+- [x] Mostrar/exportar `.asm`, salida, errores, estado y layouts MIPS físicos.
+- [x] Conservar seguridad del documento, invalidación de resultados y workers Qt.
+- [x] Consolidar fixtures, oráculos, instalación y guías de defensa.
+- [x] Ejecutar desde checkout limpio y completar [su matriz](MATRIZ_BLOQUE4_NELSON.md) y [el handoff](entrega-bloque4-nelson.md); falta que otro integrante repita el checkout limpio y el ensayo visible.
 - [ ] Registrar aceptación conjunta en [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md).
 
 **Puerta 4:** demostración reproducible desde una ventana y desde CLI,

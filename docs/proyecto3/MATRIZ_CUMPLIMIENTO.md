@@ -2,11 +2,11 @@
 
 ## Regla de aceptación
 
-Estado: **bloque 1 aprobado**, **bloques 2 y 3 implementados (revisión pendiente)**, bloque 4
-y aceptación global pendientes. Las matrices de Daniel, Nadissa y Dulce enlazan evidencia
-implementada y ejecutada; las rutas del bloque 4 siguen siendo entregables por crear.
-Ver [la entrega de Daniel](entrega-bloque1-daniel.md), [la de Nadissa](entrega-bloque2-nadissa.md)
-y [la de Dulce](entrega-bloque3-dulce.md).
+Estado: **bloque 1 aprobado**, **bloques 2, 3 y 4 implementados (revisión pendiente)**;
+aceptación global pendiente. Las cuatro matrices enlazan evidencia implementada y
+ejecutada con MARS. Ver [la entrega de Daniel](entrega-bloque1-daniel.md),
+[la de Nadissa](entrega-bloque2-nadissa.md), [la de Dulce](entrega-bloque3-dulce.md)
+y [la de Nelson](entrega-bloque4-nelson.md).
 
 Una fila cambia a APROBADO solo cuando existen sus pruebas versionadas,
 se ejecutan con éxito sobre el commit declarado y se registra la evidencia.
@@ -47,10 +47,10 @@ tabla en una garantía de nota.
 |---|---|---|---|---|
 | ACC-01 | Base y regresión | Suite previa limpia y misma gramática/perfil; cualquier fallo no explicado bloquea cierre. | Daniel / equipo | PENDIENTE |
 | ACC-02 | Cobertura del IR | Test `test_opcode_catalog_is_complete` compara handlers y enum; un opcode omitido no se ignora. | Dulce | IMPLEMENTADO (revisión pendiente) |
-| ACC-03 | Ejecución real | Aceptación con MARS requerido, todos los `.cps` MIPS ejecutados; skip por herramienta ausente bloquea cierre. | Nelson | PENDIENTE |
+| ACC-03 | Ejecución real | Aceptación con MARS requerido, todos los `.cps` MIPS ejecutados; skip por herramienta ausente bloquea cierre. | Nelson | IMPLEMENTADO (revisión pendiente): `test_e2e_01_*` ejecuta los 24 fixtures por CLI e IDE con `--require-mars` |
 | ACC-04 | Evidencia por bloque | Cada ID enlaza prueba, esperado, comando y commit; archivo inexistente o prueba fallida revoca APROBADO. | Cada integrante | PENDIENTE |
-| ACC-05 | Compilación compatible | Pruebas previas y opciones TAC conservadas; rechazo previo nunca produce MIPS. | Dulce / Nelson | PENDIENTE |
-| ACC-06 | Entrega reproducible | Checkout limpio, JAR identificado por hash, README y demo reproducidos por otro integrante. | Nelson | PENDIENTE |
+| ACC-05 | Compilación compatible | Pruebas previas y opciones TAC conservadas; rechazo previo nunca produce MIPS. | Dulce / Nelson | IMPLEMENTADO (revisión pendiente): `tests/test_main_cli.py` sin cambios y `test_cli_02_exit_and_channels_rejection_keeps_existing_files` |
+| ACC-06 | Entrega reproducible | Checkout limpio, JAR identificado por hash, README y demo reproducidos por otro integrante. | Nelson | PARCIAL: checkout limpio ejecutado por Nelson; falta la repetición por otro integrante |
 | ACC-07 | Autoría y modalidad | Commits propios de cuatro integrantes y autorización registrada; no inventar aprobación externa. | Equipo | PENDIENTE |
 | ACC-08 | Demostración final | Ensayo IDE y CLI con válido, inválido, runtime, recursión y spills; incidencias bloqueantes resueltas. | Equipo | PENDIENTE |
 

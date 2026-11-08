@@ -1,20 +1,22 @@
 # Matriz del bloque 4 de Nelson Escalante
 
-Responsable: Nelson Escalante. Estado: **PENDIENTE** en todas las filas.
+Responsable: Nelson Escalante. Estado: **IMPLEMENTADO (revisión pendiente)** en las filas
+IDE, CLI, E2E y DOC; GIT-01 depende del equipo. Evidencia y resultados en
+[entrega-bloque4-nelson.md](entrega-bloque4-nelson.md).
 Dependencia: API completa y bloque 3 aprobado. Rúbrica: entrega funcional,
 ejecución y pruebas; este bloque no absorbe los pendientes de otros.
 
 | ID | Requisito | Caso positivo y esperado | Caso negativo o invariante | Prueba o evidencia prevista | Estado |
 |---|---|---|---|---|---|
-| IDE-01 | Compilar contenido actual | Buffer sin guardar muestra su propio ASM y layouts físicos. | Cambiar el archivo en disco no sustituye silenciosamente el buffer. | `tests/gui/test_mips_workflow.py::test_ide_01_unsaved_buffer` | PENDIENTE |
-| IDE-02 | Exportar con seguridad | ASM UTF-8/LF idéntico al generado por API/CLI; copia y búsqueda funcionan. | Rechazo, cancelación o fallo de E/S no destruye un `.asm` existente. | `tests/gui/test_mips_workflow.py::test_ide_02_export` | PENDIENTE |
-| IDE-03 | Ejecutar sin bloquear | Salida real MARS y estado visibles; se puede cancelar un proceso activo. | Tool ausente, runtime, timeout y cierre durante ejecución no dejan Java/worker vivo ni congelan Qt. | `tests/gui/test_mips_workflow.py::test_ide_03_execution_lifecycle` | PENDIENTE |
-| IDE-04 | Revisión de documento | Editar/abrir/Nuevo invalida generar-ejecutar-exportar; nuevo resultado solo para revisión actual. | Señales de compilación/ejecución anterior no reemplazan el documento ni su salida vigente. | `tests/gui/test_mips_workflow.py::test_ide_04_stale_results` | PENDIENTE |
-| CLI-01 | Opciones y flujos | `--emit-mips RUTA`, stdout y `--run-mips` producen los resultados documentados. | Opciones incompatibles y errores de E/S diagnosticados; rechazar ejecución con cualquiera de las exportaciones TAC/MIPS que reclame stdout, incluso combinando las tres. | `tests/test_main_mips_cli.py::test_cli_01_options` | PENDIENTE |
-| CLI-02 | Estados y canales | Códigos 0/1/2; con exportación stdout contiene solo ASM, diagnósticos en stderr. | Rechazo conserva archivos existentes; error del programa y timeout no son éxito. | `tests/test_main_mips_cli.py::test_cli_02_exit_and_channels` | PENDIENTE |
-| E2E-01 | Batería integral ejecutada | Cada `.cps` MIPS tiene esperado y se descubre automáticamente; resultados coinciden en API/CLI/IDE. | Falta de fixture, ID, oracle o simulador requerido impide aceptación. | `tests/mips/test_mips_fixtures.py::test_e2e_01_fixture_inventory` y ejecución parametrizada | PENDIENTE |
-| DOC-01 | Instalación y defensa | Otro integrante reproduce desde checkout limpio usando README, JAR/hash y comandos registrados. | No depende de caches locales, rutas personales o archivos ignorados no descritos. | `entrega-bloque4-nelson.md`, sección instalación y ensayo, por crear | PENDIENTE |
-| GIT-01 | Autoría verificable | Historial permite reconocer aportes propios de Daniel, Nadissa, Dulce y Nelson. | No commits compartidos ni autorización del profesor inventada. | Historial y referencias de las cuatro entregas; ACC-07 | PENDIENTE |
+| IDE-01 | Compilar contenido actual | Buffer sin guardar muestra su propio ASM y layouts físicos. | Cambiar el archivo en disco no sustituye silenciosamente el buffer. | `tests/gui/test_mips_workflow.py::test_ide_01_unsaved_buffer` | IMPLEMENTADO (revisión pendiente) |
+| IDE-02 | Exportar con seguridad | ASM UTF-8/LF idéntico al generado por API/CLI; copia y búsqueda funcionan. | Rechazo, cancelación o fallo de E/S no destruye un `.asm` existente. | `tests/gui/test_mips_workflow.py::test_ide_02_export` | IMPLEMENTADO (revisión pendiente) |
+| IDE-03 | Ejecutar sin bloquear | Salida real MARS y estado visibles; se puede cancelar un proceso activo. | Tool ausente, runtime, timeout y cierre durante ejecución no dejan Java/worker vivo ni congelan Qt. | `tests/gui/test_mips_workflow.py::test_ide_03_execution_lifecycle` y sus variantes `…_cancel_terminates_java_without_freezing`, `…_timeout_and_missing_tool`, `…_close_during_execution_stops_java` | IMPLEMENTADO (revisión pendiente) |
+| IDE-04 | Revisión de documento | Editar/abrir/Nuevo invalida generar-ejecutar-exportar; nuevo resultado solo para revisión actual. | Señales de compilación/ejecución anterior no reemplazan el documento ni su salida vigente. | `tests/gui/test_mips_workflow.py::test_ide_04_stale_results` y `…_execution_signal_cannot_revive_old_output` | IMPLEMENTADO (revisión pendiente) |
+| CLI-01 | Opciones y flujos | `--emit-mips RUTA`, stdout y `--run-mips` producen los resultados documentados. | Opciones incompatibles y errores de E/S diagnosticados; rechazar ejecución con cualquiera de las exportaciones TAC/MIPS que reclame stdout, incluso combinando las tres. | `tests/test_main_mips_cli.py::test_cli_01_options_*` (15 casos, 8 combinaciones inválidas) | IMPLEMENTADO (revisión pendiente) |
+| CLI-02 | Estados y canales | Códigos 0/1/2; con exportación stdout contiene solo ASM, diagnósticos en stderr. | Rechazo conserva archivos existentes; error del programa y timeout no son éxito. | `tests/test_main_mips_cli.py::test_cli_02_exit_and_channels_*` (10 casos: rechazo por fase, runtime, pasos, timeout, MARS ausente, E/S) | IMPLEMENTADO (revisión pendiente) |
+| E2E-01 | Batería integral ejecutada | Cada `.cps` MIPS tiene esperado y se descubre automáticamente; resultados coinciden en API/CLI/IDE. | Falta de fixture, ID, oracle o simulador requerido impide aceptación. | `tests/mips/test_mips_fixtures.py::test_e2e_01_fixture_inventory` y `test_e2e_01_consumers_agree_with_api_and_oracle` (24 fixtures) | IMPLEMENTADO (revisión pendiente) |
+| DOC-01 | Instalación y defensa | Otro integrante reproduce desde checkout limpio usando README, JAR/hash y comandos registrados. | No depende de caches locales, rutas personales o archivos ignorados no descritos. | [entrega-bloque4-nelson.md](entrega-bloque4-nelson.md#instalación-y-ensayo-desde-checkout-limpio) y README principal | IMPLEMENTADO (falta repetición por otro integrante) |
+| GIT-01 | Autoría verificable | Historial permite reconocer aportes propios de Daniel, Nadissa, Dulce y Nelson. | No commits compartidos ni autorización del profesor inventada. | Historial y referencias de las cuatro entregas; ACC-07 | PENDIENTE (equipo) |
 
 ## Evidencia y comando de puerta
 

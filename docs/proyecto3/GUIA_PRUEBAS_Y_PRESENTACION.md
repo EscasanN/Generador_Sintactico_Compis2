@@ -2,11 +2,11 @@
 
 ## Estado de los comandos
 
-El núcleo y las pruebas de los bloques 1, 2 y 3 están implementados, incluidos los
-fixtures `.cps` MIPS de `tests/cps/mips/` con sus oráculos; los consumidores CLI/IDE
-aquí descritos siguen previstos para el bloque 4. Hoy se ejecuta la puerta del núcleo con
-`py -3.14 -m pytest tests/mips --require-mars -q` y la regresión con
-`py -3.14 -m pytest tests --require-mars -q`. Ver [la entrega](entrega-bloque1-daniel.md).
+Los cuatro bloques están implementados: backend, fixtures `.cps` MIPS con oráculos,
+CLI (`--emit-mips`, `--show-mips-layout`, `--run-mips`) e IDE (pestañas MIPS, Frames
+MIPS y Ejecución MARS). Los programas de la demostración propuesta existen en
+`tests/cps/mips/` con sus oráculos. Comandos y ensayo registrados en
+[la entrega del bloque 4](entrega-bloque4-nelson.md).
 
 ## Preparación del entorno de aceptación
 

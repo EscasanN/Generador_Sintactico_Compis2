@@ -4,10 +4,10 @@ Esta entrega agrega generación y ejecución de MIPS al compilador Compiscript.
 La meta es cubrir la rúbrica completa y conservar las construcciones que ya
 acepta el Proyecto 2. El simulador acordado es **MARS 4.5**.
 
-**Estado: bloque 1 aprobado; bloques 2 y 3 implementados (revisión pendiente); bloque 4 pendiente.**
+**Estado: bloque 1 aprobado; bloques 2, 3 y 4 implementados (revisión pendiente).**
 El núcleo de Daniel, las llamadas, entornos y closures de Nadissa y el runtime completo
-con el pipeline `.cps` → MIPS de Dulce se ejecutan en MARS (`compile_to_mips`). La CLI y
-el IDE corresponden al bloque 4; sus comandos siguen siendo objetivos de implementación.
+con el pipeline `.cps` → MIPS de Dulce se ejecutan en MARS (`compile_to_mips`). El
+bloque 4 los presenta en la CLI y el IDE; ver [su entrega](entrega-bloque4-nelson.md).
 
 Ver [entrega del bloque 1](entrega-bloque1-daniel.md): 985 pruebas aprobadas
 con MARS obligatorio, 80 nuevas y un ejemplo ejecutable para el siguiente integrante.
@@ -54,6 +54,7 @@ de invariantes; un archivo ensamblador por sí solo no demuestra cumplimiento.
 | [MATRIZ_BLOQUE3_DULCE.md](MATRIZ_BLOQUE3_DULCE.md) | Runtime, objetos, listas, excepciones y pipeline. |
 | [entrega-bloque3-dulce.md](entrega-bloque3-dulce.md) | Handoff, evidencia, incidencias y reproducción del bloque 3. |
 | [MATRIZ_BLOQUE4_NELSON.md](MATRIZ_BLOQUE4_NELSON.md) | IDE, CLI y entrega reproducible. |
+| [entrega-bloque4-nelson.md](entrega-bloque4-nelson.md) | Handoff, evidencia, instalación, ensayo e incidencias del bloque 4. |
 | [GUIA_PRUEBAS_Y_PRESENTACION.md](GUIA_PRUEBAS_Y_PRESENTACION.md) | Casos, comandos de aceptación y demostración. |
 | [PLANTILLA_ENTREGA_BLOQUE.md](PLANTILLA_ENTREGA_BLOQUE.md) | Evidencia que debe registrar cada responsable. |
 | [AUDITORIA_FINAL.md](AUDITORIA_FINAL.md) | Estado de integración y cierre de la entrega. |
