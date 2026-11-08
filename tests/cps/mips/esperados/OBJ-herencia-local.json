@@ -1,0 +1,8 @@
+{
+  "compile": {"accepted": true, "stage": null, "code": null},
+  "execution": {
+    "exit_code": 0,
+    "stdout": "7\n30\n23\n23\n",
+    "runtime_code": null
+  }
+}
