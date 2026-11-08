@@ -64,8 +64,9 @@ el tamaño del frame, redondeado a ocho bytes:
 ```text
 caller:  sp = S - A; argumento i en sp + 8*i; jal destino; nop
 callee:  sp = sp - F; guardar ra/fp; fp = sp
+         sp = sp - 8*k; guardar $s0..$s(k-1) en fp - 8*(i+1)
          argumento i se lee en fp + F + 8*i
-retorno: cargar resultado; restaurar ra/fp; sp = sp + F; jr ra; nop
+retorno: cargar resultado; restaurar $s0..$s(k-1), ra/fp; sp = fp + F; jr ra; nop
 caller:  sp = sp + A
 ```
 
@@ -98,11 +99,16 @@ incoherente; preserva valores frente a helpers y evaluación con efectos.
 
 ### Bancos y registros reservados
 
-- `$t0` a `$t7`: registros asignables para enteros/referencias.
+- `$t0` a `$t7`: asignables para temporales del TAC y variables globales (estáticas en `$gp`).
+- `$s0` a `$s7`: asignables para las variables propias de cada procedimiento (parámetros y
+  locales de palabra). Son preservados por el callee: el prólogo guarda los `k` que el
+  procedimiento puede usar justo debajo del frame (`-8*(i+1)($fp)`) y el epílogo los
+  restaura, así ningún offset positivo del frame cambia. `k` = parámetros y locales de
+  palabra del procedimiento, con tope igual al tamaño del banco `$t` (8, o el reducido en
+  pruebas). La unidad global no usa `$s`.
 - `$t8`, `$t9`: auxiliares del emisor; no alojan valores persistentes.
 - `$f2/$f3`, `$f4/$f5`, `$f6/$f7`, `$f8/$f9`, `$f10/$f11`: banco asignable de dobles.
 - `$f0/$f1`: retorno; `$f12/$f13`: syscalls; `$f14/$f15`, `$f16/$f17`: auxiliares. El módulo flotante reserva además `$f18/$f19` a `$f24/$f25` para reducción binaria; no son asignables.
-- `$s0` a `$s7`: preservados por callee; inicialmente no asignables. No usarlos como scratch.
 - `$a0`–`$a3`, `$v0/$v1`, `$ra`, `$sp`, `$fp`, `$at`, `$gp`, `$k0/$k1`: reservados según su función; `$at` pertenece al ensamblador.
 
 ### Algoritmo `getReg(value, mode, pinned)`
@@ -121,8 +127,10 @@ región cuando las vidas no se superponen; no presupone que el número de nombre
 Guardar modificados e invalidar descriptores antes de saltos, uniones y llamadas,
 incluidas las que se introducen para concatenar, reservar memoria o fallar.
 En entrada de bloque no asumir valores en registros. `RELEASE` libera el préstamo
-y no necesita instrucción de CPU. Los helpers respetan la misma ABI; cualquier
-uso futuro de `$s` exige guardarlo/restaurarlo y probarlo.
+y no necesita instrucción de CPU. Los helpers respetan la misma ABI y nunca
+tocan `$s` (salvo `raise`, que los restaura desde el registro del manejador).
+`test_reg_04_saved_registers_hold_procedure_variables` y los canarios de
+`$s0`–`$s7` de las pruebas de llamadas y excepciones lo verifican en MARS.
 
 ## Heap y datos compuestos
 
@@ -177,8 +185,10 @@ de ejecutar la operación peligrosa. Un índice negativo también es inválido.
 El error transporta una cadena con su código; `CATCH` la almacena en el símbolo
 correspondiente. No se agrega sintaxis `throw` a la gramática.
 
-`TRY_BEGIN` instala un registro de 40 bytes alineado con enlace al anterior,
-destino catch, `$sp` de restauración, `$fp` y `$ra` de la activación protegida.
+`TRY_BEGIN` instala un registro de 72 bytes alineado con enlace al anterior,
+destino catch, `$sp` de restauración, `$fp` y `$ra` de la activación protegida
+y `$s0`–`$s7` (offset 40): al desenrollar no corren los epílogos de las llamadas
+abandonadas, así que `raise` restaura los `$s` desde el registro.
 La cabeza se guarda en una variable global del runtime, no en un `$s` oculto.
 El registro se ubica en stack y su enlace no sobrevive al ámbito protegido.
 `TRY_END` lo retira exactamente una vez y restaura su reserva de stack.

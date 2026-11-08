@@ -21,7 +21,8 @@
 Helper routines are leaf procedures of the same ABI with an empty frame:
 arguments are 8-byte slots at ``sp + 8*i``, the result comes back in ``$v0``.
 They only use ``$a0``-``$a3``, ``$v0``/``$v1``, ``$t8``/``$t9`` and never touch
-``$sp``, ``$fp``, ``$s*`` or allocatable registers; callers still place a
+``$sp``, ``$fp``, ``$s*`` or allocatable registers (``raise`` restores ``$s*``
+from the handler record); callers still place a
 register barrier before the call.  They are emitted once per program, after
 every unit, only when referenced.
 """
@@ -32,6 +33,7 @@ from dataclasses import dataclass, field
 from src.codegen.ir import Instruction, OpCode, Operand
 from src.mips.diagnostics import MipsError
 from src.mips.emitter import MipsEmitter
+from src.mips.exceptions import SAVED_OFFSET
 from src.mips.models import EmissionContext, LocationResolver
 from src.mips.registers import RegisterAllocator
 from src.mips.runtime_base import BaseRuntime
@@ -80,8 +82,10 @@ class RuntimeRegisterAllocator(RegisterAllocator):
     """
 
     def __init__(self, emitter: MipsEmitter, locations: LocationResolver, procedure: str = 'global',
-                 *, runtime: 'CompiscriptRuntime', gpr_count: int = 8, fpr_count: int = 5) -> None:
-        super().__init__(emitter, locations, procedure, gpr_count=gpr_count, fpr_count=fpr_count)
+                 *, runtime: 'CompiscriptRuntime', gpr_count: int = 8, fpr_count: int = 5,
+                 saved: tuple[str, ...] = ()) -> None:
+        super().__init__(emitter, locations, procedure, gpr_count=gpr_count, fpr_count=fpr_count,
+                         saved=saved)
         self.runtime = runtime
 
     def _constant(self, register: str, value: Operand) -> None:
@@ -303,6 +307,8 @@ class CompiscriptRuntime(BaseRuntime):
         out.branch('beqz', uncaught, '$t8')
         out.emit('lw', '$v1', '0($t8)')        # the handler is retired before its catch runs
         out.emit('sw', '$v1', '0($t9)')
+        for index in range(8):                  # skipped epilogues never restored them
+            out.emit('lw', f'$s{index}', f'{SAVED_OFFSET + 4 * index}($t8)')
         out.emit('lw', '$sp', '16($t8)')       # discards abandoned frames and arguments
         out.emit('lw', '$fp', '24($t8)')
         out.emit('lw', '$ra', '32($t8)')

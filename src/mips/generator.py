@@ -29,7 +29,7 @@ from collections.abc import Callable, Sequence
 from src.codegen.ir import IRProgram, Instruction, OpCode
 from src.codegen.results import IntermediateCodeResult
 from src.codegen.verifier import IRVerifier
-from src.mips.calls import ProgramEmitter
+from src.mips.calls import ProgramEmitter, saved_registers
 from src.mips.diagnostics import MipsDiagnostic, MipsError
 from src.mips.emitter import MipsEmitter
 from src.mips.exceptions import ExceptionHandler
@@ -79,7 +79,8 @@ class MipsProgramEmitter(ProgramEmitter):
     def _unit(self, emitter: MipsEmitter, name: str, instructions: Sequence[Instruction],
               begin: Callable, end: Callable) -> None:
         registers = RuntimeRegisterAllocator(emitter, self.plan, name, runtime=self.runtime,
-                                             gpr_count=self.counts[0], fpr_count=self.counts[1])
+                                             gpr_count=self.counts[0], fpr_count=self.counts[1],
+                                             saved=saved_registers(self.plan, name, self.counts[0]))
         context = EmissionContext(emitter, registers, self.plan, self.runtime, name)
         begin(context)
         for item in instructions:

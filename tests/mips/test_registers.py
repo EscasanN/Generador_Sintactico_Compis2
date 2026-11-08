@@ -137,3 +137,44 @@ def test_reg_03_use_after_release_is_rejected_across_a_conditional_jump(compile_
                ins(O.COPY, kept, result=out), ins(O.LABEL, result=skip)]
     with pytest.raises(MipsError, match='TEMPORARY-RELEASED'):
         compile_scalar(program)
+
+
+SAVED_PROGRAM = '''
+let total: integer = 0;
+function pesar(a: integer, b: integer, c: integer): integer {
+  let x: integer = a * 2;
+  let y: integer = b + c;
+  total = total + 1;
+  return x + y + pesar2(y);
+}
+function pesar2(n: integer): integer { let m: integer = n - 1; return m * 10; }
+print(pesar(1, 2, 3));
+print(pesar(4, 5, 6));
+print(total);
+'''
+
+
+def test_reg_04_saved_registers_hold_procedure_variables(mars):
+    """$t for temporaries and statics, callee-saved $s for each procedure's variables."""
+    import re
+    from abi_harness import CanaryProbe
+    from pipeline_harness import assemble_with_hooks, output
+    from src.mips.simulator import run_mars
+    assembly = assemble_with_hooks(SAVED_PROGRAM, None, None)
+    units = re.split(r'^(?=main:|proc_\w+:)', assembly, flags=re.MULTILINE)
+    by_name = {unit.split(':', 1)[0]: unit for unit in units if unit.startswith(('main:', 'proc_'))}
+    assert not re.search(r'\$s[0-7]', by_name['main'])
+    for name, saved in (('proc_fn_pesar', 5), ('proc_fn_pesar2', 2)):
+        body = by_name[name]
+        for index in range(saved):
+            # Prologue stores, epilogue restores, and the body really uses the register.
+            assert body.count(f'sw $s{index}, {-8 * (index + 1)}($fp)') == 1
+            assert body.count(f'lw $s{index}, {-8 * (index + 1)}($fp)') == 1
+        assert '$s0, ' in body.split(f'sw $s{saved - 1}')[1]
+        assert f'$s{saved}' not in body
+    # pesar(1,2,3) = 2 + 5 + pesar2(5) = 2 + 5 + 40; pesar(4,5,6) = 8 + 11 + 100
+    assert output(SAVED_PROGRAM, mars) == ['47', '119', '2']
+    assert output(SAVED_PROGRAM, mars, gpr_count=2) == ['47', '119', '2']
+    probe = CanaryProbe()
+    result = run_mars(assemble_with_hooks(SAVED_PROGRAM, probe.before, probe.after), mars)
+    assert result.accepted and result.stdout.split('\n')[:-1][-1] == '1'

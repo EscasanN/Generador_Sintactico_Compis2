@@ -10,8 +10,12 @@ Callee:  ``sp = sp - F``; ``ra`` and the previous ``fp`` are saved before
          ``RETURN`` loads ``$v0``/``$f0``, writes the frame's backup slot and
          leaves through a single epilogue that restores ``ra``/``fp``/``sp``.
 
-``$s0``-``$s7`` are never touched.  All values living in registers are written
-back and the descriptors invalidated before control leaves the procedure.
+A procedure's own variables live in callee-saved ``$s`` registers (see
+``saved_registers``): the prologue stores the ones it may use just below its
+frame (``-8*(i+1)($fp)``, so every ``$fp`` offset of the frame is unchanged) and
+the epilogue restores them.  The global unit only uses ``$t``.  All values
+living in registers are written back and the descriptors invalidated before
+control leaves the procedure.
 """
 from __future__ import annotations
 
@@ -26,7 +30,7 @@ from src.mips.layout import (
     RETURN_VALUE_OFFSET, SLOT_SIZE, PhysicalFrame, PhysicalLayoutPlan, abi_width, representation,
 )
 from src.mips.models import EmissionContext, MachineLocation
-from src.mips.registers import RegisterAllocator
+from src.mips.registers import SAVED_REGISTERS, RegisterAllocator
 from src.mips.runtime_base import BaseRuntime
 from src.mips.scalar import ScalarLowerer
 from src.semantic.types import NULL, UNKNOWN, VOID, FunctionType, Type
@@ -34,6 +38,20 @@ from src.semantic.types import NULL, UNKNOWN, VOID, FunctionType, Type
 CALL_OPCODES = frozenset({OpCode.PARAM, OpCode.CALL, OpCode.CLOSURE_CALL, OpCode.RETURN})
 EXTERNALS = frozenset({'print'})
 UNROLLED_ZERO_WORDS = 64
+
+
+def saved_registers(plan: PhysicalLayoutPlan, procedure: str, limit: int) -> tuple[str, ...]:
+    """``$s`` registers a procedure may give its word-sized variables (none for global).
+
+    The bank is as large as the procedure's word-sized parameters and locals,
+    capped at ``limit`` (the size of the ``$t`` bank, so reduced banks still spill).
+    """
+    if procedure == GLOBAL_UNIT:
+        return ()
+    frame = plan.frame(procedure)
+    words = sum(1 for location in (*frame.parameters.values(), *frame.locals.values())
+                if location.width != 8)
+    return SAVED_REGISTERS[:min(limit, words)]
 
 
 class CallingConvention:
@@ -101,6 +119,8 @@ class CallingConvention:
             raise MipsError('MIPS-CALL-ARITY', f'{label}: PARAM sequence without a call')
         frame, out = self.plan.frame(label), context.emitter
         out.mark(self._epilogue(context))
+        for index, register in enumerate(context.registers.saved):
+            out.emit('lw', register, f'{-SLOT_SIZE * (index + 1)}($fp)')
         out.emit('lw', '$ra', f'{RETURN_ADDRESS_OFFSET}($fp)')
         out.emit('lw', '$t9', f'{CONTROL_LINK_OFFSET}($fp)')
         out.emit('addiu', '$sp', '$fp', str(frame.size))
@@ -130,6 +150,11 @@ class CallingConvention:
         if env_index is not None:
             out.emit('lw', '$t8', f'{frame.incoming_offset(env_index)}($fp)')
             out.emit('sw', '$t8', f'{ACCESS_LINK_OFFSET}($fp)')
+        saved = context.registers.saved
+        if saved:
+            out.emit('addiu', '$sp', '$sp', str(-SLOT_SIZE * len(saved)))
+            for index, register in enumerate(saved):
+                out.emit('sw', register, f'{-SLOT_SIZE * (index + 1)}($fp)')
 
     def _epilogue(self, context: EmissionContext) -> str:
         key = context.emitter, context.procedure
@@ -379,7 +404,8 @@ class ProgramEmitter:
     def _unit(self, emitter: MipsEmitter, name: str, instructions: Sequence[Instruction],
               begin: Callable, end: Callable) -> None:
         registers = RegisterAllocator(emitter, self.plan, name, gpr_count=self.counts[0],
-                                      fpr_count=self.counts[1])
+                                      fpr_count=self.counts[1],
+                                      saved=saved_registers(self.plan, name, self.counts[0]))
         context = EmissionContext(emitter, registers, self.plan, self.runtime, name)
         begin(context)
         for item in instructions:

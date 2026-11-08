@@ -8,6 +8,8 @@ from src.mips.emitter import MipsEmitter
 from src.mips.models import LocationResolver, MachineLocation
 from src.semantic.types import BOOLEAN, FLOAT, INTEGER, NULL, Type
 
+SAVED_REGISTERS = tuple(f'$s{i}' for i in range(8))
+
 
 def value_key(value: Operand, procedure: str) -> tuple:
     if value.kind is OperandKind.TEMPORARY:
@@ -24,13 +26,21 @@ class RegisterAllocator:
 
     getReg does not unpin or silently evict an instruction's source operands.
     The scalar handler computes into reserved scratch before committing writes.
+
+    Banks: temporaries and statics use ``$t``; a procedure's own variables
+    (frame-resident symbols) use the callee-saved ``saved`` registers, which the
+    calling convention preserves in the prologue/epilogue; doubles use ``$f``.
     """
     def __init__(self, emitter: MipsEmitter, locations: LocationResolver,
-                 procedure: str = 'global', *, gpr_count: int = 8, fpr_count: int = 5) -> None:
+                 procedure: str = 'global', *, gpr_count: int = 8, fpr_count: int = 5,
+                 saved: tuple[str, ...] = ()) -> None:
         if not 2 <= gpr_count <= 8 or not 2 <= fpr_count <= 5:
             raise ValueError('banks require 2..8 integer and 2..5 double registers')
+        if any(register not in SAVED_REGISTERS for register in saved):
+            raise ValueError('the saved bank only holds $s0..$s7')
         self.emitter, self.locations, self.procedure = emitter, locations, procedure
         self.gprs = tuple(f'$t{i}' for i in range(gpr_count))
+        self.saved = tuple(saved)
         self.fprs = tuple(f'$f{i}' for i in range(2, 2 + 2 * fpr_count, 2))
         self.values: dict[tuple, tuple[str, Operand]] = {}
         self.dirty: set[tuple] = set()
@@ -78,7 +88,7 @@ class RegisterAllocator:
         if mode == 'read' and value.kind is OperandKind.TEMPORARY and key not in self._defined:
             raise MipsError('MIPS-TEMPORARY-UNDEFINED', str(value.value))
         if key not in self.values:
-            bank = self.fprs if value.type == FLOAT else self.gprs
+            bank = self._bank(value)
             used = {reg for reg, _ in self.values.values()}
             register = next((r for r in bank if r not in used), None)
             if register is None:
@@ -102,6 +112,13 @@ class RegisterAllocator:
         if pinned:
             self.pinned.add(key)
         return self.values[key][0]
+
+    def _bank(self, value: Operand) -> tuple[str, ...]:
+        if value.type == FLOAT:
+            return self.fprs
+        if self.saved and value.kind is OperandKind.SYMBOL and self.location(value).base == '$fp':
+            return self.saved
+        return self.gprs
 
     def _constant(self, register: str, value: Operand) -> None:
         if value.type == FLOAT:

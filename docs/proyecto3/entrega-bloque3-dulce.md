@@ -92,8 +92,9 @@ Matriz: [MATRIZ_BLOQUE3_DULCE.md](MATRIZ_BLOQUE3_DULCE.md).
   entornos preservados). `OBJECT_NEW` no ejecuta inicializadores: el constructor del TAC
   lo hace, base primero. `FIELD_GET`/`FIELD_SET` comprueban `null` y validan el offset en
   el layout de la clase del receptor por identidad (clases homónimas no se confunden).
-* **Excepciones**: `TRY_BEGIN` empuja un registro de 40 bytes (enlace 0, catch 8, `$sp` a
-  restaurar 16, `$fp` 24, `$ra` 32) y lo pone como cabeza de una cadena guardada en una
+* **Excepciones**: `TRY_BEGIN` empuja un registro de 72 bytes (enlace 0, catch 8, `$sp` a
+  restaurar 16, `$fp` 24, `$ra` 32, `$s0`–`$s7` 40; los `$s` se agregaron al integrar,
+  ver la revisión de la puerta) y lo pone como cabeza de una cadena guardada en una
   palabra global. `TRY_END` lo retira una vez. `error` deja el payload (cadena con el
   código) en `$a0` y salta a `raise`, que retira la cabeza, restaura `$sp`/`$fp`/`$ra`,
   guarda el payload en una palabra global y salta al catch; sin manejador imprime

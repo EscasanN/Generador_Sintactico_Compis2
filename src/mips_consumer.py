@@ -20,6 +20,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.mips.calls import saved_registers
 from src.mips.diagnostics import MipsDiagnostic
 from src.mips.layout import (
     ACCESS_LINK_OFFSET, CONTROL_LINK_OFFSET, GLOBAL_UNIT, HEADER_SIZE, RETURN_ADDRESS_OFFSET,
@@ -155,6 +156,9 @@ def physical_layout(compilation: object) -> tuple[tuple[PhysicalSlot, ...],
         hidden = plan.signature(label).hidden if label != GLOBAL_UNIT else ()
         slots = [PhysicalSlot('encabezado', name, f'{offset}($fp)', SLOT_SIZE, 4, detail)
                  for offset, name, detail in _HEADER]
+        slots += [PhysicalSlot('registros $s', register, f'{-SLOT_SIZE * (index + 1)}($fp)',
+                               SLOT_SIZE, 4, 'guardado por el callee (debajo del frame)')
+                  for index, register in enumerate(saved_registers(plan, label, 8))]
         for key, location in sorted(frame.parameters.items(), key=lambda item: item[1].offset):
             index = (location.offset - frame.size) // SLOT_SIZE
             if index < len(hidden):

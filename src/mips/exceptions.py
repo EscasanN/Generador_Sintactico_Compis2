@@ -11,6 +11,7 @@ offset  contents
 16      ``$sp`` to restore (the value before the record was pushed)
 24      ``$fp`` of the protected activation
 32      ``$ra`` at installation
+40      ``$s0``-``$s7`` at installation (one word each)
 ======  ==========================================================
 
 ``TRY_END`` retires the head exactly once and releases its stack space.  The
@@ -18,8 +19,9 @@ TAC already emits one ``TRY_END`` per abandoned scope before ``return``,
 ``break`` and ``continue``; the epilogue never retires a record again.
 
 When a runtime error is raised (``CompiscriptRuntime.error``) the ``raise``
-routine retires the head record, restores ``$sp``/``$fp``/``$ra`` from it
-(discarding the frames and argument packages of abandoned calls), stores the
+routine retires the head record, restores ``$sp``/``$fp``/``$ra`` and the
+callee-saved ``$s`` registers from it (the epilogues of the abandoned calls never
+run; their frames and argument packages are discarded), stores the
 error string in a global payload word and jumps to the catch code.  ``CATCH``
 copies that payload into the catch variable.  The catch label is a block
 boundary, so it starts with empty register descriptors.
@@ -34,8 +36,8 @@ from src.mips.models import EmissionContext
 from src.semantic.types import STRING
 
 EXCEPTION_OPCODES = frozenset({OpCode.TRY_BEGIN, OpCode.TRY_END, OpCode.CATCH})
-HANDLER_RECORD_SIZE = 40
-LINK_OFFSET, CATCH_OFFSET, SP_OFFSET, FP_OFFSET, RA_OFFSET = 0, 8, 16, 24, 32
+HANDLER_RECORD_SIZE = 72
+LINK_OFFSET, CATCH_OFFSET, SP_OFFSET, FP_OFFSET, RA_OFFSET, SAVED_OFFSET = 0, 8, 16, 24, 32, 40
 
 
 class ExceptionHandler:
@@ -91,6 +93,8 @@ class ExceptionHandler:
         out.emit('sw', '$t8', f'{SP_OFFSET}($sp)')
         out.emit('sw', '$fp', f'{FP_OFFSET}($sp)')
         out.emit('sw', '$ra', f'{RA_OFFSET}($sp)')
+        for index in range(8):
+            out.emit('sw', f'$s{index}', f'{SAVED_OFFSET + 4 * index}($sp)')
         out.emit('sw', '$zero', f'{LINK_OFFSET + 4}($sp)')
         out.emit('sw', '$sp', '0($t9)')
 
