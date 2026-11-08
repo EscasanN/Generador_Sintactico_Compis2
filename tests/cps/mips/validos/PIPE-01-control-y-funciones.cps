@@ -33,8 +33,8 @@ for (let k: integer = 0; k < 5; k = k + 1) {
   total = total + k;
 }
 print(total);
-// Los for sin condición viven en su propia función: ver INC-B3-01 en
-// docs/proyecto3/entrega-bloque3-dulce.md (defecto del TAC del Proyecto 2).
+// Los for sin condición viven en su propia función (aislaban INC-B3-01, ya
+// corregido; la regresión está en test_inc_b3_01_* de test_mips_pipeline.py).
 function sinCondicion(): integer {
   let n: integer = 0;
   for (;;) {

@@ -104,7 +104,9 @@ class CompiscriptCodeGenerator(
         self.break_targets: list[Operand] = []
         self.continue_targets: list[Operand] = []
         self.handlers: list[Operand] = []
-        self.loop_handler_depths: dict[str, int] = {}
+        # loop label -> (len(handlers), len(held)) when the loop was entered
+        self.loop_handler_depths: dict[str, tuple[int, int]] = {}
+        self.held: list[ValueRef] = []  # values kept live by an open if/switch
         self.function_stack: list[ProcedureContext] = []
         self.class_stack: list[ClassLayout] = []
         self.initializer_owner: ClassLayout | None = None

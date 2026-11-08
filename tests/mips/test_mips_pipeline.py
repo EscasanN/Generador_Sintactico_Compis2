@@ -27,6 +27,30 @@ PROJECT_PROGRAMS = sorted([*(CPS / 'validos').glob('*.cps'), *(CPS / 'codegen' /
                            *(CPS / 'advertencias').glob('*.cps'), CPS / 'demostracion-valida.cps'])
 
 
+# -- INC-B3-01: break/continue that skip the join of an if or a switch ---------------------
+
+LEAVE_JOIN = '''
+let n: integer = 0;
+for (;;) { n = n + 1; if (n == 4) { break; } }
+print(n);
+let s: integer = 0;
+for (;;) { s = s + 1; switch (s == 3) { case true: break; default: print(s); } }
+print(s * 10);
+let c: integer = 0;
+let k: integer = 0;
+for (; k < 5; k = k + 1) { if (k % 2 == 0) { continue; } c = c + k; }
+let w: integer = 0;
+while (w < 2) { w = w + 1; }
+print(c + w);
+'''
+
+
+@pytest.mark.parametrize('gpr_count', [8, 2])
+def test_inc_b3_01_break_and_continue_release_values_held_until_a_join(mars, gpr_count):
+    from pipeline_harness import output
+    assert output(LEAVE_JOIN, mars, gpr_count=gpr_count) == ['4', '1', '2', '30', '6']
+
+
 # -- PIPE-01: fixtures by domain ---------------------------------------------------------
 
 def test_pipe_01_fixture_inventory():
