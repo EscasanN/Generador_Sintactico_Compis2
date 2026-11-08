@@ -6,8 +6,8 @@
 |---|---|
 | Bloque e integrante | Bloque 4 — Nelson Escalante |
 | Fecha y rama | 2026-11-07 — `feature/proyecto3-04-ide-delivery` |
-| Commit base aceptado | `f3843e2` (entrega del bloque 3 de Dulce, revisión de su puerta pendiente) |
-| Commits de implementación | `5fe50d7` (CLI y `mips_consumer`), `06ea5ea` (IDE), `493fd1f` (fixtures y pruebas); la documentación va en el commit siguiente |
+| Commit base aceptado | `e513934` (entrega del bloque 3 de Dulce, revisión de su puerta pendiente) |
+| Commits de implementación | `6ccd0cf` (CLI y `mips_consumer`), `a7643b5` (IDE), `da0dc9c` (fixtures y pruebas); la documentación va en el commit siguiente |
 | Commit implementado y revisado | **PENDIENTE** (lo registra el revisor al integrar; ver puerta) |
 | Revisor de la puerta | **PENDIENTE** |
 | Python / Java / MARS y SHA-256 JAR | Python 3.14.3; Java 26.0.1 (Oracle, lanzador `javapath`); MARS 4.5, 4 169 142 bytes, `ac340b676ba2b62246b9df77e62f81ad4447bcfd329ab539716bcd09950b7096` (igual al de los bloques 1 a 3) |
@@ -98,7 +98,7 @@ Escritos a mano antes de ejecutar; los siete coincidieron con MARS en la primera
 
 | Comprobación | Resultado |
 |---|---|
-| Base `f3843e2`, `tests --require-mars` | 1198 passed en 166 s, 0 skips |
+| Base `e513934`, `tests --require-mars` | 1198 passed en 166 s, 0 skips |
 | Puerta del bloque: `tests/gui/test_mips_workflow.py tests/test_main_mips_cli.py tests/mips --require-mars` | **358 passed** en 268 s, 0 skips |
 | Regresión completa `tests --require-mars` | **1263 passed** en 293 s, 0 skips, 0 fallos (65 pruebas nuevas: 58 del bloque y 7 casos de `test_pipe_01_end_to_end` por los fixtures nuevos) |
 | `git diff --check` | sin errores |
