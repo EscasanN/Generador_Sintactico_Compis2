@@ -43,6 +43,22 @@ def test_sim_01_timeout(mars):
     assert result.status == 'timeout' and not result.accepted
 
 
+JAVAPATH = Path(r'C:\Program Files\Common Files\Oracle\Java\javapath\java.exe')
+
+
+@pytest.mark.skipif(not JAVAPATH.is_file(), reason='needs the Oracle javapath launcher')
+def test_timeout_terminates_the_java_child_of_a_launcher(mars):
+    """INC-B4-01: the launcher's real java.exe child must die with the timeout."""
+    import time
+    from dataclasses import replace
+    from src.mips.simulator import run_mars
+    started = time.monotonic()
+    result = run_mars('.text\nmain:\nj main\nnop\n',
+                      replace(mars, java=str(JAVAPATH), timeout=2, step_limit=10**9))
+    assert result.status == 'timeout'
+    assert time.monotonic() - started < 30
+
+
 def test_timeout_keeps_output_already_printed(mars):
     from dataclasses import replace
     from src.mips.simulator import run_mars
