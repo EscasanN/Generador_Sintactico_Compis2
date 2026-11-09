@@ -47,8 +47,10 @@ pruebas (60) quedan vinculados a comportamiento ejecutado en MARS, no solo a dis
    en el Proyecto 1 y no se integra hasta completar todo (decisión del equipo).
 2. Observación: el nombre de Git de Daniel es `Poposit`; conviene mencionarlo al
    presentar los aportes.
-3. Observación no bloqueante: Qt rechaza imágenes del árbol sintáctico de más de 256 MB
-   en programas grandes (solo la imagen de la pestaña Árbol; el árbol navegable sí carga).
+3. Corregido en `9b8c367` (2026-11-09): la imagen del árbol de programas grandes como
+   `DEMO-completa` superaba el límite de 256 MB de Qt y la pestaña Árbol quedaba vacía;
+   lo reprodujo la auditoría del 2026-11-09, que además confirmó **1267 pruebas** aprobadas
+   sobre `dceb98d`.
 
 ## Lista de aceptación del equipo
 

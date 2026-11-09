@@ -168,10 +168,10 @@ el SHA-256 verificado; `git status` vacío antes y después.
 | 8. CLI | Código 0, la salida del oráculo entre los marcadores y `EJECUCIÓN: success`; el `.asm` de la CLI es idéntico byte a byte al exportado por el IDE (SHA-256 `42f2125e…78fe0`) |
 
 Evidencia (fuera de Git): `output/qa/proyecto3/demo/RESULTADOS.md`, capturas `paso-*.png`
-y el estado real de cada control en `paso-*.json`. Observación no bloqueante: Qt avisa que
-rechaza imágenes del árbol sintáctico de más de 256 MB (`QImageIOHandler … allocation
-limit`); afecta solo la imagen de la pestaña Árbol en programas grandes, no el árbol
-navegable, el TAC, el MIPS ni la ejecución.
+y el estado real de cada control en `paso-*.json`. Durante el ensayo Qt rechazó la imagen
+del árbol de `DEMO-completa` (18539 × 3672 px, unos 260 MB, por encima de su límite de
+256 MB), así que la pestaña Árbol quedaba vacía; quedó corregido en `9b8c367`
+(`load_tree_pixmap`, prueba `test_ide_07_tree_image_above_the_qt_allocation_limit_is_still_shown`).
 
 ## Incidencias
 
