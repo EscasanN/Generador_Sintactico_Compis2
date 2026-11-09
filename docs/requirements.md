@@ -9,6 +9,8 @@ Las ocho entregas se utilizaron como secuencia interna. Todos los subsistemas fo
 | 3 Catálogo/tipos/alias/errores | semantic + models | test_semantic y casos inválidos de test_engine | `SELECT id FROM t a INNER JOIN t b ON a.id=b.id;` falla por ambigüedad |
 | 4 Tipos persistentes/CREATE/DROP/INSERT | interpreter + storage | test_ddl_insert_reopen_and_projection | `CREATE TABLE t(id INT PRIMARY KEY); INSERT INTO t VALUES(1);` |
 | Restricciones/validación sin cambios parciales | semantic + validación del estado preparado | test_invalid_statements_do_not_change_files, test_update_validation_is_atomic_for_all_rows | `UPDATE t SET id=9;` falla si viola UNIQUE |
+| Ampliación del profesor: no eliminar tablas referenciadas | AST/semántica + catálogo foreign_keys persistente | test_foreign_keys: hija vacía/poblada, reapertura, GUI y archivos intactos | DROP estudiantes falla si inscripciones declara REFERENCES |
+| Integridad referencial y adopción en bases previas | referential + interpreter.validate_references + ALTER TABLE | test_foreign_keys: huérfanos, cambios simultáneos, ciclos, metadatos corruptos | ALTER TABLE inscripciones ADD FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id); |
 | INT/FLOAT/VARCHAR/BOOLEAN/DATE | semantic.validate_value | test_invalid_dates_and_no_implicit_text_cast, test_ddl_insert_reopen_and_projection | `DATE '2024-02-29'` válido; `DATE '2023-02-29'` inválido |
 | 5 SELECT/WHERE/AND/OR/ORDER/UPDATE/DELETE | interpreter | test_dml_order_and_null_logic | `SELECT id FROM t WHERE id>1 ORDER BY id DESC;` |
 | 6 INNER JOIN/agregados/GROUP/HAVING | semantic + interpreter.select | test_join_group_and_aggregates, test_group_qualified_column_and_order_alias | `SELECT aid,AVG(v) FROM b GROUP BY aid HAVING COUNT(*)>1;` |

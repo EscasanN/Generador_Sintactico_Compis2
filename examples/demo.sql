@@ -6,7 +6,7 @@ CREATE TABLE estudiantes (
     activo BOOLEAN,
     nacimiento DATE
 );
-CREATE TABLE inscripciones (id INT PRIMARY KEY, estudiante_id INT, curso_id INT, nota FLOAT);
+CREATE TABLE inscripciones (id INT PRIMARY KEY, estudiante_id INT REFERENCES estudiantes(id), curso_id INT, nota FLOAT);
 INSERT INTO estudiantes VALUES
     (1, 'Ana', 20, 88.5, TRUE, DATE '2006-02-28'),
     (2, 'Luis', 17, 75, TRUE, DATE '2009-05-12'),

@@ -43,6 +43,8 @@ def audit(event,args):
 sys.addaudithook(audit)
 assert analyze_sql('CREATE TABLE t(id INT); INSERT INTO t VALUES(1); SELECT * FROM t;').accepted
 store = FileStorage('database')
+drop = analyze_sql('DROP TABLE estudiantes;',storage=store)
+assert not drop.accepted and 'inscripciones' in drop.diagnostics[0].message
 assert not analyze_sql('SELECT * FROM estudiantes WHERE edad=(SELECT edad FROM estudiantes);',storage=store).accepted
 query = execute_sql('SELECT nombre FROM estudiantes WHERE -1<edad;',store)
 assert query.accepted

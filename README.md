@@ -25,7 +25,9 @@ CLI: `analyze` y `execute` requieren un archivo UTF-8 (o `-` para stdin); `--jso
 
 ## SQL soportado
 
-`CREATE/DROP TABLE`, `CREATE/DROP INDEX`, `INSERT` multirregistro, `UPDATE`, `DELETE`, `SELECT`, `WHERE`, `AND`, `OR`, `NOT`, `ORDER BY`, `INNER JOIN`, `COUNT/SUM/AVG/MIN/MAX`, `GROUP BY`, `HAVING`, subconsultas `IN/NOT IN`, `EXISTS/NOT EXISTS` y escalares en comparaciones. Incluye alias, comodines, operadores aritméticos, `IS [NOT] NULL` y comentarios. Tipos: `INT`, `FLOAT`, `VARCHAR(n)`, `BOOLEAN`, `DATE`. Restricciones simples: `NOT NULL`, `UNIQUE`, `PRIMARY KEY`.
+`CREATE/DROP TABLE`, `CREATE/DROP INDEX`, `INSERT` multirregistro, `UPDATE`, `DELETE`, `SELECT`, `WHERE`, `AND`, `OR`, `NOT`, `ORDER BY`, `INNER JOIN`, `COUNT/SUM/AVG/MIN/MAX`, `GROUP BY`, `HAVING`, subconsultas `IN/NOT IN`, `EXISTS/NOT EXISTS` y escalares en comparaciones. Incluye alias, comodines, operadores aritméticos, `IS [NOT] NULL` y comentarios. Tipos: `INT`, `FLOAT`, `VARCHAR(n)`, `BOOLEAN`, `DATE`. Restricciones simples: `NOT NULL`, `UNIQUE`, `PRIMARY KEY` y llaves foráneas de una columna mediante `REFERENCES` o `FOREIGN KEY`.
+
+La corrección de integridad referencial bloquea DROP de una tabla referenciada, incluso con tablas hijas vacías. También protege INSERT/UPDATE/DELETE de referencias huérfanas. Para bases anteriores, declarar la relación una sola vez con `ALTER TABLE inscripciones ADD FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id);`. No se infieren relaciones por nombres ni por JOIN, y no se modifican automáticamente tus bases. Véase [ejemplo y migración](examples/foreign_keys/README.md). No hay CASCADE ni claves compuestas.
 
 Las decisiones y límites concretos están en [dialecto](docs/decisions.md). Las ocho entregas del enunciado son el orden de construcción del proyecto completo, no ocho productos incompletos: véase [matriz de requisitos](docs/requirements.md).
 
@@ -60,6 +62,8 @@ Este comando requiere Java, verifica SHA-256 y genera visitor y parser Python. E
 [Arquitectura y formato](docs/architecture.md), [procedencia de reutilización](docs/provenance.md), [validación](docs/validation.md). Las pruebas de almacenamiento usan directorios únicos bajo `tmp`, para funcionar también con sandbox de Windows. Las pruebas de GUI usan Qt offscreen.
 
 Para preparar la defensa: [guía de presentación y preguntas del profesor](docs/guia-presentacion.md), [resultados del ensayo aislado](docs/presentation-results.md) y consultas en `examples/presentation/`.
+
+Demostración alternativa completa: [veterinaria](examples/veterinaria/README.md), con SQL numerado, resultados esperados y errores individuales, incluida la protección de tablas por llaves foráneas.
 
 Para reproducir la comprobación de instalación autónoma:
 

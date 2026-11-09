@@ -19,6 +19,11 @@ def main():
     target.mkdir(parents=True, exist_ok=True)
     subprocess.run(['java', '-jar', str(jar), '-Dlanguage=Python3', '-visitor', '-no-listener', '-o', str(target), 'SQL.g4'], cwd=ROOT / 'src/sql_interpreter/grammar', check=True)
     (target / '__init__.py').touch()
+    # ANTLR emite espacios al final de algunas líneas; normalizarlos de forma
+    # reproducible evita ruido en diff --check sin editar lógica generada.
+    for module in target.glob('*.py'):
+        text = module.read_text(encoding='utf-8')
+        module.write_text('\n'.join(line.rstrip(' \t') for line in text.splitlines())+'\n',encoding='utf-8',newline='\n')
 
 
 if __name__ == '__main__':

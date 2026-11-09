@@ -1,11 +1,15 @@
 grammar SQL;
 options { caseInsensitive = true; }
 script: (statement (';' statement)* ';'?)? EOF;
-statement: createTable | dropTable | createIndex | dropIndex | insertStmt | updateStmt | deleteStmt | selectStmt;
-createTable: CREATE TABLE ID '(' columnDef (',' columnDef)* ')';
+statement: createTable | dropTable | createIndex | dropIndex | insertStmt | updateStmt | deleteStmt | selectStmt | alterTable;
+createTable: CREATE TABLE ID '(' tableElement (',' tableElement)* ')';
+tableElement: columnDef | foreignKey;
 columnDef: ID dataType constraint*;
 dataType: INT | FLOAT | VARCHAR '(' INTEGER ')' | BOOLEAN | DATE;
-constraint: NOT NULL | UNIQUE | PRIMARY KEY;
+constraint: NOT NULL | UNIQUE | PRIMARY KEY | referenceClause;
+referenceClause: REFERENCES ID '(' ID ')';
+foreignKey: FOREIGN KEY '(' ID ')' referenceClause;
+alterTable: ALTER TABLE ID ADD foreignKey;
 dropTable: DROP TABLE ID;
 createIndex: CREATE INDEX ID ON ID '(' ID ')';
 dropIndex: DROP INDEX ID;
@@ -40,6 +44,7 @@ SELECT:'SELECT'; FROM:'FROM'; WHERE:'WHERE'; AND:'AND'; OR:'OR'; ORDER:'ORDER'; 
 INNER:'INNER'; JOIN:'JOIN'; GROUP:'GROUP'; HAVING:'HAVING'; IN:'IN'; EXISTS:'EXISTS';
 COUNT:'COUNT'; SUM:'SUM'; AVG:'AVG'; MIN:'MIN'; MAX:'MAX'; AS:'AS'; ASC:'ASC'; DESC:'DESC';
 TRUE:'TRUE'; FALSE:'FALSE'; IS:'IS';
+REFERENCES:'REFERENCES'; FOREIGN:'FOREIGN'; ALTER:'ALTER'; ADD:'ADD';
 DECIMAL: [0-9]+ '.' [0-9]+ ([e] [+-]? [0-9]+)? | [0-9]+ [e] [+-]? [0-9]+;
 INTEGER:[0-9]+;
 STRING:'\'' ('\'\'' | ~['\r\n])* '\'';

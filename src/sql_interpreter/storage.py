@@ -9,9 +9,11 @@ import math
 import os
 from pathlib import Path
 import re
+import time
 from uuid import uuid4
 from .indexes import build_index, key, lookup
 from .models import MAX_INTEGER, SqlError
+from .referential import validate_reference
 
 
 class FileStorage:
@@ -76,6 +78,19 @@ class FileStorage:
                             (type(column.get('size')) is not int or column['size'] <= 0))):
                     raise self._error(catalog_path, 'definición de columna inválida')
                 names.add(column['name'])
+        for table, schema in catalog['tables'].items():
+            keys = schema.get('foreign_keys', [])
+            if not isinstance(keys, list):
+                raise self._error(catalog_path, 'Lista de llaves foráneas inválida')
+            seen = []
+            for reference in keys:
+                try:
+                    validate_reference(catalog, table, reference)
+                    if reference in seen:
+                        raise ValueError('Llave foránea duplicada')
+                except ValueError as exc:
+                    raise self._error(catalog_path, str(exc)) from exc
+                seen.append(reference)
         for name, index in catalog['indexes'].items():
             if (not self._component(name) or not isinstance(index, dict)
                     or not self._component(index.get('table'))
@@ -201,7 +216,14 @@ class FileStorage:
         return {name: dict(self.scan(name)) for name in self.catalog['tables']}
 
     def _publish(self, manifest, temp):
-        os.replace(temp, manifest)
+        for attempt in range(5):
+            try:
+                os.replace(temp, manifest)
+                return
+            except OSError as exc:
+                if getattr(exc, 'winerror', None) not in (5, 32, 33) or attempt == 4:
+                    raise
+                time.sleep(0.01 * 2 ** attempt)
 
     def commit(self, catalog, tables):
         """Reemplazo completo explícito, conservado para clientes del formato 1."""

@@ -6,6 +6,7 @@ import math
 import re
 from .ast import Expr
 from .models import SqlError,MAX_INTEGER
+from .referential import validate_reference
 
 NUMERIC = {'INT', 'FLOAT'}
 
@@ -92,6 +93,21 @@ class SemanticAnalyzer:
     def table(self, name, node):
         if name not in self.catalog['tables']: fail(f'Tabla inexistente: {name}', node)
         return self.catalog['tables'][name]['columns']
+
+    def add_foreign_keys(self, stmt):
+        schema = self.catalog['tables'][stmt.table]
+        keys = list(schema.get('foreign_keys', []))
+        for fk in stmt.foreign_keys:
+            record = {'column': fk.column, 'referenced_table': fk.referenced_table,
+                      'referenced_column': fk.referenced_column}
+            try:
+                validate_reference(self.catalog, stmt.table, record)
+            except ValueError as exc:
+                fail(str(exc), fk)
+            if record in keys:
+                fail('Llave foránea duplicada', fk)
+            keys.append(record)
+        schema['foreign_keys'] = keys
 
     def expression(self, e, scopes, aggregates=False):
         if e.kind == 'literal':
@@ -198,12 +214,14 @@ class SemanticAnalyzer:
         if kind == 'create_table':
             if stmt.table in self.catalog['tables']: fail('Tabla duplicada',stmt)
             names = [c.name for c in stmt.columns]
+            if not names: fail('La tabla requiere al menos una columna', stmt)
             if len(set(names)) != len(names): fail('Columna duplicada',stmt)
             if sum('PRIMARY KEY' in c.constraints for c in stmt.columns) > 1: fail('Solo se admite una clave primaria simple',stmt)
             for c in stmt.columns:
                 if c.type == 'VARCHAR' and c.size <= 0: fail('VARCHAR requiere longitud positiva',c)
                 if len(set(c.constraints)) != len(c.constraints): fail('Restricción duplicada',c)
             self.catalog['tables'][stmt.table] = {'columns':[asdict(c) | {'location':None} for c in stmt.columns]}
+            self.add_foreign_keys(stmt)
             return
         if kind == 'drop_index':
             if stmt.name not in self.catalog['indexes']: fail('Índice inexistente',stmt)
@@ -213,8 +231,13 @@ class SemanticAnalyzer:
         names = {c['name']:c for c in columns}
         scope = [{stmt.table:columns}]
         if kind == 'drop_table':
+            for name, schema in self.catalog['tables'].items():
+                if name != stmt.table and any(fk['referenced_table'] == stmt.table for fk in schema.get('foreign_keys', [])):
+                    fail(f'No se puede eliminar {stmt.table}: la tabla {name} la referencia mediante una llave foránea', stmt)
             del self.catalog['tables'][stmt.table]
             self.catalog['indexes'] = {n:i for n,i in self.catalog['indexes'].items() if i['table'] != stmt.table}
+        elif kind == 'add_foreign_key':
+            self.add_foreign_keys(stmt)
         elif kind == 'create_index':
             if stmt.name in self.catalog['indexes']: fail('Índice duplicado',stmt)
             if stmt.columns[0] not in names: fail('Columna inexistente para índice',stmt)

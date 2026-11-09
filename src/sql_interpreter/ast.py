@@ -53,6 +53,14 @@ class Select:
 
 
 @dataclass
+class ForeignKey:
+    column: str
+    referenced_table: str
+    referenced_column: str
+    location: SourceLocation
+
+
+@dataclass
 class Command:
     kind: str
     location: SourceLocation
@@ -62,6 +70,7 @@ class Command:
     rows: list = field(default_factory=list)
     assignments: list = field(default_factory=list)
     where: Expr | None = None
+    foreign_keys: list[ForeignKey] = field(default_factory=list)
 
 
 @dataclass
@@ -132,6 +141,9 @@ def build_ast(result) -> Script:
         ids = [t.getText().lower() for t in ctx.ID()]
         return TableRef(ids[0], ids[-1], loc(ctx))
 
+    def reference(column, ctx):
+        return ForeignKey(column, ctx.ID(0).getText().lower(), ctx.ID(1).getText().lower(), loc(ctx))
+
     def select(ctx):
         items = []
         for item in ctx.selectItem():
@@ -158,16 +170,31 @@ def build_ast(result) -> Script:
         if rule == 'SelectStmtContext':
             statements.append(select(ctx))
             continue
-        kind = {'CreateTableContext':'create_table', 'DropTableContext':'drop_table', 'CreateIndexContext':'create_index', 'DropIndexContext':'drop_index', 'InsertStmtContext':'insert', 'UpdateStmtContext':'update', 'DeleteStmtContext':'delete'}[rule]
+        kind = {'CreateTableContext':'create_table', 'DropTableContext':'drop_table', 'CreateIndexContext':'create_index', 'DropIndexContext':'drop_index', 'InsertStmtContext':'insert', 'UpdateStmtContext':'update', 'DeleteStmtContext':'delete', 'AlterTableContext':'add_foreign_key'}[rule]
         command = Command(kind, loc(ctx))
         ids = ctx.ID()
         ids = ids if isinstance(ids, list) else [ids]
         names = [t.getText().lower() for t in ids]
         if kind == 'create_table':
             command.table = names[0]
-            for col in ctx.columnDef():
+            for element in ctx.tableElement():
+                col = element.columnDef()
+                if col is None:
+                    fk = element.foreignKey()
+                    command.foreign_keys.append(reference(fk.ID().getText().lower(), fk.referenceClause()))
+                    continue
                 typ = col.dataType()
-                command.columns.append(ColumnDef(col.ID().getText().lower(), typ.getChild(0).getText().upper(), bounded_integer(typ.INTEGER().getText(),loc(col)) if typ.INTEGER() else None, tuple(c.getText().upper().replace('NOTNULL','NOT NULL').replace('PRIMARYKEY','PRIMARY KEY') for c in col.constraint()), loc(col)))
+                name = col.ID().getText().lower()
+                constraints = tuple(c.getText().upper().replace('NOTNULL','NOT NULL').replace('PRIMARYKEY','PRIMARY KEY')
+                                    for c in col.constraint() if c.referenceClause() is None)
+                command.columns.append(ColumnDef(name, typ.getChild(0).getText().upper(), bounded_integer(typ.INTEGER().getText(),loc(col)) if typ.INTEGER() else None, constraints, loc(col)))
+                for constraint in col.constraint():
+                    if constraint.referenceClause():
+                        command.foreign_keys.append(reference(name, constraint.referenceClause()))
+        elif kind == 'add_foreign_key':
+            command.table = names[0]
+            fk = ctx.foreignKey()
+            command.foreign_keys.append(reference(fk.ID().getText().lower(), fk.referenceClause()))
         elif kind in ('drop_table', 'delete', 'update', 'insert'):
             command.table = names[0]
             if kind == 'insert':

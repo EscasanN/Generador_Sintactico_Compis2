@@ -24,6 +24,11 @@ class SQLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by SQLParser#tableElement.
+    def visitTableElement(self, ctx:SQLParser.TableElementContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by SQLParser#columnDef.
     def visitColumnDef(self, ctx:SQLParser.ColumnDefContext):
         return self.visitChildren(ctx)
@@ -36,6 +41,21 @@ class SQLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by SQLParser#constraint.
     def visitConstraint(self, ctx:SQLParser.ConstraintContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by SQLParser#referenceClause.
+    def visitReferenceClause(self, ctx:SQLParser.ReferenceClauseContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by SQLParser#foreignKey.
+    def visitForeignKey(self, ctx:SQLParser.ForeignKeyContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by SQLParser#alterTable.
+    def visitAlterTable(self, ctx:SQLParser.AlterTableContext):
         return self.visitChildren(ctx)
 
 

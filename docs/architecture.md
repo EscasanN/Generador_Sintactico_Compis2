@@ -49,3 +49,13 @@ EXISTS/NOT EXISTS comprueban si existe un lote que sobreviva a WHERE, agrupació
 El worker gráfico recibe una copia del SQL y su revisión. Si cambia el documento, no presenta resultados como pertenecientes al nuevo texto. Solo hay una operación pendiente por ventana; una ejecución ya iniciada puede completar sus cambios aunque el usuario edite el texto mientras tanto.
 
 El guardado de documentos escribe un temporal junto al destino, fuerza su contenido y publica con `os.replace`. Ante fallo conserva el archivo original, el búfer modificado y la ruta anterior de Guardar como; el temporal se limpia.
+
+## Dependencias y llaves foráneas
+
+La gramática y el AST representan llaves foráneas explícitas. Cada esquema guarda una lista opcional `foreign_keys`, con `column`, `referenced_table` y `referenced_column`. Los catálogos anteriores sin ese campo siguen siendo válidos y no se modifican al abrirlos. `referential.validate_reference` comparte la validación de definiciones entre semántica y lectura de catálogo.
+
+La semántica rechaza DROP TABLE si otra tabla del catálogo referencia su esquema, incluso sin filas. Una referencia interna de la tabla a sí misma no bloquea su propio DROP, porque no queda otra tabla dependiente. Las consultas JOIN no crean restricciones implícitas.
+
+El intérprete prepara los cambios de filas, valida unicidad y comprueba las relaciones afectadas sobre el estado final antes de publicar. En ALTER valida las filas existentes antes de persistir la nueva restricción. Puede recorrer las tablas relacionadas, nunca escribe cambios parciales si falla la validación. No ejecuta cascadas ni crea índices automáticamente por declarar la relación.
+
+Para incorporar dependencias a bases existentes, ejecutar explícitamente ALTER TABLE ADD FOREIGN KEY. Los archivos de fila se comparten sin reescritura; solo se publica el catálogo y los metadatos. Si hay filas huérfanas, ALTER falla sin modificar datos ni esquema. Los datos del usuario no se migran ni se borran automáticamente.

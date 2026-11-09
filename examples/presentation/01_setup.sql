@@ -7,7 +7,12 @@ CREATE TABLE estudiantes (
     nacimiento DATE
 );
 CREATE TABLE cursos (id INT PRIMARY KEY, nombre VARCHAR(20));
-CREATE TABLE inscripciones (id INT PRIMARY KEY, estudiante_id INT, curso_id INT, nota FLOAT);
+CREATE TABLE inscripciones (
+    id INT PRIMARY KEY,
+    estudiante_id INT REFERENCES estudiantes(id),
+    curso_id INT REFERENCES cursos(id),
+    nota FLOAT
+);
 INSERT INTO estudiantes VALUES
     (1,'Ana',20,90,TRUE,DATE '2004-02-29'),
     (2,'Luis',17,75,TRUE,DATE '2009-05-12'),

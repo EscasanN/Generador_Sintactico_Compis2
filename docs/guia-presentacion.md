@@ -167,6 +167,8 @@ Por último, `05_cleanup.sql` demuestra DROP INDEX, CREATE TABLE, INSERT y DROP 
 
 **Restricciones.** PRIMARY KEY implica UNIQUE y NOT NULL; las claves son simples. UNIQUE permite varios NULL. Validar unicidad puede recorrer la tabla afectada para comparar su estado final; no se afirma costo constante ni ausencia total de recorridos para todas las modificaciones.
 
+**Llaves foráneas y DROP (corrección del profesor).** La versión actual registra REFERENCES/FOREIGN KEY en el catálogo. No deja eliminar estudiantes mientras exista inscripciones con una referencia hacia ella, aunque la hija esté vacía; hay que eliminar primero la tabla hija. También evita registros hijos sin padre y cambios/borrados de claves que rompan la relación. Las bases creadas antes requieren añadir las referencias con ALTER TABLE; abrirlas no inventa esas relaciones. Los archivos de demostración y migración están en `examples/foreign_keys/`. Para otro dominio, `examples/veterinaria/` contiene la demostración completa con dependencias `duenos <- mascotas <- consultas`.
+
 **NULL.** No es cero ni cadena vacía. Las comparaciones ordinarias con NULL producen desconocido. WHERE acepta solo TRUE. `COUNT(*)` cuenta filas, `COUNT(columna)` omite NULL. `NOT IN` con NULL en el conjunto puede producir desconocido; EXISTS depende de si hay filas y no evalúa la proyección para obtener sus valores.
 
 **GUI y worker.** El núcleo no importa Qt. La GUI envía una copia del texto a un worker para no bloquear la interfaz, y controla la revisión del documento para evitar presentar resultados de texto anterior como si correspondieran al nuevo.

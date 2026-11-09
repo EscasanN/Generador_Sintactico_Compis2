@@ -278,6 +278,49 @@ class Interpreter:
                             seen.add(value)
             if not edits:
                 return StatementResult(stmt.kind, affected=0)
+        self.validate_references(stmt, catalog, edits)
         changes = {stmt.table: edits} if edits else {}
         self.storage.commit_changes(catalog, changes)
         return StatementResult(stmt.kind, affected=affected)
+
+    def validate_references(self, stmt, catalog, edits):
+        """Comprueba el estado final antes de publicar; NULL no exige padre."""
+        if stmt.kind not in ('insert', 'update', 'delete', 'add_foreign_key'):
+            return
+        assigned = {name for name, _ in stmt.assignments}
+        cache = {}
+
+        def final_rows(table):
+            if table not in cache:
+                rows = dict(self.storage.scan(table))
+                if table == stmt.table:
+                    for rid, row in edits.items():
+                        if row is None:
+                            rows.pop(rid, None)
+                        else:
+                            rows[rid] = row
+                cache[table] = list(rows.values())
+            return cache[table]
+
+        for child, schema in catalog['tables'].items():
+            for fk in schema.get('foreign_keys', []):
+                parent = fk['referenced_table']
+                incoming = parent == stmt.table and (
+                    stmt.kind == 'delete' or
+                    (stmt.kind == 'update' and fk['referenced_column'] in assigned))
+                outgoing = child == stmt.table and (
+                    stmt.kind in ('insert', 'add_foreign_key') or
+                    (stmt.kind == 'update' and fk['column'] in assigned))
+                if not incoming and not outgoing:
+                    continue
+                if incoming or stmt.kind == 'add_foreign_key':
+                    rows = final_rows(child)
+                else:
+                    rows = [row for row in edits.values() if row is not None]
+                values = {row[fk['column']] for row in rows if row[fk['column']] is not None}
+                if not values:
+                    continue
+                parents = {row[fk['referenced_column']] for row in final_rows(parent)}
+                if not values <= parents:
+                    fail(f"Referencia inválida: {child}.{fk['column']} requiere valores existentes en "
+                         f"{parent}.{fk['referenced_column']}; no se permite romper la llave foránea", stmt)
