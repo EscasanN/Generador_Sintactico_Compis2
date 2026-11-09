@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QCloseEvent, QPixmap
+from PyQt6.QtGui import QAction, QCloseEvent, QImageReader, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -63,6 +63,21 @@ DEFAULT_GRAMMAR = (
 )
 DEFAULT_PROFILE = REPOSITORY_ROOT / "semantic_profiles" / "compiscript.semantic.json"
 DEFAULT_START_RULE = "program"
+
+
+def load_tree_pixmap(path: str) -> QPixmap:
+    """Graphviz tree image at full resolution.
+
+    Qt refuses to decode images above 256 MB by default; the tree of a large
+    program (``DEMO-completa``: 18539 x 3672 px) exceeds it. The file is our own
+    Graphviz output, so the limit is raised just enough for it.
+    """
+    reader = QImageReader(path)
+    size = reader.size()
+    needed = -(-size.width() * size.height() * 4 // 2**20)  # MB of RGBA, rounded up
+    if needed > QImageReader.allocationLimit():
+        QImageReader.setAllocationLimit(needed)
+    return QPixmap.fromImage(reader.read())
 
 
 class CompilationWorker(QThread):
@@ -692,7 +707,7 @@ class MainWindow(QMainWindow):
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if image_path and os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
+            pixmap = load_tree_pixmap(image_path)
             if pixmap.isNull():
                 image_label.setText("No se pudo cargar la imagen del árbol.")
             else:

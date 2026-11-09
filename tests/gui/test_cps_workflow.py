@@ -252,6 +252,30 @@ def test_ide_07_parse_tree_has_both_image_and_navigable_views():
         application.processEvents()
 
 
+def test_ide_07_tree_image_above_the_qt_allocation_limit_is_still_shown():
+    """A large program's tree (DEMO-completa: ~260 MB decoded) exceeds Qt's default limit."""
+    from PyQt6.QtGui import QImageReader
+    application, window = _make_window()
+    previous = QImageReader.allocationLimit()
+    try:
+        result = analyze_with_g4(GRAMMAR, VALID_PROGRAM, "program")
+        tree_image = render_parse_tree(result.tree, "output/antlr/test-gui-large-tree")
+        size = QImageReader(tree_image).size()
+        assert size.width() * size.height() * 4 > 2**20, 'the image must exceed the 1 MB limit'
+        QImageReader.setAllocationLimit(1)  # same situation, scaled down to a fast test
+        window._profile_path = None
+        window._render_bundle({
+            "mode": "semantic", "result": result, "semantic_result": None,
+            "tree_image": tree_image, "tree_error": None,
+        })
+        label = window._tree_tabs.widget(0).widget()
+        assert not label.pixmap().isNull()
+    finally:
+        QImageReader.setAllocationLimit(previous)
+        window.close()
+        application.processEvents()
+
+
 def test_ide_08_compilation_runs_on_a_worker_thread():
     """IDE-08 / IDE-02 (Proyecto 2): compiling never blocks the GUI thread."""
     application = QApplication.instance() or QApplication([])
